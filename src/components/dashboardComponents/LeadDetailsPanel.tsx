@@ -1,5 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/LeadDetailsPanel.tsx
-
 "use client";
 
 import React, { FC, useState, useCallback, useRef, useEffect } from "react";
@@ -128,60 +126,30 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     }));
   }, []);
 
-  const handleStatusChange = useCallback(async (updatedLead: Lead) => {
-    if (!updatedLead._id) return;
+  const handleStatusChange = useCallback(
+    async (updatedLead: Lead): Promise<void> => {
+      if (!updatedLead._id) return;
 
-    try {
-      console.log("Updating lead status to:", updatedLead.status);
+      try {
+        // Update local state immediately (no need for second API call)
+        setCurrentLead(updatedLead);
 
-      // Use the dedicated status update endpoint
-      const response = await fetch(`/api/leads/${updatedLead._id}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: updatedLead.status }),
-      });
+        // Update cache
+        leadDetailsCache.set(updatedLead._id, {
+          data: updatedLead,
+          timestamp: Date.now(),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("API Error:", errorData);
-        throw new Error(
-          errorData.error || errorData.message || "Failed to update status"
-        );
+        // Call the parent's onLeadUpdated
+        await onLeadUpdatedRef.current(updatedLead);
+      } catch (error) {
+        console.error("Error updating lead:", error);
+        throw error;
       }
+    },
+    []
+  );
 
-      const data = await response.json();
-
-      // Update local state and cache
-      leadDetailsCache.set(updatedLead._id, {
-        data,
-        timestamp: Date.now(),
-      });
-
-      setCurrentLead(data);
-
-      // Call the parent's onLeadUpdated but don't await it to prevent blocking
-      onLeadUpdatedRef.current(data).catch((error) => {
-        console.error("Error in parent onLeadUpdated:", error);
-      });
-
-      toastRef.current({
-        title: "Success",
-        description: "Status updated successfully",
-        variant: "success",
-      });
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toastRef.current({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update status",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  }, []);
   // Handle lead updates from CommentsAndActivities
   const handleLeadUpdated = useCallback(async (updatedLead: Lead) => {
     try {
@@ -227,11 +195,6 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
             lead={currentLead}
             isExpanded={expandedSections.contact}
             onToggle={() => toggleSection("contact")}
-          />
-          <DetailsSection
-            lead={currentLead}
-            isExpanded={expandedSections.details}
-            onToggle={() => toggleSection("details")}
           />
           <DetailsSection
             lead={currentLead}

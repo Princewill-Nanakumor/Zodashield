@@ -197,8 +197,6 @@ const LeadsPageContent: React.FC = () => {
           (key) => updateData[key] === undefined && delete updateData[key]
         );
 
-        console.log("Sending update data:", updateData);
-
         const response = await fetch(`/api/leads/${updatedLead._id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -221,6 +219,7 @@ const LeadsPageContent: React.FC = () => {
         toast({
           title: "Success",
           description: "Lead updated successfully",
+          variant: "success",
         });
 
         return true;
@@ -285,6 +284,7 @@ const LeadsPageContent: React.FC = () => {
         description: `${leadsToAssign.length} lead${
           leadsToAssign.length > 1 ? "s" : ""
         } assigned successfully.`,
+        variant: "success",
       });
     } catch (error) {
       console.error("Error assigning leads:", error);
@@ -333,11 +333,13 @@ const LeadsPageContent: React.FC = () => {
           description: `${result.unassignedCount} lead${
             result.unassignedCount > 1 ? "s" : ""
           } unassigned successfully.`,
+          variant: "success",
         });
       } else {
         toast({
           title: "Partial success",
           description: `Only ${result.unassignedCount} of ${leadIds.length} selected leads were unassigned.`,
+          variant: "success",
         });
       }
     } catch {
@@ -541,12 +543,6 @@ const LeadsPageContent: React.FC = () => {
       <StatusModal
         isOpen={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
-        onStatusCreated={() => {
-          toast({
-            title: "Success",
-            description: "Status created successfully",
-          });
-        }}
       />
     </div>
   );
