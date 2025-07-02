@@ -1,0 +1,42 @@
+/* src/styles/phone-input-dark.css */
+.phone-input-container.dark .react-tel-input {
+  background: #1f2937 !important;
+  border-color: #4b5563 !important;
+}
+
+.phone-input-container.dark .react-tel-input input {
+  background: #1f2937 !important;
+  color: #f3f4f6 !important;
+  border-color: #4b5563 !important;
+}
+
+.phone-input-container.dark .react-tel-input input::placeholder {
+  color: #9ca3af !important;
+}
+
+.phone-input-container.dark .react-tel-input .flag-dropdown {
+  background: #1f2937 !important;
+  border-color: #4b5563 !important;
+}
+
+.phone-input-container.dark .react-tel-input .selected-flag {
+  background: #1f2937 !important;
+}
+
+.phone-input-container.dark .react-tel-input .country-list {
+  background: #1f2937 !important;
+  color: #f3f4f6 !important;
+  border-color: #4b5563 !important;
+}
+
+.phone-input-container.dark .react-tel-input .country-list .country {
+  color: #f3f4f6 !important;
+}
+
+.phone-input-container.dark .react-tel-input .country-list .country:hover {
+  background: #374151 !important;
+}
+
+.phone-input-container.dark .react-tel-input .country-list .country.highlight {
+  background: #374151 !important;
+}
