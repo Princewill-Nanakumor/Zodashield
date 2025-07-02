@@ -1,25 +1,20 @@
-//Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/LeadsPageContent.tsx
-
+// src/components/dashboardComponents/LeadsPageContent.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
-import StatusModal from "@/components/dashboardComponents/StatusModal";
 import { AssignLeadsDialog } from "@/components/dashboardComponents/AssignLeadsDialog";
+import { FilterControls } from "@/components/dashboardComponents/FilterControls";
+import { BulkActions } from "@/components/dashboardComponents/BulkActions";
+import EmptyState from "@/components/dashboardComponents/EmptyState";
+import LoadingState from "@/components/dashboardComponents/LoadingState";
 import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Lead } from "@/types/leads";
 
 // Constants
@@ -91,7 +85,6 @@ const LeadsPageContent: React.FC = () => {
 
   // UI state - Simplified state management
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -135,15 +128,7 @@ const LeadsPageContent: React.FC = () => {
     [leads, filterByUser]
   );
 
-  // Memoized dropdown users
-  const dropdownUsers = useMemo(
-    () => users.filter((user) => user.status === "ACTIVE"),
-    [users]
-  );
-
   // Simplified lead update function that preserves existing data
-  // Update the handleLeadUpdate function in LeadsPageContent.tsx:
-
   const handleLeadUpdate = useCallback(
     async (updatedLead: Lead): Promise<boolean> => {
       try {
@@ -238,6 +223,7 @@ const LeadsPageContent: React.FC = () => {
     },
     [leads, queryClient, toast]
   );
+
   // Enhanced assignment function that preserves lead data
   const handleAssignLeads = useCallback(async () => {
     if (selectedLeads.length === 0 || !selectedUser) return;
@@ -379,37 +365,6 @@ const LeadsPageContent: React.FC = () => {
     return null;
   }
 
-  // Empty state component
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
-      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-        <svg
-          className="w-8 h-8 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-        No leads found
-      </h3>
-      <p className="text-gray-500 dark:text-gray-400">
-        {filterByUser === FILTER_VALUES.UNASSIGNED
-          ? "No unassigned leads available."
-          : filterByUser !== FILTER_VALUES.ALL
-            ? "No leads assigned to this user."
-            : "No leads available at the moment."}
-      </p>
-    </div>
-  );
-
   return (
     <div className="flex-1 bg-background dark:bg-gray-900 p-8">
       <div className="flex justify-between items-center mb-6">
@@ -422,61 +377,26 @@ const LeadsPageContent: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-4">
-          <Button variant="outline" onClick={() => setIsStatusModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Status
-          </Button>
-
-          <Select value={filterByUser} onValueChange={handleFilterChange}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by user" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={FILTER_VALUES.ALL}>All Leads</SelectItem>
-              <SelectItem value={FILTER_VALUES.UNASSIGNED}>
-                Unassigned Leads
-              </SelectItem>
-              {dropdownUsers.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {selectedLeads.length > 0 && (
-            <div className="flex gap-2">
-              <Button
-                variant="default"
-                onClick={() => setIsDialogOpen(true)}
-                disabled={isUpdating}
-              >
-                Assign {selectedLeads.length} Lead
-                {selectedLeads.length > 1 ? "s" : ""}
-              </Button>
-              {hasAssignedLeads && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setIsUnassignDialogOpen(true)}
-                  disabled={isUpdating}
-                >
-                  Unassign {assignedLeadsCount} Lead
-                  {assignedLeadsCount > 1 ? "s" : ""}
-                </Button>
-              )}
-            </div>
-          )}
+          <FilterControls
+            filterByUser={filterByUser}
+            onFilterChange={handleFilterChange}
+            users={users}
+          />
+          <BulkActions
+            selectedLeads={selectedLeads}
+            hasAssignedLeads={hasAssignedLeads}
+            assignedLeadsCount={assignedLeadsCount}
+            isUpdating={isUpdating}
+            onAssign={() => setIsDialogOpen(true)}
+            onUnassign={() => setIsUnassignDialogOpen(true)}
+          />
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-        </div>
-      ) : (
+      <LoadingState isLoading={isLoading}>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           {filteredLeads.length === 0 ? (
-            <EmptyState />
+            <EmptyState filterByUser={filterByUser} />
           ) : (
             <LeadsTable
               leads={filteredLeads}
@@ -488,7 +408,7 @@ const LeadsPageContent: React.FC = () => {
             />
           )}
         </div>
-      )}
+      </LoadingState>
 
       <AssignLeadsDialog
         isOpen={isDialogOpen}
@@ -496,7 +416,7 @@ const LeadsPageContent: React.FC = () => {
           setIsDialogOpen(false);
           setSelectedUser("");
         }}
-        users={dropdownUsers}
+        users={users.filter((user) => user.status === "ACTIVE")}
         selectedUser={selectedUser}
         setSelectedUser={setSelectedUser}
         isLoadingUsers={isLoadingUsers}
@@ -539,11 +459,6 @@ const LeadsPageContent: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <StatusModal
-        isOpen={isStatusModalOpen}
-        onClose={() => setIsStatusModalOpen(false)}
-      />
     </div>
   );
 };
