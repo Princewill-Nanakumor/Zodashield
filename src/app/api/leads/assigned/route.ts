@@ -1,9 +1,8 @@
-//drivecrm/src/app/api/leads/assigned/route.ts
+// drivecrm/src/app/api/leads/assigned/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead, { ILead } from "@/models/Lead";
 import { authOptions } from "@/libs/auth";
 
 export async function GET() {
@@ -15,6 +14,12 @@ export async function GET() {
     }
 
     await connectMongoDB();
+
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
     const userObjectId = new mongoose.Types.ObjectId(session.user.id);
 
     const query =
@@ -22,9 +27,11 @@ export async function GET() {
         ? { assignedTo: { $exists: true, $ne: null } }
         : { assignedTo: userObjectId };
 
-    const assignedLeads = await Lead.find(query)
+    const assignedLeads = await mongoose.connection.db
+      .collection("leads")
+      .find(query)
       .sort({ updatedAt: -1 })
-      .lean<ILead[]>();
+      .toArray();
 
     return NextResponse.json({
       assignedLeads: assignedLeads.map((lead) => ({

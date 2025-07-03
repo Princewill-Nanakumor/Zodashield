@@ -1,9 +1,8 @@
-// src/components/dashboardComponents/LeadsPageContent.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useMemo, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
@@ -14,7 +13,6 @@ import { BulkActions } from "@/components/dashboardComponents/BulkActions";
 import EmptyState from "@/components/dashboardComponents/EmptyState";
 import LoadingState from "@/components/dashboardComponents/LoadingState";
 import { useToast } from "@/components/ui/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,12 +24,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Lead } from "@/types/leads";
-
-// Constants
-const FILTER_VALUES = {
-  ALL: "all",
-  UNASSIGNED: "unassigned",
-} as const;
+import useUrlFilterSync from "@/hooks/useUrlFilterSync";
+import useDataSync from "@/hooks/useDataSync";
+import useLeadUpdate from "@/hooks/useLeadUpdate";
 
 const USER_ROLES = {
   ADMIN: "ADMIN",
@@ -39,22 +34,84 @@ const USER_ROLES = {
 
 // Utility functions
 const getAssignedUserId = (assignedTo: Lead["assignedTo"]): string | null => {
-  if (!assignedTo) return null;
-  if (typeof assignedTo === "string") return assignedTo;
-  return assignedTo.id || null;
+  console.log("getAssignedUserId called with:", assignedTo);
+
+  if (!assignedTo) {
+    console.log("assignedTo is null/undefined, returning null");
+    return null;
+  }
+
+  if (typeof assignedTo === "string") {
+    console.log("assignedTo is string:", assignedTo);
+    return assignedTo;
+  }
+
+  if (assignedTo && typeof assignedTo === "object" && "id" in assignedTo) {
+    console.log("assignedTo is object with id:", assignedTo.id);
+    return assignedTo.id;
+  }
+
+  console.log("assignedTo is object but no id found:", assignedTo);
+  return null;
 };
 
 const filterLeadsByUser = (leads: Lead[], filterByUser: string): Lead[] => {
+  console.log("=== FILTERING LEADS ===");
+  console.log("Filter value:", filterByUser);
+  console.log("Total leads to filter:", leads.length);
+
+  // Log sample leads for debugging
+  const sampleLeads = leads.slice(0, 3);
+  console.log(
+    "Sample leads:",
+    sampleLeads.map((lead) => ({
+      id: lead._id,
+      name: `${lead.firstName} ${lead.lastName}`,
+      assignedTo: lead.assignedTo,
+      extractedId: getAssignedUserId(lead.assignedTo),
+    }))
+  );
+
+  let filteredLeads: Lead[] = [];
+
   switch (filterByUser) {
-    case FILTER_VALUES.UNASSIGNED:
-      return leads.filter((lead) => !getAssignedUserId(lead.assignedTo));
-    case FILTER_VALUES.ALL:
-      return leads;
+    case "unassigned":
+      filteredLeads = leads.filter((lead) => {
+        const assignedId = getAssignedUserId(lead.assignedTo);
+        const isUnassigned = !assignedId;
+        console.log(
+          `Lead ${lead._id}: assignedId=${assignedId}, isUnassigned=${isUnassigned}`
+        );
+        return isUnassigned;
+      });
+      console.log("Unassigned leads found:", filteredLeads.length);
+      break;
+
+    case "all":
+      filteredLeads = leads;
+      console.log("Showing all leads:", filteredLeads.length);
+      break;
+
     default:
-      return leads.filter(
-        (lead) => getAssignedUserId(lead.assignedTo) === filterByUser
+      filteredLeads = leads.filter((lead) => {
+        const assignedId = getAssignedUserId(lead.assignedTo);
+        const matches = assignedId === filterByUser;
+        console.log(
+          `Lead ${lead._id}: assignedId=${assignedId}, filterByUser=${filterByUser}, matches=${matches}`
+        );
+        return matches;
+      });
+      console.log(
+        `User leads found for ${filterByUser}:`,
+        filteredLeads.length
       );
+      break;
   }
+
+  console.log("Final filtered leads count:", filteredLeads.length);
+  console.log("=== END FILTERING ===");
+
+  return filteredLeads;
 };
 
 const getAssignedLeadsCount = (leads: Lead[]): number => {
@@ -64,9 +121,7 @@ const getAssignedLeadsCount = (leads: Lead[]): number => {
 const LeadsPageContent: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Get data and actions from hooks
   const {
@@ -80,170 +135,87 @@ const LeadsPageContent: React.FC = () => {
     isUnassigning,
   } = useLeads();
 
-  const { selectedLeads, setSelectedLeads, filterByUser, setFilterByUser } =
-    useLeadsStore();
+  const {
+    selectedLeads,
+    setSelectedLeads,
+    filterByUser,
+    setFilterByUser,
+    setLeads,
+    setUsers,
+    setLoadingLeads,
+    setLoadingUsers,
+    leads: storeLeads,
+  } = useLeadsStore();
 
-  // UI state - Simplified state management
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
-  const [isUpdating, setIsUpdating] = useState(false);
 
-  // URL sync - Simplified approach with debouncing
-  useEffect(() => {
-    const urlFilter = searchParams.get("filter");
-    if (urlFilter && urlFilter !== filterByUser) {
-      setFilterByUser(urlFilter);
-    } else if (!urlFilter && filterByUser !== FILTER_VALUES.ALL) {
-      setFilterByUser(FILTER_VALUES.ALL);
+  // Debug logging
+  console.log("=== LEADS PAGE CONTENT DEBUG ===");
+  console.log("Hook leads count:", leads.length);
+  console.log("Store leads count:", storeLeads.length);
+  console.log("Current filterByUser:", filterByUser);
+  console.log("Users count:", users.length);
+  console.log("Is loading users:", isLoadingUsers);
+
+  // Use extracted hooks
+  const { isInitialized, handleFilterChange } = useUrlFilterSync(
+    users,
+    isLoadingUsers,
+    filterByUser,
+    setFilterByUser
+  );
+
+  useDataSync(
+    leads,
+    users,
+    isLoadingLeads,
+    isLoadingUsers,
+    setLeads,
+    setUsers,
+    setLoadingLeads,
+    setLoadingUsers
+  );
+
+  const displayLeads = storeLeads.length > 0 ? storeLeads : leads;
+  const { handleLeadUpdate, isUpdating } = useLeadUpdate(
+    displayLeads,
+    setLeads
+  );
+
+  // Memoized filtered leads - Use store leads if available, otherwise use hook leads
+  const filteredLeads = useMemo(() => {
+    console.log("=== FILTERED LEADS MEMO ===");
+    console.log("isInitialized:", isInitialized);
+    console.log("displayLeads count:", displayLeads.length);
+    console.log("filterByUser:", filterByUser);
+
+    if (!isInitialized) {
+      console.log("Not initialized yet, showing all leads");
+      return displayLeads;
     }
-  }, [searchParams, filterByUser, setFilterByUser]);
 
-  // Update URL when filter changes - with debouncing
-  const handleFilterChange = useCallback(
-    (newFilter: string) => {
-      setFilterByUser(newFilter);
+    const result = filterLeadsByUser(displayLeads, filterByUser);
+    console.log("Filtered result count:", result.length);
+    return result;
+  }, [displayLeads, filterByUser, isInitialized]);
 
-      // Debounce URL updates
-      const timeoutId = setTimeout(() => {
-        const params = new URLSearchParams(searchParams);
-        if (newFilter === FILTER_VALUES.ALL) {
-          params.delete("filter");
-        } else {
-          params.set("filter", newFilter);
-        }
-        router.push(`${window.location.pathname}?${params.toString()}`, {
-          scroll: false,
-        });
-      }, 300);
-
-      return () => clearTimeout(timeoutId);
-    },
-    [setFilterByUser, searchParams, router]
-  );
-
-  // Memoized filtered leads
-  const filteredLeads = useMemo(
-    () => filterLeadsByUser(leads, filterByUser),
-    [leads, filterByUser]
-  );
-
-  // Simplified lead update function that preserves existing data
-  const handleLeadUpdate = useCallback(
-    async (updatedLead: Lead): Promise<boolean> => {
-      try {
-        setIsUpdating(true);
-
-        // Find the original lead to preserve existing data
-        const originalLead = leads.find((l) => l._id === updatedLead._id);
-        if (!originalLead) {
-          throw new Error("Original lead not found");
-        }
-
-        // Create update data that preserves existing fields
-        const updateData: Record<string, unknown> = {
-          // Only update fields that have actually changed
-          ...(updatedLead.firstName !== originalLead.firstName && {
-            firstName: updatedLead.firstName,
-          }),
-          ...(updatedLead.lastName !== originalLead.lastName && {
-            lastName: updatedLead.lastName,
-          }),
-          ...(updatedLead.email !== originalLead.email && {
-            email: updatedLead.email,
-          }),
-          ...(updatedLead.phone !== originalLead.phone && {
-            phone: updatedLead.phone,
-          }),
-          ...(updatedLead.source !== originalLead.source && {
-            source: updatedLead.source,
-          }),
-          ...(updatedLead.status !== originalLead.status && {
-            status: updatedLead.status,
-          }),
-          ...(updatedLead.country !== originalLead.country && {
-            country: updatedLead.country,
-          }),
-          ...(updatedLead.comments !== originalLead.comments && {
-            comments: updatedLead.comments,
-          }),
-          // Handle assignedTo properly
-          ...(updatedLead.assignedTo !== originalLead.assignedTo && {
-            assignedTo:
-              typeof updatedLead.assignedTo === "string"
-                ? updatedLead.assignedTo
-                : updatedLead.assignedTo?.id || null,
-          }),
-          updatedAt: new Date().toISOString(),
-        };
-
-        // Remove undefined values
-        Object.keys(updateData).forEach(
-          (key) => updateData[key] === undefined && delete updateData[key]
-        );
-
-        const response = await fetch(`/api/leads/${updatedLead._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updateData),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error("API Error:", errorData);
-          throw new Error(
-            errorData.error || errorData.message || "Failed to update lead"
-          );
-        }
-
-        const result = await response.json();
-        console.log("Update successful:", result);
-
-        queryClient.invalidateQueries({ queryKey: ["leads"] });
-
-        toast({
-          title: "Success",
-          description: "Lead updated successfully",
-          variant: "success",
-        });
-
-        return true;
-      } catch (error) {
-        console.error("Error updating lead:", error);
-        toast({
-          title: "Error",
-          description:
-            error instanceof Error ? error.message : "Failed to update lead",
-          variant: "destructive",
-        });
-        return false;
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    [leads, queryClient, toast]
-  );
-
-  // Enhanced assignment function that preserves lead data
   const handleAssignLeads = useCallback(async () => {
     if (selectedLeads.length === 0 || !selectedUser) return;
 
-    setIsUpdating(true);
     try {
-      // Get the full lead data for each selected lead
       const leadsToAssign = selectedLeads.map((selectedLead) => {
-        const fullLead = leads.find((l) => l._id === selectedLead._id);
+        const fullLead = displayLeads.find((l) => l._id === selectedLead._id);
         if (!fullLead) {
           throw new Error(`Lead ${selectedLead._id} not found`);
         }
         return fullLead;
       });
 
-      // Create assignment data that preserves all lead properties
       const assignmentData = {
         leadIds: leadsToAssign.map((l) => l._id),
         userId: selectedUser,
-        // Include all lead data to preserve during assignment
         leadsData: leadsToAssign.map((lead) => ({
           _id: lead._id,
           firstName: lead.firstName,
@@ -251,7 +223,7 @@ const LeadsPageContent: React.FC = () => {
           email: lead.email,
           phone: lead.phone,
           source: lead.source,
-          status: lead.status, // Preserve current status
+          status: lead.status,
           country: lead.country,
           comments: lead.comments,
           createdAt: lead.createdAt,
@@ -279,8 +251,6 @@ const LeadsPageContent: React.FC = () => {
         description: "Failed to assign leads. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsUpdating(false);
     }
   }, [
     selectedLeads,
@@ -288,7 +258,7 @@ const LeadsPageContent: React.FC = () => {
     assignLeads,
     setSelectedLeads,
     toast,
-    leads,
+    displayLeads,
   ]);
 
   const handleUnassignLeads = useCallback(async () => {
@@ -305,7 +275,6 @@ const LeadsPageContent: React.FC = () => {
       return;
     }
 
-    setIsUpdating(true);
     try {
       const leadIds = leadsToUnassign.map((l) => l._id);
       const result = await unassignLeads({ leadIds });
@@ -334,8 +303,6 @@ const LeadsPageContent: React.FC = () => {
         description: "Failed to unassign leads. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsUpdating(false);
     }
   }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
 
@@ -346,7 +313,6 @@ const LeadsPageContent: React.FC = () => {
   );
   const assignedLeadsCount = getAssignedLeadsCount(selectedLeads);
 
-  // Early returns
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background dark:bg-gray-900">
@@ -381,6 +347,7 @@ const LeadsPageContent: React.FC = () => {
             filterByUser={filterByUser}
             onFilterChange={handleFilterChange}
             users={users}
+            isLoading={isLoadingUsers}
           />
           <BulkActions
             selectedLeads={selectedLeads}

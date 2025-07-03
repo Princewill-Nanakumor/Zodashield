@@ -2,8 +2,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { executeDbOperation } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
-import Import from "@/models/Import";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
 
@@ -65,6 +63,12 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     return executeDbOperation(async () => {
+      // Get the Lead model from mongoose
+      const Lead = mongoose.models.Lead;
+      if (!Lead) {
+        throw new Error("Lead model not found");
+      }
+
       const [leads, total] = await Promise.all([
         Lead.find({})
           .select(
@@ -85,7 +89,7 @@ export async function GET(request: Request) {
 
       const transformedLeads: TransformedLead[] = leads.map(
         (lead: LeadDocument) => {
-          console.log("Processing lead with country:", lead.country); // Add this debug log
+          console.log("Processing lead with country:", lead.country);
           return {
             id: lead._id.toString(),
             firstName: lead.firstName,
@@ -139,6 +143,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get the Lead model from mongoose
+    const Lead = mongoose.models.Lead;
+    if (!Lead) {
+      throw new Error("Lead model not found");
+    }
+
     const leads = Array.isArray(requestData) ? requestData : [requestData];
     console.log("Received leads to import:", leads.length);
 
@@ -181,13 +191,16 @@ export async function POST(request: Request) {
 
     if (importId) {
       try {
-        await Import.findByIdAndUpdate(importId, {
-          $set: {
-            status: "completed",
-            successCount: result.upsertedCount,
-            failureCount: leads.length - result.upsertedCount,
-          },
-        });
+        const Import = mongoose.models.Import;
+        if (Import) {
+          await Import.findByIdAndUpdate(importId, {
+            $set: {
+              status: "completed",
+              successCount: result.upsertedCount,
+              failureCount: leads.length - result.upsertedCount,
+            },
+          });
+        }
       } catch (error) {
         console.error("Error updating import status:", error);
       }
@@ -211,6 +224,12 @@ export async function PUT(request: Request) {
     const { id, ...updateData } = await request.json();
 
     return executeDbOperation(async () => {
+      // Get the Lead model from mongoose
+      const Lead = mongoose.models.Lead;
+      if (!Lead) {
+        throw new Error("Lead model not found");
+      }
+
       const updatedLead = await Lead.findByIdAndUpdate(
         id,
         {
@@ -253,6 +272,12 @@ export async function DELETE(request: Request) {
     }
 
     return executeDbOperation(async () => {
+      // Get the Lead model from mongoose
+      const Lead = mongoose.models.Lead;
+      if (!Lead) {
+        throw new Error("Lead model not found");
+      }
+
       const deletedLead = await Lead.findByIdAndDelete(id).lean<LeadDocument>();
 
       if (!deletedLead) {

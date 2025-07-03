@@ -70,16 +70,6 @@ interface HeaderMapping {
   [key: number]: string;
   nameColumns: number[];
 }
-interface Contact {
-  name: string;
-  email: string;
-  phone?: string;
-  country?: string;
-  source: string;
-  status?: string;
-  comments?: string;
-  company?: string;
-}
 
 interface ContactRequest {
   name: string;
@@ -186,20 +176,43 @@ const headerMappings: Record<string, string[]> = {
 function normalizeHeader(header: string): string | null {
   if (!header) return null;
   const lowercaseHeader = header.toLowerCase().trim();
-  console.log("Normalizing header:", header, "→", lowercaseHeader);
 
   for (const [standardField, variations] of Object.entries(headerMappings)) {
     if (variations.map((v) => v.toLowerCase()).includes(lowercaseHeader)) {
-      console.log("Matched header:", lowercaseHeader, "→", standardField);
       return standardField;
     }
   }
-  console.log("No match found for header:", lowercaseHeader);
   return null;
 }
 
 function isValidStatus(value: string): value is ValidStatus {
   return VALID_STATUSES.includes(value as ValidStatus);
+}
+
+function formatPhoneNumber(phone: string): string {
+  if (phone.includes("E+") || phone.includes("e+")) {
+    const [mantissa, exponent] = phone.toLowerCase().split("e+");
+    const decimalPlaces = (mantissa.split(".")[1] || "").length;
+    const zeros = parseInt(exponent) - decimalPlaces;
+    return mantissa.replace(".", "") + "0".repeat(zeros);
+  }
+
+  const cleaned = phone
+    .toString()
+    .trim()
+    .replace(/[^\d+]/g, "");
+
+  if (cleaned.match(/^(\+?447|07)\d{9}$/)) {
+    return cleaned.startsWith("+")
+      ? cleaned
+      : cleaned.startsWith("07")
+        ? "+44" + cleaned.substring(1)
+        : cleaned.startsWith("447")
+          ? "+" + cleaned
+          : cleaned;
+  }
+
+  return cleaned;
 }
 
 async function processTextData(text: string): Promise<ContactRequest[]> {
@@ -262,7 +275,6 @@ async function processTextData(text: string): Promise<ContactRequest[]> {
 
 async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
   try {
-    console.log("Starting Excel processing");
     const workbook = XLSX.read(file, { type: "array" });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
@@ -276,13 +288,10 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
     if (jsonData.length < 2) throw new Error("Not enough data rows");
 
     const headers = jsonData[0].filter(Boolean).map((header) => header.trim());
-    console.log("Headers found:", headers);
-
-    // Initialize contacts array first
     const contacts: ContactRequest[] = [];
+    const existingEmails = new Set<string>();
 
-    // HEAD MAPPER
-
+    // Create header mapping
     const headerMap = headers.reduce<HeaderMapping>(
       (acc, header, index: number) => {
         if (!acc.nameColumns) {
@@ -292,7 +301,7 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
         const normalizedHeader =
           header?.toLowerCase().replace(/\s+/g, "").trim() || "";
 
-        // Check first few rows for data patterns first
+        // Check first few rows for data patterns
         let foundPattern = false;
         for (let i = 1; i < Math.min(6, jsonData.length); i++) {
           const rowData = jsonData[i];
@@ -303,9 +312,6 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
 
           if (value.includes("@")) {
             acc[index] = "email";
-            console.log(
-              `Detected email column at index ${index} from data pattern`
-            );
             foundPattern = true;
             break;
           } else if (value.match(/^\+?[\d\s-]{8,}$/)) {
@@ -333,13 +339,12 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
             (normalizedHeader.includes("first") ||
               normalizedHeader.includes("last") ||
               normalizedHeader.includes("name")) &&
-            index > 0 && // Skip first column (usually ID)
+            index > 0 &&
             !normalizedHeader.includes("file") &&
             !normalizedHeader.includes("id")
           ) {
             acc.nameColumns.push(index);
             acc[index] = "name";
-            console.log(`Mapped name column at index ${index}`);
           } else if (
             normalizedHeader.includes("email") ||
             normalizedHeader.includes("mail") ||
@@ -370,117 +375,14 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
       { nameColumns: [] }
     );
 
-    // When processing rows
-    // At the start of processing, create a Set to track unique emails
-    const existingEmails = new Set<string>();
-
-    // When processing rows
+    // Process rows
     for (let i = 1; i < jsonData.length; i++) {
       const rowData = jsonData[i];
       if (!rowData || rowData.length === 0) continue;
 
       const currentContact: Partial<ContactRequest> = {};
 
-      // Get name from specifically mapped name columns only
-      if (headerMap.nameColumns.length > 0) {
-        const names = headerMap.nameColumns
-          .map((index) => rowData[index]?.toString().trim())
-          .filter(Boolean);
-        currentContact.name = names.join(" ").trim();
-      } else {
-        // Fallback: look for name in columns 1 and 2 (typical name position)
-        const possibleName = [rowData[1], rowData[2]]
-          .map((val) => val?.toString().trim())
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-        if (
-          possibleName &&
-          !possibleName.includes("@") &&
-          !possibleName.match(/^\+?[\d\s-]{8,}$/)
-        ) {
-          currentContact.name = possibleName;
-        }
-      }
-
-      // Look for email in all columns
-      rowData.forEach((value) => {
-        const strValue = value?.toString().trim() || "";
-        if (strValue.includes("@")) {
-          currentContact.email = strValue.toLowerCase(); // Ensure email is lowercase for consistent comparison
-        }
-      });
-
-      // Process other fields
-      Object.entries(headerMap).forEach(([indexStr, field]) => {
-        if (field === "name") return;
-
-        const index = parseInt(indexStr);
-        if (isNaN(index)) return;
-
-        const value = rowData[index]?.toString().trim();
-        if (!value) return;
-
-        switch (field) {
-          case "phone":
-            currentContact.phone = value;
-            break;
-          case "country":
-            currentContact.country = value;
-            break;
-          case "comments":
-            currentContact.comments = value;
-            break;
-        }
-      });
-
-      // Check for valid contact and duplicates
-      if (currentContact.name && currentContact.email) {
-        // Skip if this email already exists
-        if (existingEmails.has(currentContact.email)) {
-          console.log(`Skipping duplicate email: ${currentContact.email}`);
-          continue;
-        }
-
-        // Add email to tracking set
-        existingEmails.add(currentContact.email);
-
-        // Add contact to list
-        contacts.push({
-          name: currentContact.name,
-          email: currentContact.email,
-          phone: currentContact.phone || "",
-          country: currentContact.country || "",
-          status: "New",
-          comments: currentContact.comments || "",
-          source: "",
-        });
-      }
-    }
-
-    // Add summary of duplicates found
-    console.log(`Total rows processed: ${jsonData.length - 1}`);
-    console.log(`Unique contacts added: ${contacts.length}`);
-    console.log(`Duplicates skipped: ${jsonData.length - 1 - contacts.length}`);
-
-    // At the start of processing, create a Set to track unique emails
-
-    let duplicateCount = 0;
-    let processedCount = 0;
-    let skippedCount = 0;
-
-    // When processing rows
-    for (let i = 1; i < jsonData.length; i++) {
-      const rowData = jsonData[i];
-      if (!rowData || rowData.length === 0) {
-        skippedCount++;
-        continue;
-      }
-
-      processedCount++;
-      const currentContact: Partial<ContactRequest> = {};
-
-      // Get name from specifically mapped name columns
+      // Get name from mapped name columns
       if (headerMap.nameColumns.length > 0) {
         const names = headerMap.nameColumns
           .map((index) => rowData[index]?.toString().trim())
@@ -506,7 +408,7 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
       rowData.forEach((value) => {
         const strValue = value?.toString().trim() || "";
         if (strValue.includes("@")) {
-          currentContact.email = strValue.toLowerCase(); // Ensure email is lowercase
+          currentContact.email = strValue.toLowerCase();
         }
       });
 
@@ -522,7 +424,7 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
 
         switch (field) {
           case "phone":
-            currentContact.phone = value;
+            currentContact.phone = formatPhoneNumber(value);
             break;
           case "country":
             currentContact.country = value;
@@ -535,19 +437,12 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
 
       // Check for valid contact and duplicates
       if (currentContact.name && currentContact.email) {
-        // Skip if this email already exists
         if (existingEmails.has(currentContact.email)) {
-          console.log(
-            `Skipping duplicate email at row ${i}: ${currentContact.email}`
-          );
-          duplicateCount++;
           continue;
         }
 
-        // Add email to tracking set
         existingEmails.add(currentContact.email);
 
-        // Add contact to list
         contacts.push({
           name: currentContact.name,
           email: currentContact.email,
@@ -555,390 +450,17 @@ async function processExcelData(file: ArrayBuffer): Promise<ContactRequest[]> {
           country: currentContact.country || "",
           status: "New",
           comments: currentContact.comments || "",
-          source: "",
-        });
-      } else {
-        skippedCount++;
-      }
-    }
-
-    // Add detailed summary
-    console.log("Processing Summary:");
-    console.log(`Total rows in file: ${jsonData.length - 1}`);
-    console.log(`Processed rows: ${processedCount}`);
-    console.log(`Skipped rows (invalid/empty): ${skippedCount}`);
-    console.log(`Duplicate emails found: ${duplicateCount}`);
-    console.log(`Valid unique contacts added: ${contacts.length}`);
-    console.log(`Existing emails in set: ${existingEmails.size}`);
-
-    // Throw error if numbers don't match expectations
-    if (contacts.length > jsonData.length - 1) {
-      throw new Error(
-        `Invalid contact count: ${contacts.length} contacts created from ${
-          jsonData.length - 1
-        } rows`
-      );
-    }
-
-    // When processing rows
-    for (let i = 1; i < jsonData.length; i++) {
-      const rowData = jsonData[i];
-      const currentContact: Partial<ContactRequest> = {};
-
-      // Debug log for each row
-      console.log(`Processing row ${i}:`, rowData);
-
-      // Combine name fields
-      const names = headerMap.nameColumns
-        .map((index) => rowData[index]?.toString().trim())
-        .filter(Boolean);
-      currentContact.name = names.join(" ").trim();
-
-      // Look for email in all columns
-      rowData.forEach((value, index) => {
-        const strValue = value?.toString().trim() || "";
-        if (strValue.includes("@")) {
-          currentContact.email = strValue.toLowerCase();
-          console.log(`Found email in column ${index}: ${strValue}`);
-        }
-      });
-
-      // Process other fields
-      Object.entries(headerMap).forEach(([indexStr, field]) => {
-        if (field === "name") return;
-
-        const index = parseInt(indexStr);
-        if (isNaN(index)) return;
-
-        const value = rowData[index]?.toString().trim();
-        if (!value) return;
-
-        switch (field) {
-          case "phone":
-            currentContact.phone = value;
-            break;
-          case "country":
-            currentContact.country = value;
-            break;
-          case "comments":
-            currentContact.comments = value;
-            break;
-        }
-      });
-
-      // Look for country in column 6 if not found
-      if (!currentContact.country) {
-        const countryValue = rowData[6]?.toString().trim();
-        if (countryValue) {
-          currentContact.country = countryValue;
-        }
-      }
-
-      // Look for comments in column 9 if not found
-      if (!currentContact.comments) {
-        const commentsValue = rowData[9]?.toString().trim();
-        if (commentsValue) {
-          currentContact.comments = commentsValue;
-        }
-      }
-
-      if (currentContact.name && currentContact.email) {
-        contacts.push({
-          name: currentContact.name,
-          email: currentContact.email,
-          phone: currentContact.phone || "",
-          country: currentContact.country || "",
-          status: "New",
-          comments: currentContact.comments || "",
-          source: "",
-        });
-      } else {
-        console.log(`Skipping row ${i} - Missing required fields:`, {
-          hasName: !!currentContact.name,
-          hasEmail: !!currentContact.email,
-          currentContact,
+          source: "excel",
         });
       }
     }
-
-    // When processing rows
-    for (let i = 1; i < jsonData.length; i++) {
-      const rowData = jsonData[i];
-      const currentContact: Partial<ContactRequest> = {};
-
-      // Combine name fields
-      const names = headerMap.nameColumns
-        .map((index) => rowData[index]?.toString().trim())
-        .filter(Boolean);
-      currentContact.name = names.join(" ").trim();
-
-      // Process other fields
-      Object.entries(headerMap).forEach(([indexStr, field]) => {
-        if (field === "name") return;
-
-        const index = parseInt(indexStr);
-        if (isNaN(index)) return;
-
-        const value = rowData[index]?.toString().trim();
-        if (!value) return;
-
-        switch (field) {
-          case "email":
-            currentContact.email = value.toLowerCase();
-            break;
-          case "phone":
-            currentContact.phone = formatPhoneNumber(value);
-            break;
-          case "country":
-            currentContact.country = value;
-            break;
-          case "comments":
-            currentContact.comments = value;
-            break;
-        }
-      });
-
-      // Look for country in column 6 if not found
-      if (!currentContact.country) {
-        const countryValue = rowData[6]?.toString().trim(); // Check column 7 for country
-        if (countryValue) {
-          currentContact.country = countryValue;
-        }
-      }
-
-      // Look for comments in column 9 if not found
-      if (!currentContact.comments) {
-        const commentsValue = rowData[9]?.toString().trim(); // Check column 10 for comments
-        if (commentsValue) {
-          currentContact.comments = commentsValue;
-        }
-      }
-
-      if (currentContact.name && currentContact.email) {
-        contacts.push({
-          name: currentContact.name,
-          email: currentContact.email,
-          phone: currentContact.phone || "",
-          country: currentContact.country || "",
-          status: "New",
-          comments: currentContact.comments || "",
-          source: "",
-        });
-      }
-    }
-
-    // When processing rows, combine name fields and handle country
-    for (let i = 1; i < jsonData.length; i++) {
-      const rowData = jsonData[i];
-      const currentContact: Partial<ContactRequest> = {};
-
-      // Combine name fields
-      const names = headerMap.nameColumns
-        .map((index) => rowData[index]?.toString().trim())
-        .filter(Boolean);
-      currentContact.name = names.join(" ").trim();
-
-      // Process other fields
-      Object.entries(headerMap).forEach(([indexStr, field]) => {
-        if (field === "name") return; // Skip name fields as we handled them above
-
-        const index = parseInt(indexStr);
-        if (isNaN(index)) return; // Skip non-numeric indices (like nameColumns)
-
-        const value = rowData[index]?.toString().trim();
-        if (!value) return;
-
-        switch (field) {
-          case "email":
-            currentContact.email = value.toLowerCase();
-            break;
-          case "phone":
-            currentContact.phone = formatPhoneNumber(value);
-            break;
-          case "country":
-            currentContact.country = value;
-            break;
-        }
-      });
-
-      // Look for country in specific columns if not found
-      if (!currentContact.country) {
-        const countryValue = rowData[7]?.toString().trim(); // Check column 8 for country
-        if (countryValue) {
-          currentContact.country = countryValue;
-        }
-      }
-
-      if (currentContact.name && currentContact.email) {
-        contacts.push({
-          name: currentContact.name,
-          email: currentContact.email,
-          phone: currentContact.phone || "",
-          country: currentContact.country || "",
-          status: "New",
-          comments: "",
-          source: "",
-        });
-      }
-    }
-
-    // Log the original headers and their normalized versions for debugging
-    console.log("Original headers:", headers);
-    console.log(
-      "Normalized headers:",
-      headers.map((h) => h?.toLowerCase().replace(/\s+/g, "").trim())
-    );
-    console.log("Detected column mappings:", headerMap);
-
-    console.log("Detected column mappings:", headerMap);
-
-    // When processing rows, use the mapped columns
-    for (let i = 1; i < jsonData.length; i++) {
-      const rowData = jsonData[i];
-      const currentContact: Partial<ContactRequest> = {};
-
-      Object.entries(headerMap).forEach(([index, field]) => {
-        const value = rowData[parseInt(index)]?.toString().trim();
-        if (!value) return;
-
-        switch (field) {
-          case "name":
-            currentContact.name = value;
-            break;
-          case "email":
-            currentContact.email = value.toLowerCase();
-            break;
-          case "phone":
-            currentContact.phone = formatPhoneNumber(value);
-            break;
-          case "country":
-            currentContact.country = value;
-            break;
-          case "comments":
-            currentContact.comments = value;
-            break;
-        }
-      });
-
-      if (currentContact.name && currentContact.email) {
-        contacts.push({
-          name: currentContact.name,
-          email: currentContact.email,
-          phone: currentContact.phone || "",
-          country: currentContact.country || "",
-          status: "New",
-          comments: currentContact.comments || "",
-          source: "",
-        });
-      }
-    }
-
-    console.log("Header mapping:", headerMap);
-
-    function formatPhoneNumber(phone: string): string {
-      if (phone.includes("E+") || phone.includes("e+")) {
-        const [mantissa, exponent] = phone.toLowerCase().split("e+");
-        const decimalPlaces = (mantissa.split(".")[1] || "").length;
-        const zeros = parseInt(exponent) - decimalPlaces;
-        return mantissa.replace(".", "") + "0".repeat(zeros);
-      }
-
-      const cleaned = phone
-        .toString()
-        .trim()
-        .replace(/[^\d+]/g, "");
-
-      if (cleaned.match(/^(\+?447|07)\d{9}$/)) {
-        return cleaned.startsWith("+")
-          ? cleaned
-          : cleaned.startsWith("07")
-          ? "+44" + cleaned.substring(1)
-          : cleaned.startsWith("447")
-          ? "+" + cleaned
-          : cleaned;
-      }
-
-      return cleaned;
-    }
-
-    let skippedRows = 0;
-    let processedRows = 0;
-
-    for (let i = 1; i < jsonData.length; i++) {
-      const rowData = jsonData[i];
-      if (!rowData.some((cell) => cell)) {
-        skippedRows++;
-        continue;
-      }
-
-      processedRows++;
-      const currentContact: Partial<ContactRequest> = {};
-
-      // Log the current row data
-      console.log(`Processing row ${i}:`, rowData);
-
-      // Process each cell according to the header mapping
-      Object.entries(headerMap).forEach(([index, field]) => {
-        const value = rowData[parseInt(index)]?.toString().trim();
-        if (!value) return;
-
-        switch (field) {
-          case "name":
-            currentContact.name = value;
-            break;
-          case "email":
-            currentContact.email = value.toLowerCase();
-            break;
-          case "phone":
-            currentContact.phone = formatPhoneNumber(value);
-            break;
-          case "country":
-            currentContact.country = value;
-            break;
-        }
-      });
-
-      // Explicitly check for country in column 9 if not already set
-      if (!currentContact.country && rowData[8]) {
-        currentContact.country = rowData[8].toString().trim();
-      }
-
-      console.log(`Contact object for row ${i}:`, currentContact);
-
-      if (currentContact.name && currentContact.email) {
-        contacts.push({
-          name: currentContact.name,
-          email: currentContact.email,
-          phone: currentContact.phone || "",
-          country: currentContact.country || "",
-          status: "New",
-          comments: "",
-          source: "",
-        });
-      } else {
-        console.log(`Skipping row ${i} - Missing required fields:`, {
-          hasName: !!currentContact.name,
-          hasEmail: !!currentContact.email,
-        });
-        skippedRows++;
-      }
-    }
-
-    console.log("Processing summary:", {
-      totalRows: jsonData.length - 1,
-      processedRows,
-      skippedRows,
-      validContacts: contacts.length,
-    });
 
     if (contacts.length === 0) {
       throw new Error(
-        `No valid contacts found. Processed ${processedRows} rows, skipped ${skippedRows} rows. Check header mapping and data format.`
+        "No valid contacts found. Check header mapping and data format."
       );
     }
 
-    console.log("First few contacts:", contacts.slice(0, 3));
-    console.log(`Processed ${contacts.length} valid contacts`);
     return contacts;
   } catch (error) {
     console.error("Error processing Excel file:", error);
@@ -967,7 +489,6 @@ export async function POST(request: Request) {
         );
       }
 
-      console.log("File received:", file.name, "Size:", file.size);
       const buffer = await file.arrayBuffer();
       contacts = await processExcelData(buffer);
     } else if (contentType?.includes("text/plain")) {
@@ -986,21 +507,6 @@ export async function POST(request: Request) {
           error: "No valid contacts found",
           details:
             "Data processing completed but no valid contacts were created",
-          debug: {
-            headers: headerMappings,
-            requiredFields: ["name/full name", "email"],
-            acceptedHeaders: {
-              required: {
-                name: headerMappings.name,
-                email: headerMappings.email,
-              },
-              optional: {
-                phone: headerMappings.phone,
-                company: headerMappings.company,
-                status: headerMappings.status,
-              },
-            },
-          },
         },
         { status: 400 }
       );

@@ -12,16 +12,11 @@ export type ActivityType =
   | "LEAD_CREATED";
 
 export interface IActivity {
-  // Common fields
   type: ActivityType;
   userId: mongoose.Types.ObjectId;
   details: string;
   timestamp: Date;
-
-  // Lead-specific fields (optional for general activities)
   leadId?: mongoose.Types.ObjectId;
-
-  // Metadata for flexible data storage
   metadata: {
     // Contact/Lead related
     contactId?: string;
@@ -99,11 +94,10 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
       type: Date,
       default: Date.now,
     },
-    // Optional leadId for lead-specific activities
     leadId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lead",
-      required: false, // Not required for general activities
+      required: false,
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
@@ -112,17 +106,18 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
     },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Add indexes for better performance
+// Indexes for better performance
 activitySchema.index({ leadId: 1, timestamp: -1 });
-activitySchema.index({ "metadata.contactId": 1, timestamp: -1 });
 activitySchema.index({ userId: 1 });
 activitySchema.index({ type: 1 });
+activitySchema.index({ "metadata.oldStatusId": 1 });
+activitySchema.index({ "metadata.newStatusId": 1 });
 
-// Middleware for validation
+// Validation middleware
 activitySchema.pre("save", function (this: IActivityDocument, next) {
   if (!this.metadata || typeof this.metadata !== "object") {
     next(new Error("Invalid metadata"));

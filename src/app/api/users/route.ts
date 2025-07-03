@@ -4,10 +4,35 @@ import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { connectMongoDB } from "@/libs/dbConfig";
-import User from "@/models/User";
-import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
-import Lead from "@/models/Lead";
+
+// Define interfaces for better type safety
+interface UserDocument {
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password?: string;
+  phoneNumber?: string;
+  country?: string;
+  role: string;
+  status: string;
+  permissions?: string[];
+  createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface LeadDocument {
+  _id: mongoose.Types.ObjectId;
+  assignedTo?: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: string;
+  updatedAt: Date;
+}
 
 export async function POST(request: Request) {
   try {
@@ -31,7 +56,15 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
-    const existingUser = await User.findOne({ email });
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
+    const existingUser = await db.collection("users").findOne({ email });
+
     if (existingUser) {
       return NextResponse.json(
         { message: "User with this email already exists" },
@@ -41,7 +74,7 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await User.create({
+    const newUser = await db.collection("users").insertOne({
       firstName,
       lastName,
       email,
@@ -51,19 +84,29 @@ export async function POST(request: Request) {
       role,
       status,
       permissions,
-      createdBy: session.user.id,
+      createdBy: new mongoose.Types.ObjectId(session.user.id),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
+
+    const createdUser = (await db
+      .collection("users")
+      .findOne({ _id: newUser.insertedId })) as UserDocument | null;
+
+    if (!createdUser) {
+      throw new Error("Failed to create user");
+    }
 
     return NextResponse.json(
       {
         message: "User created successfully",
         user: {
-          id: newUser._id,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-          email: newUser.email,
-          role: newUser.role,
-          status: newUser.status,
+          id: createdUser._id,
+          firstName: createdUser.firstName,
+          lastName: createdUser.lastName,
+          email: createdUser.email,
+          role: createdUser.role,
+          status: createdUser.status,
         },
       },
       { status: 201 }
@@ -87,18 +130,37 @@ export async function GET() {
 
     await connectMongoDB();
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
     const query = {
-      createdBy: session.user.id,
+      createdBy: new mongoose.Types.ObjectId(session.user.id),
       role: { $ne: "ADMIN" },
     };
 
-    const users = await User.find(query)
-      .select(
-        "_id firstName lastName email role status phoneNumber country permissions"
-      )
-      .sort({ firstName: 1, lastName: 1 });
+    const users = (await db
+      .collection("users")
+      .find(query, {
+        projection: {
+          _id: 1,
+          firstName: 1,
+          lastName: 1,
+          email: 1,
+          role: 1,
+          status: 1,
+          phoneNumber: 1,
+          country: 1,
+          permissions: 1,
+        },
+      })
+      .sort({ firstName: 1, lastName: 1 })
+      .toArray()) as UserDocument[];
 
-    const transformedUsers = users.map((user) => ({
+    const transformedUsers = users.map((user: UserDocument) => ({
       id: user._id.toString(),
       name: `${user.firstName} ${user.lastName}`,
       firstName: user.firstName,
@@ -143,21 +205,33 @@ export async function PUT(request: Request) {
 
     await connectMongoDB();
 
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: id, createdBy: session.user.id },
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
+    const updatedUser = (await db.collection("users").findOneAndUpdate(
       {
-        firstName,
-        lastName,
-        email,
-        phoneNumber,
-        country,
-        role,
-        permissions,
-        status,
-        updatedAt: new Date(),
+        _id: new mongoose.Types.ObjectId(id),
+        createdBy: new mongoose.Types.ObjectId(session.user.id),
       },
-      { new: true }
-    ).select("-password");
+      {
+        $set: {
+          firstName,
+          lastName,
+          email,
+          phoneNumber,
+          country,
+          role,
+          permissions,
+          status,
+          updatedAt: new Date(),
+        },
+      },
+      { returnDocument: "after", projection: { password: 0 } }
+    )) as UserDocument | null;
 
     if (!updatedUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
@@ -196,78 +270,95 @@ export async function DELETE(request: Request) {
 
     await connectMongoDB();
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
     // Check if user exists and belongs to current admin
-    const userToDelete = await User.findOne({
-      _id: id,
-      createdBy: session.user.id,
-    });
+    const userToDelete = (await db.collection("users").findOne({
+      _id: new mongoose.Types.ObjectId(id),
+      createdBy: new mongoose.Types.ObjectId(session.user.id),
+    })) as UserDocument | null;
 
     if (!userToDelete) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     const dbSession = await mongoose.startSession();
+    let assignedLeadsCount = 0;
 
     try {
       await dbSession.withTransaction(async () => {
         // 1. Get all leads assigned to this user
-        const assignedLeads = await Lead.find({
-          assignedTo: id,
-          createdBy: session.user.id,
-        }).session(dbSession);
+        const assignedLeads = (await db
+          .collection("leads")
+          .find({
+            assignedTo: new mongoose.Types.ObjectId(id),
+            createdBy: new mongoose.Types.ObjectId(session.user.id),
+          })
+          .toArray()) as LeadDocument[];
 
-        // 2. Unassign all leads from this user
-        const updateLeadsResult = await Lead.updateMany(
+        assignedLeadsCount = assignedLeads.length;
+
+        // 2. Unassign all leads from this user and clear assignment metadata
+        const updateLeadsResult = await db.collection("leads").updateMany(
           {
-            assignedTo: id,
-            createdBy: session.user.id,
+            assignedTo: new mongoose.Types.ObjectId(id),
+            createdBy: new mongoose.Types.ObjectId(session.user.id),
           },
           {
-            $unset: { assignedTo: "" },
+            $unset: {
+              assignedTo: "",
+              assignedAt: "",
+              assignedBy: "",
+            },
             $set: {
               updatedAt: new Date(),
               status: "NEW",
             },
-          },
-          { session: dbSession }
+          }
         );
 
-        // 3. Create activities for unassigned leads using your Activity model
-        const activityPromises = assignedLeads.map(async (lead) => {
-          const activity = new Activity({
-            type: "ASSIGNMENT",
-            userId: new mongoose.Types.ObjectId(session.user.id),
-            details: `Lead unassigned due to user deletion`,
-            leadId: lead._id,
-            timestamp: new Date(),
-            metadata: {
-              assignedTo: null,
-              assignedFrom: {
-                id: userToDelete._id.toString(),
-                firstName: userToDelete.firstName,
-                lastName: userToDelete.lastName,
+        // 3. Create activities for unassigned leads with proper metadata
+        const activityPromises = assignedLeads.map(
+          async (lead: LeadDocument) => {
+            const activityData = {
+              type: "ASSIGNMENT",
+              userId: new mongoose.Types.ObjectId(session.user.id),
+              details: `Lead unassigned due to user deletion: ${userToDelete.firstName} ${userToDelete.lastName}`,
+              leadId: lead._id,
+              timestamp: new Date(),
+              metadata: {
+                assignedTo: null,
+                assignedFrom: {
+                  id: userToDelete._id.toString(),
+                  firstName: userToDelete.firstName,
+                  lastName: userToDelete.lastName,
+                  email: userToDelete.email,
+                },
+                assignedBy: {
+                  id: session.user.id,
+                  firstName: session.user.firstName || "Admin",
+                  lastName: session.user.lastName || "User",
+                },
+                reason: "user_deletion",
               },
-              assignedBy: {
-                id: session.user.id,
-                firstName: session.user.firstName || "Admin",
-                lastName: session.user.lastName || "User",
-              },
-            },
-          });
+            };
 
-          await activity.save({ session: dbSession });
-        });
+            await db.collection("activities").insertOne(activityData);
+          }
+        );
 
         await Promise.all(activityPromises);
 
         // 4. Delete the user
-        const deleteUserResult = await User.deleteOne(
-          {
-            _id: id,
-            createdBy: session.user.id,
-          },
-          { session: dbSession }
-        );
+        const deleteUserResult = await db.collection("users").deleteOne({
+          _id: new mongoose.Types.ObjectId(id),
+          createdBy: new mongoose.Types.ObjectId(session.user.id),
+        });
 
         if (deleteUserResult.deletedCount === 0) {
           throw new Error("Failed to delete user");
@@ -282,7 +373,7 @@ export async function DELETE(request: Request) {
         message:
           "User deleted successfully and all assigned leads have been unassigned",
         deletedUserId: id,
-        unassignedLeadsCount: 0,
+        unassignedLeadsCount: assignedLeadsCount,
       });
     } finally {
       await dbSession.endSession();

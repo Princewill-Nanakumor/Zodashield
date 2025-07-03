@@ -1,8 +1,30 @@
+// /src/app/api/leads/import/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
+import mongoose from "mongoose";
+
+// Define interface for imported lead data
+interface ImportedLead {
+  name?: string;
+  email: string;
+  phone?: string;
+  source?: string;
+}
+
+// Define interface for transformed lead data
+interface TransformedLead {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  source: string;
+  status: string;
+  createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +35,14 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
-    const leads = await request.json();
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
+    const leads = (await request.json()) as ImportedLead[];
     console.log(
       "Received leads to import:",
       Array.isArray(leads) ? leads.length : 0
@@ -27,27 +56,31 @@ export async function POST(request: Request) {
     }
 
     // Transform leads to match your schema
-    const transformedLeads = leads.map((lead) => {
-      const [firstName, ...rest] = (lead.name || "").split(" ");
-      return {
-        firstName: firstName || "",
-        lastName: rest.join(" ") || "",
-        email: lead.email,
-        phone: lead.phone || "",
-        source: lead.source || "",
-        status: "NEW",
-        createdBy: session.user.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    });
+    const transformedLeads: TransformedLead[] = leads.map(
+      (lead: ImportedLead) => {
+        const [firstName, ...rest] = (lead.name || "").split(" ");
+        return {
+          firstName: firstName || "",
+          lastName: rest.join(" ") || "",
+          email: lead.email,
+          phone: lead.phone || "",
+          source: lead.source || "",
+          status: "NEW",
+          createdBy: new mongoose.Types.ObjectId(session.user.id),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      }
+    );
 
     console.log("First lead to be saved:", transformedLeads[0]);
 
     // Save leads in batches
     let results;
     try {
-      results = await Lead.insertMany(transformedLeads, { ordered: false });
+      results = await db
+        .collection("leads")
+        .insertMany(transformedLeads, { ordered: false });
     } catch (err: unknown) {
       if (err && typeof err === "object" && "writeErrors" in err) {
         // @ts-expect-error: Mongo error type is not known
@@ -62,12 +95,15 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    console.log("Saved leads count:", results.length);
+    const insertedCount = results.insertedIds
+      ? Object.keys(results.insertedIds).length
+      : 0;
+    console.log("Saved leads count:", insertedCount);
 
     return NextResponse.json({
-      message: `Successfully imported ${results.length} leads`,
+      message: `Successfully imported ${insertedCount} leads`,
       totalProcessed: leads.length,
-      successCount: results.length,
+      successCount: insertedCount,
     });
   } catch (error) {
     console.error("Error in lead import:", error);

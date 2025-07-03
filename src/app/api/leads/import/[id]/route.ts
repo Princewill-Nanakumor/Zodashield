@@ -1,10 +1,9 @@
-//drivecrm/src/app/api/leads/import/[id]/route.ts
-
+// drivecrm/src/app/api/leads/import/[id]/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
+import mongoose from "mongoose";
 
 function extractIdFromUrl(urlString: string): string {
   const url = new URL(urlString);
@@ -23,10 +22,22 @@ export async function DELETE(request: Request) {
 
     await connectMongoDB();
 
-    // Example: delete a lead by id
-    const deleted = await Lead.findByIdAndDelete(id);
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
 
-    if (!deleted) {
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+    }
+
+    // Delete lead by id
+    const result = await mongoose.connection.db
+      .collection("leads")
+      .deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 

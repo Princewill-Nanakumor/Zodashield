@@ -2,10 +2,53 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
+import Lead from "@/models/Lead"; // Change this line - use default import
 import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
+
+// Status name cache with proper key formatting
+const statusNameCache = new Map<string, string>();
+
+async function getStatusName(statusId: string): Promise<string> {
+  // Normalize the statusId to ensure consistent caching
+  const normalizedId = statusId.toString();
+
+  // Check cache first
+  if (statusNameCache.has(normalizedId)) {
+    return statusNameCache.get(normalizedId)!;
+  }
+
+  try {
+    const db = mongoose.connection.db;
+    if (db) {
+      const statusCollection = db.collection("status");
+
+      // Try to find by ObjectId first
+      let statusDoc = null;
+      if (mongoose.Types.ObjectId.isValid(statusId)) {
+        statusDoc = await statusCollection.findOne({
+          _id: new mongoose.Types.ObjectId(statusId),
+        });
+      }
+
+      // If not found by ObjectId, try by name (fallback)
+      if (!statusDoc) {
+        statusDoc = await statusCollection.findOne({
+          name: statusId,
+        });
+      }
+
+      const statusName = statusDoc?.name || statusId;
+      statusNameCache.set(normalizedId, statusName);
+      return statusName;
+    }
+  } catch (error) {
+    console.error("Error fetching status name:", error);
+  }
+
+  return statusId;
+}
 
 export async function PATCH(req: Request) {
   try {
@@ -28,6 +71,11 @@ export async function PATCH(req: Request) {
     const segments = req.url.split("/");
     const id = segments[segments.length - 2];
 
+    // Validate lead ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+    }
+
     // Get the current lead to compare status
     const currentLead = await Lead.findById(id);
     if (!currentLead) {
@@ -42,33 +90,36 @@ export async function PATCH(req: Request) {
     }
 
     // Get status names for better activity logging
+    const [oldStatusName, newStatusName] = await Promise.all([
+      oldStatus ? getStatusName(oldStatus) : "Unknown",
+      getStatusName(newStatus),
+    ]);
+
+    // Validate that the new status exists
     const db = mongoose.connection.db;
-    let oldStatusName = "Unknown";
-    let newStatusName = "Unknown";
-
     if (db) {
-      try {
-        const statusCollection = db.collection("status");
+      const statusCollection = db.collection("status");
+      let statusExists = false;
 
-        if (oldStatus) {
-          const oldStatusDoc = await statusCollection.findOne({
-            _id: new mongoose.Types.ObjectId(oldStatus),
-          });
-          oldStatusName = oldStatusDoc?.name || oldStatus;
-        }
-
-        const newStatusDoc = await statusCollection.findOne({
+      if (mongoose.Types.ObjectId.isValid(newStatus)) {
+        const statusDoc = await statusCollection.findOne({
           _id: new mongoose.Types.ObjectId(newStatus),
         });
-        newStatusName = newStatusDoc?.name || newStatus;
-      } catch (error) {
-        console.error("Error fetching status names:", error);
-        oldStatusName = oldStatus || "Unknown";
-        newStatusName = newStatus;
+        statusExists = !!statusDoc;
+      } else {
+        // Try by name
+        const statusDoc = await statusCollection.findOne({
+          name: newStatus,
+        });
+        statusExists = !!statusDoc;
       }
-    } else {
-      oldStatusName = oldStatus || "Unknown";
-      newStatusName = newStatus;
+
+      if (!statusExists) {
+        return NextResponse.json(
+          { error: "Invalid status ID or name" },
+          { status: 400 }
+        );
+      }
     }
 
     const updatedLead = await Lead.findByIdAndUpdate(
@@ -106,8 +157,8 @@ export async function PATCH(req: Request) {
       leadId: id,
       oldStatus,
       newStatus,
-      oldStatusId: oldStatus,
-      newStatusId: newStatus,
+      oldStatusName,
+      newStatusName,
       activityId: activity._id,
     });
 

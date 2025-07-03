@@ -1,86 +1,86 @@
-// src/app/api/leads/all/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { connectMongoDB } from "@/libs/dbConfig";
-import Lead, { ILead } from "@/models/Lead";
 import { authOptions } from "@/libs/auth";
+import { connectMongoDB } from "@/libs/dbConfig";
+import mongoose from "mongoose";
+import { Db, ObjectId } from "mongodb";
 
-interface PopulatedUser {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  status: string;
-}
-
-interface PopulatedLead extends Omit<ILead, "assignedTo"> {
-  assignedTo?: PopulatedUser | null;
+// Helper to get user details for assignedTo
+async function getAssignedToUser(
+  db: Db,
+  assignedTo: ObjectId | string | null | undefined
+) {
+  if (!assignedTo) return null;
+  const user = await db.collection("users").findOne(
+    {
+      _id:
+        typeof assignedTo === "string" ? new ObjectId(assignedTo) : assignedTo,
+    },
+    { projection: { firstName: 1, lastName: 1 } }
+  );
+  if (!user) return null;
+  return {
+    id: user._id.toString(),
+    firstName: user.firstName,
+    lastName: user.lastName,
+  };
 }
 
 export async function GET() {
-  console.log("GET request received at /api/leads/all");
-
   try {
     const session = await getServerSession(authOptions);
-
     if (!session) {
-      console.log("Unauthorized attempt - no session");
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectMongoDB();
 
-    // Enhanced query with proper filtering and population
-    const query =
-      session.user.role === "ADMIN"
-        ? {} // Admin can see all leads
-        : { createdBy: session.user.id }; // Regular users see only their leads
+    const db = mongoose.connection.db;
+    if (!db) throw new Error("Database connection not available");
 
-    const leads = await Lead.find(query)
-      .populate("assignedTo", "firstName lastName email role status")
+    const leads = await db
+      .collection("leads")
+      .find({})
       .sort({ createdAt: -1 })
-      .lean<PopulatedLead[]>();
+      .toArray();
 
-    console.log(`Found ${leads.length} leads`);
-
-    const transformedLeads = leads.map((lead) => ({
-      _id: lead._id.toString(),
-      id: lead._id.toString(),
-      firstName: lead.firstName,
-      lastName: lead.lastName,
-      name: `${lead.firstName} ${lead.lastName}`,
-      email: lead.email,
-      phone: lead.phone,
-      country: lead.country,
-      source: lead.source,
-      status: lead.status,
-      comments: lead.comments,
-      assignedTo: lead.assignedTo
-        ? {
-            id: lead.assignedTo._id.toString(),
-            firstName: lead.assignedTo.firstName,
-            lastName: lead.assignedTo.lastName,
-            email: lead.assignedTo.email,
-            role: lead.assignedTo.role,
-            status: lead.assignedTo.status,
-          }
-        : null,
-      createdAt: lead.createdAt.toISOString(),
-      updatedAt: lead.updatedAt.toISOString(),
-    }));
-
-    console.log("Successfully transformed leads data");
+    // Populate assignedTo for each lead
+    const transformedLeads = await Promise.all(
+      leads.map(async (lead: Record<string, unknown>) => {
+        const assignedToUser = await getAssignedToUser(
+          db,
+          lead.assignedTo as ObjectId | string | null | undefined
+        );
+        return {
+          _id: lead._id?.toString(),
+          id: lead._id?.toString(),
+          firstName: lead.firstName as string,
+          lastName: lead.lastName as string,
+          name: `${lead.firstName as string} ${lead.lastName as string}`,
+          email: lead.email as string,
+          phone: (lead.phone as string) || "",
+          source: lead.source as string,
+          status: lead.status as string,
+          country: (lead.country as string) || "",
+          assignedTo: assignedToUser,
+          createdAt:
+            lead.createdAt instanceof Date
+              ? lead.createdAt.toISOString()
+              : lead.createdAt,
+          updatedAt:
+            lead.updatedAt instanceof Date
+              ? lead.updatedAt.toISOString()
+              : lead.updatedAt,
+          comments: (lead.comments as string) || "",
+        };
+      })
+    );
 
     return NextResponse.json(transformedLeads);
   } catch (error) {
     console.error("Error fetching leads:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Error fetching leads",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: "Failed to fetch leads" },
       { status: 500 }
     );
   }

@@ -1,5 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/hooks/useLeads.ts
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";

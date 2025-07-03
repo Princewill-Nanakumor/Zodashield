@@ -1,21 +1,27 @@
+// src/app/api/status-counts/route.ts
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
-import { Status } from "@/models/Status";
 import mongoose from "mongoose";
 
 export async function GET() {
   try {
     await connectMongoDB();
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
     // Get all statuses
-    const statuses = await Status.find({});
+    const statuses = await db.collection("statuses").find({}).toArray();
 
     // Get total leads count (all leads, regardless of status)
-    const allLeadsCount = await Lead.countDocuments();
+    const allLeadsCount = await db.collection("leads").countDocuments();
 
     // Check if status is stored as ObjectId or string
-    const sampleLead = await Lead.findOne({});
+    const sampleLead = await db.collection("leads").findOne({});
     const isObjectId =
       sampleLead &&
       sampleLead.status &&
@@ -31,23 +37,27 @@ export async function GET() {
 
     if (isObjectId) {
       // If status is ObjectId, use $lookup to get status name
-      const results = await Lead.aggregate([
-        {
-          $lookup: {
-            from: "statuses",
-            localField: "status",
-            foreignField: "_id",
-            as: "statusObj",
+      const results = await db
+        .collection("leads")
+        .aggregate([
+          {
+            $lookup: {
+              from: "statuses",
+              localField: "status",
+              foreignField: "_id",
+              as: "statusObj",
+            },
           },
-        },
-        { $unwind: { path: "$statusObj", preserveNullAndEmptyArrays: true } },
-        {
-          $group: {
-            _id: "$statusObj.name",
-            count: { $sum: 1 },
+          { $unwind: { path: "$statusObj", preserveNullAndEmptyArrays: true } },
+          {
+            $group: {
+              _id: "$statusObj.name",
+              count: { $sum: 1 },
+            },
           },
-        },
-      ]);
+        ])
+        .toArray();
+
       statusCounts = statuses.map((status) => {
         const found = results.find(
           (item) =>
@@ -68,7 +78,7 @@ export async function GET() {
       // If status is string, do a case-insensitive count for each status
       statusCounts = await Promise.all(
         statuses.map(async (status) => {
-          const count = await Lead.countDocuments({
+          const count = await db.collection("leads").countDocuments({
             status: { $regex: new RegExp(`^${status.name}$`, "i") },
           });
           return {

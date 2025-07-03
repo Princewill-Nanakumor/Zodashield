@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
-import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 
 interface UnassignLeadsRequest {
@@ -30,57 +28,84 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
     const leadObjectIds = leadIds.map((id) => new mongoose.Types.ObjectId(id));
 
-    // Get leads before update with populated assignedTo
-    const beforeLeads = await Lead.find({
-      _id: { $in: leadObjectIds },
-      assignedTo: { $exists: true, $ne: null },
-    }).populate("assignedTo", "firstName lastName");
+    // Get leads before update with assignedTo
+    const beforeLeads = await db
+      .collection("leads")
+      .find({
+        _id: { $in: leadObjectIds },
+        assignedTo: { $exists: true, $ne: null },
+      })
+      .toArray();
 
     // Get user doing the unassignment
-    const User = mongoose.model("User");
-    const assignedByUser = await User.findById(session.user.id).select(
-      "firstName lastName"
-    );
+    const assignedByUser = await db
+      .collection("users")
+      .findOne(
+        { _id: new mongoose.Types.ObjectId(session.user.id) },
+        { projection: { firstName: 1, lastName: 1 } }
+      );
+
+    if (!assignedByUser) {
+      throw new Error("User not found");
+    }
 
     // Update leads and create activities
     const updatePromises = beforeLeads.map(async (lead) => {
       const oldAssignedTo = lead.assignedTo;
 
+      // Get the user being unassigned
+      const unassignedUser = await db
+        .collection("users")
+        .findOne(
+          { _id: new mongoose.Types.ObjectId(oldAssignedTo) },
+          { projection: { firstName: 1, lastName: 1 } }
+        );
+
       // Update lead
-      const updatedLead = await Lead.findByIdAndUpdate(
-        lead._id,
+      const updatedLead = await db.collection("leads").findOneAndUpdate(
+        { _id: lead._id },
         {
-          assignedTo: null,
-          updatedAt: new Date(),
+          $set: {
+            assignedTo: null,
+            updatedAt: new Date(),
+          },
         },
-        { new: true }
+        { returnDocument: "after" }
       );
 
-      // Create activity using your existing Activity model
-      const activity = new Activity({
+      // Create activity
+      const activityData = {
         type: "ASSIGNMENT", // Using ASSIGNMENT type for unassignment too
         userId: new mongoose.Types.ObjectId(session.user.id),
-        details: `Lead unassigned from ${oldAssignedTo.firstName} ${oldAssignedTo.lastName}`,
+        details: `Lead unassigned from ${unassignedUser ? `${unassignedUser.firstName} ${unassignedUser.lastName}` : "Unknown User"}`,
         leadId: lead._id,
         timestamp: new Date(),
         metadata: {
           assignedTo: null,
-          assignedFrom: {
-            id: oldAssignedTo._id.toString(),
-            firstName: oldAssignedTo.firstName,
-            lastName: oldAssignedTo.lastName,
-          },
+          assignedFrom: unassignedUser
+            ? {
+                id: unassignedUser._id.toString(),
+                firstName: unassignedUser.firstName,
+                lastName: unassignedUser.lastName,
+              }
+            : null,
           assignedBy: {
             id: assignedByUser._id.toString(),
             firstName: assignedByUser.firstName,
             lastName: assignedByUser.lastName,
           },
         },
-      });
+      };
 
-      await activity.save();
+      await db.collection("activities").insertOne(activityData);
       return updatedLead;
     });
 

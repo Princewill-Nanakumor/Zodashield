@@ -1,77 +1,90 @@
 "use client";
 
-import { FC, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Lead } from "@/types/leads";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
-import { useStatuses } from "@/context/StatusContext";
+import { useUpdateLeadOptimistically } from "@/stores/leadsStore"; // Add this import
 
-interface LeadStatusProps {
-  lead: Lead | null;
-  onStatusChange: (updatedLead: Lead) => Promise<void>;
+interface Status {
+  _id: string;
+  name: string;
+  color: string;
 }
 
-export const LeadStatus: FC<LeadStatusProps> = ({ lead, onStatusChange }) => {
+interface LeadStatusProps {
+  lead: Lead;
+}
+
+const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const { toast } = useToast();
-  const { statuses, isLoading: isLoadingStatuses } = useStatuses();
-  const [currentStatus, setCurrentStatus] = useState<string>("NEW");
+  const updateLeadOptimistically = useUpdateLeadOptimistically(); // Add this hook
+  const [statuses, setStatuses] = useState<Status[]>([]);
+  const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<string>(lead.status);
 
+  // Fetch statuses on mount
   useEffect(() => {
-    if (lead?.status) {
-      setCurrentStatus(lead.status);
-    }
-  }, [lead?.status]);
+    const fetchStatuses = async () => {
+      setIsLoadingStatuses(true);
+      try {
+        const res = await fetch("/api/statuses");
+        if (!res.ok) throw new Error("Failed to fetch statuses");
+        const data = await res.json();
+        setStatuses(data);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to load statuses",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingStatuses(false);
+      }
+    };
+    fetchStatuses();
+  }, [toast]);
 
-  const getStatusColor = (statusId: string): string => {
-    const status = statuses.find((s) => s._id === statusId);
-    return status?.color || "#3B82F6";
-  };
+  // Update currentStatus if lead prop changes
+  useEffect(() => {
+    setCurrentStatus(lead.status);
+  }, [lead.status]);
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!lead?._id) {
-      console.error("Invalid lead data:", lead);
-      return;
-    }
-
-    // Prevent updating if it's the same status
-    if (newStatus === currentStatus) {
-      return;
-    }
-
+  const handleStatusChange = async (newStatusId: string) => {
+    if (!lead._id) return;
     setIsUpdating(true);
     try {
-      // Call the dedicated status API instead of general update
       const response = await fetch(`/api/leads/${lead._id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatusId }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to update status");
       }
-
       const updatedLead = await response.json();
+      setCurrentStatus(updatedLead.status);
 
-      // Call the parent's onStatusChange with the updated lead
-      await onStatusChange(updatedLead);
-      setCurrentStatus(newStatus);
-    } catch (error) {
-      console.error("Error updating status:", error);
-      // Revert to the original status on error
-      setCurrentStatus(lead.status);
+      // Update the store so the table reflects the change
+      updateLeadOptimistically(lead._id, updatedLead);
+
+      toast({
+        title: "Status updated",
+        description: `Lead status changed successfully.`,
+        variant: "success",
+      });
+    } catch {
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update status",
+        description: "Failed to update status",
         variant: "destructive",
       });
     } finally {
@@ -79,17 +92,13 @@ export const LeadStatus: FC<LeadStatusProps> = ({ lead, onStatusChange }) => {
     }
   };
 
-  if (!lead || !lead._id) {
-    console.error("Invalid lead data:", lead);
-    return null;
-  }
-
-  const currentStatusColor = getStatusColor(currentStatus);
+  const currentStatusObj = statuses.find((s) => s._id === currentStatus);
+  const currentStatusColor = currentStatusObj?.color || "#2563eb"; // default blue
 
   return (
     <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
       <div className="w-5 h-5 text-gray-400 dark:text-gray-500">
-        <CheckCircle className="w-4 h-4" />
+        {/* You can use an icon here if you want */}
       </div>
       <div className="flex-1">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
@@ -112,7 +121,9 @@ export const LeadStatus: FC<LeadStatusProps> = ({ lead, onStatusChange }) => {
               }}
             >
               <SelectValue>
-                {statuses.find((s) => s._id === currentStatus)?.name || "New"}
+                {currentStatusObj?.name ||
+                  statuses.find((s) => s._id === currentStatus)?.name ||
+                  "New"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>

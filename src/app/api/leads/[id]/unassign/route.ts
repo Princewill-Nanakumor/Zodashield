@@ -2,8 +2,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
-import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
 
@@ -21,6 +19,12 @@ export async function POST(request: Request) {
     const url = new URL(request.url);
     const pathParts = url.pathname.split("/");
     const id = pathParts[pathParts.length - 1];
+
+    // Get the Lead model from mongoose
+    const Lead = mongoose.models.Lead;
+    if (!Lead) {
+      throw new Error("Lead model not found");
+    }
 
     // Get the current lead to check if it's assigned
     const currentLead = await Lead.findById(id).populate(
@@ -98,28 +102,31 @@ export async function POST(request: Request) {
     }
 
     // Create activity log
-    const activity = new Activity({
-      type: "ASSIGNMENT",
-      userId: new mongoose.Types.ObjectId(session.user.id),
-      details: `Lead unassigned from ${assignedFromUser ? `${assignedFromUser.firstName} ${assignedFromUser.lastName}` : "Unknown"}`,
-      leadId: new mongoose.Types.ObjectId(id),
-      timestamp: new Date(),
-      metadata: {
-        assignedTo: null,
+    const Activity = mongoose.models.Activity;
+    if (Activity) {
+      const activity = new Activity({
+        type: "ASSIGNMENT",
+        userId: new mongoose.Types.ObjectId(session.user.id),
+        details: `Lead unassigned from ${assignedFromUser ? `${assignedFromUser.firstName} ${assignedFromUser.lastName}` : "Unknown"}`,
+        leadId: new mongoose.Types.ObjectId(id),
+        timestamp: new Date(),
+        metadata: {
+          assignedTo: null,
+          assignedFrom: assignedFromUser,
+          assignedBy: assignedByUser,
+        },
+      });
+
+      await activity.save();
+
+      console.log("Unassignment activity created:", {
+        leadId: id,
+        activityId: activity._id,
+        type: "UNASSIGNMENT",
         assignedFrom: assignedFromUser,
-        assignedBy: assignedByUser,
-      },
-    });
-
-    await activity.save();
-
-    console.log("Unassignment activity created:", {
-      leadId: id,
-      activityId: activity._id,
-      type: "UNASSIGNMENT",
-      assignedFrom: assignedFromUser,
-      details: activity.details,
-    });
+        details: activity.details,
+      });
+    }
 
     return NextResponse.json({
       message: "Lead unassigned successfully",

@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
 
 // Keep your existing GET method
 export async function GET() {
@@ -16,9 +16,18 @@ export async function GET() {
 
     await connectMongoDB();
 
-    const leads = await Lead.find({
-      "assignedTo.id": session.user.id,
-    }).sort({ createdAt: -1 });
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const leads = await mongoose.connection.db
+      .collection("leads")
+      .find({
+        "assignedTo.id": session.user.id,
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
 
     const transformedLeads = leads.map((lead) => ({
       id: lead._id.toString(),
@@ -69,20 +78,27 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
     // Update all selected leads
-    const updateResult = await Lead.updateMany(
-      { _id: { $in: leadIds } },
-      {
-        $set: {
-          assignedTo: {
-            id: userId,
-            assignedAt: new Date(),
+    const updateResult = await mongoose.connection.db
+      .collection("leads")
+      .updateMany(
+        { _id: { $in: leadIds.map((id) => new mongoose.Types.ObjectId(id)) } },
+        {
+          $set: {
+            assignedTo: {
+              id: userId,
+              assignedAt: new Date(),
+            },
+            status: "CONTACTED", // Or whatever status you want to set when assigned
+            updatedAt: new Date(),
           },
-          status: "CONTACTED", // Or whatever status you want to set when assigned
-          updatedAt: new Date(),
-        },
-      }
-    );
+        }
+      );
 
     if (updateResult.modifiedCount === 0) {
       return NextResponse.json(

@@ -2,8 +2,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
-import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
 
@@ -27,6 +25,12 @@ export async function POST(request: Request) {
       const url = new URL(request.url);
       const pathParts = url.pathname.split("/");
       const id = pathParts[pathParts.length - 1];
+
+      // Get the Lead model from mongoose
+      const Lead = mongoose.models.Lead;
+      if (!Lead) {
+        throw new Error("Lead model not found");
+      }
 
       // Get the current lead with populated assignedTo
       const currentLead = await Lead.findById(id)
@@ -67,37 +71,40 @@ export async function POST(request: Request) {
         throw new Error("Failed to update lead");
       }
 
-      // Create activity log using your existing Activity model
-      const activity = new Activity({
-        type: "ASSIGNMENT",
-        userId: new mongoose.Types.ObjectId(session.user.id),
-        details: isReassignment
-          ? `Lead reassigned from ${oldAssignedTo ? `${oldAssignedTo.firstName} ${oldAssignedTo.lastName}` : "Unknown"} to ${assignedToUser.firstName} ${assignedToUser.lastName}`
-          : `Lead assigned to ${assignedToUser.firstName} ${assignedToUser.lastName}`,
-        leadId: new mongoose.Types.ObjectId(id),
-        timestamp: new Date(),
-        metadata: {
-          assignedTo: {
-            id: assignedToUser._id.toString(),
-            firstName: assignedToUser.firstName,
-            lastName: assignedToUser.lastName,
+      // Create activity log using the Activity model
+      const Activity = mongoose.models.Activity;
+      if (Activity) {
+        const activity = new Activity({
+          type: "ASSIGNMENT",
+          userId: new mongoose.Types.ObjectId(session.user.id),
+          details: isReassignment
+            ? `Lead reassigned from ${oldAssignedTo ? `${oldAssignedTo.firstName} ${oldAssignedTo.lastName}` : "Unknown"} to ${assignedToUser.firstName} ${assignedToUser.lastName}`
+            : `Lead assigned to ${assignedToUser.firstName} ${assignedToUser.lastName}`,
+          leadId: new mongoose.Types.ObjectId(id),
+          timestamp: new Date(),
+          metadata: {
+            assignedTo: {
+              id: assignedToUser._id.toString(),
+              firstName: assignedToUser.firstName,
+              lastName: assignedToUser.lastName,
+            },
+            assignedFrom: oldAssignedTo
+              ? {
+                  id: oldAssignedTo._id.toString(),
+                  firstName: oldAssignedTo.firstName,
+                  lastName: oldAssignedTo.lastName,
+                }
+              : null,
+            assignedBy: {
+              id: assignedByUser._id.toString(),
+              firstName: assignedByUser.firstName,
+              lastName: assignedByUser.lastName,
+            },
           },
-          assignedFrom: oldAssignedTo
-            ? {
-                id: oldAssignedTo._id.toString(),
-                firstName: oldAssignedTo.firstName,
-                lastName: oldAssignedTo.lastName,
-              }
-            : null,
-          assignedBy: {
-            id: assignedByUser._id.toString(),
-            firstName: assignedByUser.firstName,
-            lastName: assignedByUser.lastName,
-          },
-        },
-      });
+        });
 
-      await activity.save({ session: dbSession });
+        await activity.save({ session: dbSession });
+      }
 
       return NextResponse.json({
         message: isReassignment

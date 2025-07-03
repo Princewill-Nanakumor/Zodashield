@@ -2,13 +2,22 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { executeDbOperation } from "@/libs/dbConfig";
-import Import from "@/models/Import";
 import { authOptions } from "@/libs/auth";
-import Lead from "@/models/Lead";
+import mongoose from "mongoose";
 
 export async function GET() {
   return executeDbOperation(async () => {
-    const imports = await Import.find().sort({ createdAt: -1 });
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const imports = await mongoose.connection.db
+      .collection("imports")
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
     return NextResponse.json({ imports });
   }, "Failed to fetch imports");
 }
@@ -30,25 +39,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
     console.log("Creating import with data:", {
       ...requestData,
-      uploadedBy: session.user.id, // Changed to uploadedBy to match schema
+      uploadedBy: session.user.id,
     });
 
-    const importRecord = await Import.create({
-      fileName: requestData.fileName,
-      recordCount: requestData.recordCount,
-      status: requestData.status || "new",
-      successCount: requestData.successCount || 0,
-      failureCount: requestData.failureCount || 0,
-      timestamp: requestData.timestamp || Date.now(),
-      uploadedBy: session.user.id, // Changed to uploadedBy to match schema
-    });
+    const importRecord = await mongoose.connection.db
+      .collection("imports")
+      .insertOne({
+        fileName: requestData.fileName,
+        recordCount: requestData.recordCount,
+        status: requestData.status || "new",
+        successCount: requestData.successCount || 0,
+        failureCount: requestData.failureCount || 0,
+        timestamp: requestData.timestamp || Date.now(),
+        uploadedBy: new mongoose.Types.ObjectId(session.user.id),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+    const createdImport = await mongoose.connection.db
+      .collection("imports")
+      .findOne({ _id: importRecord.insertedId });
 
     return NextResponse.json({
       data: {
-        _id: importRecord._id.toString(),
-        ...importRecord.toObject(),
+        _id: createdImport!._id.toString(),
+        ...createdImport,
       },
       message: "Import record created successfully",
     });
@@ -62,27 +84,42 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (id) {
       // Delete single import and its leads
-      const importRecord = await Import.findById(id);
+      const importRecord = await mongoose.connection.db
+        .collection("imports")
+        .findOne({ _id: new mongoose.Types.ObjectId(id) });
+
       if (!importRecord) {
         return NextResponse.json(
           { error: "Import not found" },
           { status: 404 }
         );
       }
-      await Lead.deleteMany({ importId: id });
-      await Import.findByIdAndDelete(id);
+
+      await mongoose.connection.db
+        .collection("leads")
+        .deleteMany({ importId: id });
+
+      await mongoose.connection.db
+        .collection("imports")
+        .deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+
       return NextResponse.json({
         message: "Import and associated leads deleted",
       });
     } else {
       // Delete all imports and leads
-      await Lead.deleteMany({});
-      await Import.deleteMany({});
+      await mongoose.connection.db.collection("leads").deleteMany({});
+      await mongoose.connection.db.collection("imports").deleteMany({});
       return NextResponse.json({ message: "All imports and leads deleted" });
     }
   }, "Failed to delete imports");

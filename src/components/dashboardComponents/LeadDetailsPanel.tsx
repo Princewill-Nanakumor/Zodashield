@@ -1,5 +1,4 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/LeadDetailsPanel.tsx
-
+// src/components/dashboardComponents/LeadDetailsPanel.tsx
 "use client";
 
 import React, { FC, useState, useCallback, useRef, useEffect } from "react";
@@ -10,9 +9,23 @@ import { DetailsSection } from "../leads/leadDetailsPanel/DetailsSection";
 import LeadStatus from "../leads/leadDetailsPanel/LeadStatus";
 import CommentsAndActivities from "../leads/leadDetailsPanel/CommentsAndActivities";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  useSelectedLead,
+  useUpdateLeadOptimistically,
+  useRevertLeadUpdate,
+} from "@/stores/leadsStore";
 
 const leadDetailsCache = new Map<string, { data: Lead; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Cache invalidation function
+export const invalidateLeadCache = (leadId?: string) => {
+  if (leadId) {
+    leadDetailsCache.delete(leadId);
+  } else {
+    leadDetailsCache.clear();
+  }
+};
 
 interface LeadDetailsPanelProps {
   lead: Lead | null;
@@ -34,6 +47,10 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
   hasNext,
 }) => {
   const { toast } = useToast();
+  const updateLeadOptimistically = useUpdateLeadOptimistically();
+  const revertLeadUpdate = useRevertLeadUpdate();
+  const selectedLead = useSelectedLead();
+
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({
@@ -42,8 +59,8 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     deal: true,
   });
 
-  // Add local state for the current lead being displayed
-  const [currentLead, setCurrentLead] = useState<Lead | null>(lead);
+  // Use store's selectedLead if available, otherwise fall back to prop
+  const currentLead = selectedLead || lead;
 
   const isFetchingRef = useRef(false);
   const lastFetchedRef = useRef<Record<string, number>>({});
@@ -57,26 +74,44 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
   const toastRef = useRef(toast);
   toastRef.current = toast;
 
-  // Update currentLead when lead prop changes
-  useEffect(() => {
-    setCurrentLead(lead);
-  }, [lead]);
-
-  // Memoized fetch function
+  // Memoized fetch function with proper assignment handling
   const fetchLeadDetails = useCallback(async () => {
-    if (!lead?._id || !isOpen || isFetchingRef.current) return;
+    if (!currentLead?._id || !isOpen || isFetchingRef.current) return;
 
     // Prevent duplicate fetches for the same lead
-    if (currentLeadIdRef.current === lead._id) return;
+    if (currentLeadIdRef.current === currentLead._id) return;
 
-    const cachedData = leadDetailsCache.get(lead._id);
+    const cachedData = leadDetailsCache.get(currentLead._id);
     const now = Date.now();
-    const lastFetched = lastFetchedRef.current[lead._id] || 0;
+    const lastFetched = lastFetchedRef.current[currentLead._id] || 0;
 
     if (cachedData && now - cachedData.timestamp < CACHE_DURATION) {
-      // Just update the local state, don't call onLeadUpdated
-      setCurrentLead(cachedData.data);
-      return;
+      // Validate cached data - check if assignedTo user still exists
+      if (
+        cachedData.data.assignedTo &&
+        typeof cachedData.data.assignedTo === "object"
+      ) {
+        try {
+          const userResponse = await fetch(
+            `/api/users/${cachedData.data.assignedTo.id}`
+          );
+          if (!userResponse.ok) {
+            // User doesn't exist, invalidate cache and refetch
+            leadDetailsCache.delete(currentLead._id);
+          } else {
+            // User exists, use cached data
+            updateLeadOptimistically(currentLead._id, cachedData.data);
+            return;
+          }
+        } catch {
+          // Error checking user, invalidate cache and refetch
+          leadDetailsCache.delete(currentLead._id);
+        }
+      } else {
+        // No assignment or string assignment, use cached data
+        updateLeadOptimistically(currentLead._id, cachedData.data);
+        return;
+      }
     }
 
     if (now - lastFetched < 1000) {
@@ -84,23 +119,48 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     }
 
     isFetchingRef.current = true;
-    currentLeadIdRef.current = lead._id;
-    lastFetchedRef.current[lead._id] = now;
+    currentLeadIdRef.current = currentLead._id;
+    lastFetchedRef.current[currentLead._id] = now;
 
     try {
-      const response = await fetch(`/api/leads/${lead._id}`);
+      const response = await fetch(`/api/leads/${currentLead._id}`);
       if (!response.ok) {
         throw new Error("Failed to fetch lead details");
       }
       const updatedLead = await response.json();
 
-      leadDetailsCache.set(lead._id, {
+      // Validate assignment data
+      if (
+        updatedLead.assignedTo &&
+        typeof updatedLead.assignedTo === "object"
+      ) {
+        try {
+          const userResponse = await fetch(
+            `/api/users/${updatedLead.assignedTo.id}`
+          );
+          if (!userResponse.ok) {
+            // User doesn't exist, clear assignment
+            updatedLead.assignedTo = null;
+            console.warn(
+              `User ${updatedLead.assignedTo.id} not found, clearing assignment for lead ${currentLead._id}`
+            );
+          }
+        } catch {
+          // Error checking user, clear assignment
+          updatedLead.assignedTo = null;
+          console.warn(
+            `Error checking user for lead ${currentLead._id}, clearing assignment`
+          );
+        }
+      }
+
+      leadDetailsCache.set(currentLead._id, {
         data: updatedLead,
         timestamp: now,
       });
 
-      // Update local state only, don't trigger onLeadUpdated
-      setCurrentLead(updatedLead);
+      // Update store with fresh data
+      updateLeadOptimistically(currentLead._id, updatedLead);
     } catch (error) {
       console.error("Error fetching lead details:", error);
       toastRef.current({
@@ -112,14 +172,14 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
       isFetchingRef.current = false;
       currentLeadIdRef.current = null;
     }
-  }, [lead?._id, isOpen]);
+  }, [currentLead?._id, isOpen, updateLeadOptimistically]);
 
   // Only fetch when lead changes or panel opens
   useEffect(() => {
-    if (isOpen && lead?._id) {
+    if (isOpen && currentLead?._id) {
       fetchLeadDetails();
     }
-  }, [isOpen, lead?._id, fetchLeadDetails]);
+  }, [isOpen, currentLead?._id, fetchLeadDetails]);
 
   const toggleSection = useCallback((section: string) => {
     setExpandedSections((prev) => ({
@@ -128,13 +188,11 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     }));
   }, []);
 
-  const handleStatusChange = useCallback(
-    async (updatedLead: Lead): Promise<void> => {
-      if (!updatedLead._id) return;
-
+  const handleLeadUpdated = useCallback(
+    async (updatedLead: Lead) => {
       try {
-        // Update local state immediately (no need for second API call)
-        setCurrentLead(updatedLead);
+        // Optimistic update to store
+        updateLeadOptimistically(updatedLead._id, updatedLead);
 
         // Update cache
         leadDetailsCache.set(updatedLead._id, {
@@ -143,34 +201,20 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
         });
 
         // Call the parent's onLeadUpdated
-        await onLeadUpdatedRef.current(updatedLead);
+        return await onLeadUpdatedRef.current(updatedLead);
       } catch (error) {
-        console.error("Error updating lead:", error);
-        throw error;
+        console.error("Error in handleLeadUpdated:", error);
+
+        // Revert optimistic update on error
+        if (currentLead) {
+          revertLeadUpdate(updatedLead._id, currentLead);
+        }
+
+        return false;
       }
     },
-    []
+    [updateLeadOptimistically, revertLeadUpdate, currentLead]
   );
-
-  // Handle lead updates from CommentsAndActivities
-  const handleLeadUpdated = useCallback(async (updatedLead: Lead) => {
-    try {
-      // Update local state
-      setCurrentLead(updatedLead);
-
-      // Update cache
-      leadDetailsCache.set(updatedLead._id, {
-        data: updatedLead,
-        timestamp: Date.now(),
-      });
-
-      // Call the parent's onLeadUpdated
-      return await onLeadUpdatedRef.current(updatedLead);
-    } catch (error) {
-      console.error("Error in handleLeadUpdated:", error);
-      return false;
-    }
-  }, []);
 
   if (!isOpen || !currentLead?._id) {
     return null;
@@ -192,7 +236,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
           hasNext={hasNext}
         />
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <LeadStatus lead={currentLead} onStatusChange={handleStatusChange} />
+          <LeadStatus lead={currentLead} />
           <ContactSection
             lead={currentLead}
             isExpanded={expandedSections.contact}

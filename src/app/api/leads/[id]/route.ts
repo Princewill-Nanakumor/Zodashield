@@ -1,208 +1,194 @@
-// app/api/leads/[id]/route.ts
-import { NextResponse, NextRequest } from "next/server";
-import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
-import Activity from "@/models/Activity";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
+import { connectMongoDB } from "@/libs/dbConfig";
 import mongoose from "mongoose";
+import { Db, ObjectId } from "mongodb";
 
-interface LeadUpdateObject {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  source?: string;
-  status?: string;
-  country?: string;
-  comments?: string;
-  assignedTo?: mongoose.Types.ObjectId | string;
-  updatedAt: Date;
-  [key: string]: unknown;
+// Helper to get user details for assignedTo
+async function getAssignedToUser(
+  db: Db,
+  assignedTo: ObjectId | string | null | undefined
+) {
+  if (!assignedTo) return null;
+  const user = await db.collection("users").findOne(
+    {
+      _id:
+        typeof assignedTo === "string" ? new ObjectId(assignedTo) : assignedTo,
+    },
+    { projection: { firstName: 1, lastName: 1 } }
+  );
+  if (!user) return null;
+  return {
+    id: user._id.toString(),
+    firstName: user.firstName,
+    lastName: user.lastName,
+  };
 }
 
-interface LeadChange {
-  field: string;
-  oldValue: string | mongoose.Types.ObjectId | null | undefined;
-  newValue: string | mongoose.Types.ObjectId | null | undefined;
-}
-
-export async function PUT(request: NextRequest) {
+// GET /api/leads/[id]
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const url = new URL(request.url);
-    const pathParts = url.pathname.split("/");
-    const leadId = pathParts[pathParts.length - 1];
-
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectMongoDB();
-    const updates: Record<string, unknown> = await request.json();
+    const { id } = await params;
 
-    const existingLead = await Lead.findById(leadId);
-    if (!existingLead) {
-      return NextResponse.json({ message: "Lead not found" }, { status: 404 });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
-    const updateObject: LeadUpdateObject = {
-      updatedAt: new Date(),
+    const db = mongoose.connection.db;
+    if (!db) throw new Error("Database connection not available");
+
+    const lead = await db
+      .collection("leads")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!lead) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    const assignedToUser = await getAssignedToUser(db, lead.assignedTo);
+
+    const transformedLead = {
+      _id: lead._id.toString(),
+      id: lead._id.toString(),
+      firstName: lead.firstName,
+      lastName: lead.lastName,
+      name: `${lead.firstName} ${lead.lastName}`,
+      email: lead.email,
+      phone: lead.phone || "",
+      source: lead.source,
+      status: lead.status,
+      country: lead.country || "",
+      assignedTo: assignedToUser,
+      createdAt:
+        lead.createdAt instanceof Date
+          ? lead.createdAt.toISOString()
+          : lead.createdAt,
+      updatedAt:
+        lead.updatedAt instanceof Date
+          ? lead.updatedAt.toISOString()
+          : lead.updatedAt,
+      comments: lead.comments || "",
     };
 
-    const changes: LeadChange[] = [];
-
-    Object.keys(updates).forEach((key) => {
-      if (key === "updatedAt") return;
-
-      const existingValue = existingLead[key as keyof typeof existingLead];
-      const newValue = updates[key];
-
-      if (newValue !== undefined && newValue !== existingValue) {
-        updateObject[key] = newValue;
-        changes.push({
-          field: key,
-          oldValue: existingValue as
-            | string
-            | mongoose.Types.ObjectId
-            | null
-            | undefined,
-          newValue: newValue as
-            | string
-            | mongoose.Types.ObjectId
-            | null
-            | undefined,
-        });
-      }
-    });
-
-    if (updates.assignedTo !== undefined) {
-      if (
-        typeof updates.assignedTo === "object" &&
-        updates.assignedTo &&
-        "id" in updates.assignedTo
-      ) {
-        const newAssignedTo = (updates.assignedTo as { id: string }).id;
-        if (newAssignedTo !== existingLead.assignedTo?.toString()) {
-          updateObject.assignedTo = newAssignedTo;
-          changes.push({
-            field: "assignedTo",
-            oldValue: existingLead.assignedTo,
-            newValue: newAssignedTo,
-          });
-        }
-      } else if (typeof updates.assignedTo === "string") {
-        if (!mongoose.Types.ObjectId.isValid(updates.assignedTo)) {
-          return NextResponse.json(
-            { message: "Invalid assignedTo ID" },
-            { status: 400 }
-          );
-        }
-        if (updates.assignedTo !== existingLead.assignedTo?.toString()) {
-          updateObject.assignedTo = updates.assignedTo;
-          changes.push({
-            field: "assignedTo",
-            oldValue: existingLead.assignedTo,
-            newValue: updates.assignedTo,
-          });
-        }
-      }
-    } else {
-      updateObject.assignedTo = existingLead.assignedTo;
-    }
-
-    console.log("Updating lead with:", updateObject);
-
-    const updatedLead = await Lead.findByIdAndUpdate(
-      leadId,
-      { $set: updateObject },
-      { new: true }
-    ).populate("assignedTo", "firstName lastName email");
-
-    if (!updatedLead) {
-      return NextResponse.json({ message: "Lead not found" }, { status: 404 });
-    }
-
-    // Create activity logs for changes (EXCLUDE status and assignment changes)
-    for (const change of changes) {
-      // Skip status changes (handled by dedicated status route)
-      if (change.field === "status") {
-        continue;
-      }
-
-      // Skip assignment changes (handled by dedicated assign/unassign routes)
-      if (change.field === "assignedTo") {
-        continue;
-      }
-
-      const oldValueStr = change.oldValue?.toString() || "None";
-      const newValueStr = change.newValue?.toString() || "None";
-      const description = `${change.field} updated from ${oldValueStr} to ${newValueStr}`;
-
-      const activity = new Activity({
-        type: "UPDATE",
-        userId: new mongoose.Types.ObjectId(session.user.id),
-        details: description,
-        leadId: new mongoose.Types.ObjectId(leadId),
-        timestamp: new Date(),
-        metadata: {
-          changes: [
-            {
-              field: change.field,
-              oldValue: oldValueStr,
-              newValue: newValueStr,
-            },
-          ],
-        },
-      });
-
-      await activity.save();
-    }
-
-    console.log("Lead updated successfully:", {
-      id: updatedLead._id,
-      status: updatedLead.status,
-      assignedTo: updatedLead.assignedTo,
-      changesCount: changes.length,
-    });
-
-    return NextResponse.json(updatedLead);
+    return NextResponse.json(transformedLead);
   } catch (error) {
-    console.error("Error updating lead:", error);
+    console.error("Error fetching lead:", error);
     return NextResponse.json(
-      { message: "Error updating lead" },
+      { error: "Failed to fetch lead" },
       { status: 500 }
     );
   }
 }
 
-export async function GET(request: NextRequest) {
+// PUT /api/leads/[id]
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const url = new URL(request.url);
-    const pathParts = url.pathname.split("/");
-    const leadId = pathParts[pathParts.length - 1];
-
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const updateData = await request.json();
     await connectMongoDB();
+    const { id } = await params;
 
-    const lead = await Lead.findById(leadId).populate(
-      "assignedTo",
-      "firstName lastName email"
-    );
-
-    if (!lead) {
-      return NextResponse.json({ message: "Lead not found" }, { status: 404 });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
-    return NextResponse.json(lead);
+    const db = mongoose.connection.db;
+    if (!db) throw new Error("Database connection not available");
+
+    const currentLead = await db
+      .collection("leads")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!currentLead) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    // Prepare the update payload
+    const updatePayload: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+    if (updateData.firstName !== undefined)
+      updatePayload.firstName = updateData.firstName;
+    if (updateData.lastName !== undefined)
+      updatePayload.lastName = updateData.lastName;
+    if (updateData.email !== undefined) updatePayload.email = updateData.email;
+    if (updateData.phone !== undefined) updatePayload.phone = updateData.phone;
+    if (updateData.source !== undefined)
+      updatePayload.source = updateData.source;
+    if (updateData.status !== undefined)
+      updatePayload.status = updateData.status;
+    if (updateData.country !== undefined)
+      updatePayload.country = updateData.country;
+    if (updateData.comments !== undefined)
+      updatePayload.comments = updateData.comments;
+    if (updateData.assignedTo !== undefined) {
+      updatePayload.assignedTo = updateData.assignedTo
+        ? new ObjectId(updateData.assignedTo)
+        : null;
+    }
+
+    const result = await db
+      .collection("leads")
+      .findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: updatePayload },
+        { returnDocument: "after" }
+      );
+
+    if (!result || !result.value) {
+      return NextResponse.json(
+        { error: "Failed to update lead" },
+        { status: 500 }
+      );
+    }
+
+    const assignedToUser = await getAssignedToUser(db, result.value.assignedTo);
+
+    const transformedLead = {
+      _id: result.value._id.toString(),
+      id: result.value._id.toString(),
+      firstName: result.value.firstName,
+      lastName: result.value.lastName,
+      name: `${result.value.firstName} ${result.value.lastName}`,
+      email: result.value.email,
+      phone: result.value.phone || "",
+      source: result.value.source,
+      status: result.value.status,
+      country: result.value.country || "",
+      assignedTo: assignedToUser,
+      createdAt:
+        result.value.createdAt instanceof Date
+          ? result.value.createdAt.toISOString()
+          : result.value.createdAt,
+      updatedAt:
+        result.value.updatedAt instanceof Date
+          ? result.value.updatedAt.toISOString()
+          : result.value.updatedAt,
+      comments: result.value.comments || "",
+    };
+
+    return NextResponse.json(transformedLead);
   } catch (error) {
-    console.error("Error fetching lead:", error);
+    console.error("Error updating lead:", error);
     return NextResponse.json(
-      { message: "Error fetching lead" },
+      { error: "Failed to update lead" },
       { status: 500 }
     );
   }

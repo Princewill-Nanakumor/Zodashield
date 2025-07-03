@@ -1,4 +1,3 @@
-// src/utils/leadUtils.ts
 import { Lead } from "@/types/leads";
 
 export const getAssignedUserId = (

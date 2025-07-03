@@ -1,11 +1,9 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/app/api/users/[userId]/leads/route.ts
-
+// /src/app/api/users/[userId]/leads/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import User from "@/models/User";
-import Lead from "@/models/Lead";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
 
 function extractUserIdFromUrl(urlString: string): string {
   const url = new URL(urlString);
@@ -29,9 +27,16 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
-    const user = await User.findOne({
-      _id: userId,
-      createdBy: session.user.id,
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
+    const user = await db.collection("users").findOne({
+      _id: new mongoose.Types.ObjectId(userId),
+      createdBy: new mongoose.Types.ObjectId(session.user.id),
       status: "ACTIVE",
     });
 
@@ -42,8 +47,12 @@ export async function POST(request: Request) {
       );
     }
 
-    await Lead.updateMany(
-      { _id: { $in: leadIds } },
+    await db.collection("leads").updateMany(
+      {
+        _id: {
+          $in: leadIds.map((id: string) => new mongoose.Types.ObjectId(id)),
+        },
+      },
       {
         $set: {
           assignedTo: user._id,
@@ -53,9 +62,12 @@ export async function POST(request: Request) {
       }
     );
 
-    await User.findByIdAndUpdate(user._id, {
-      $addToSet: { assignedLeads: { $each: leadIds } },
-    });
+    await db.collection("users").updateOne(
+      { _id: user._id },
+      {
+        $addToSet: { assignedLeads: { $each: leadIds } },
+      }
+    );
 
     return NextResponse.json({
       message: "Leads assigned successfully",
@@ -81,9 +93,26 @@ export async function GET(request: Request) {
 
     await connectMongoDB();
 
-    const leads = await Lead.find({ assignedTo: userId })
-      .select("_id firstName lastName email status assignedAt")
-      .sort({ assignedAt: -1 });
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
+    const leads = await db
+      .collection("leads")
+      .find({ assignedTo: new mongoose.Types.ObjectId(userId) })
+      .project({
+        _id: 1,
+        firstName: 1,
+        lastName: 1,
+        email: 1,
+        status: 1,
+        assignedAt: 1,
+      })
+      .sort({ assignedAt: -1 })
+      .toArray();
 
     return NextResponse.json(leads);
   } catch (error: unknown) {

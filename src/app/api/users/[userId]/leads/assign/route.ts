@@ -1,10 +1,9 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/app/api/users/[userId]/leads/assign/route.ts
-
+// /src/app/api/users/[userId]/leads/assign/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
 
 function extractLeadIdFromUrl(urlString: string): string {
   const url = new URL(urlString);
@@ -28,14 +27,28 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
 
-    const lead = await Lead.findByIdAndUpdate(
-      leadId,
+    // Check if database connection is available
+    if (!mongoose.connection.db) {
+      throw new Error("Database connection not available");
+    }
+
+    const db = mongoose.connection.db;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(leadId)) {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+    }
+
+    const lead = await db.collection("leads").findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(leadId) },
       {
-        assignedTo: userId,
-        status: "ASSIGNED",
-        assignedAt: new Date(),
+        $set: {
+          assignedTo: new mongoose.Types.ObjectId(userId),
+          status: "ASSIGNED",
+          assignedAt: new Date(),
+        },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!lead) {
