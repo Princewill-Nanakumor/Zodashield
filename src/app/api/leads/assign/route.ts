@@ -91,6 +91,8 @@ export async function POST(request: Request) {
   }
 }
 
+// Update the performAssignment function in your existing file:
+
 async function performAssignment(
   leadIds: string[],
   userId: string,
@@ -149,15 +151,22 @@ async function performAssignment(
       return lead; // No change needed
     }
 
+    // Store assignedTo as an object with user details for consistency
+    const assignedToData = {
+      id: assignedToUser._id.toString(),
+      firstName: assignedToUser.firstName,
+      lastName: assignedToUser.lastName,
+    };
+
     // Update lead
     const updateData = leadData
       ? {
           ...leadData,
-          assignedTo: userObjectId,
+          assignedTo: assignedToData, // Store as object instead of just ObjectId
           updatedAt: new Date(),
         }
       : {
-          assignedTo: userObjectId,
+          assignedTo: assignedToData, // Store as object instead of just ObjectId
           updatedAt: new Date(),
         };
 

@@ -24,12 +24,27 @@ interface ApiLead {
   comments?: string;
 }
 
+interface LeadData {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  source: string;
+  status: string;
+  country: string;
+  comments: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const formatLead = (apiLead: ApiLead, users: User[]): Lead => {
   let assignedToObject:
     | Pick<User, "id" | "firstName" | "lastName">
     | undefined = undefined;
 
   if (typeof apiLead.assignedTo === "object" && apiLead.assignedTo !== null) {
+    // API already returns the correct format
     assignedToObject = apiLead.assignedTo;
   } else if (typeof apiLead.assignedTo === "string") {
     const user = users.find((u) => u.id === apiLead.assignedTo);
@@ -76,6 +91,7 @@ export const useLeads = () => {
           (u: User) => u.status === "ACTIVE"
         );
         setUsers(activeUsers);
+        console.log("👥 Fetched users:", activeUsers.length);
         return activeUsers;
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -107,9 +123,20 @@ export const useLeads = () => {
         }
 
         const data: ApiLead[] = await response.json();
+        console.log("�� Raw API leads data count:", data.length);
+        console.log("�� Sample raw lead:", data[0]);
+
         const formattedLeads = data.map((apiLead) =>
           formatLead(apiLead, users)
         );
+
+        console.log("✅ Formatted leads count:", formattedLeads.length);
+        console.log("📋 Sample formatted lead:", {
+          id: formattedLeads[0]?._id,
+          name: formattedLeads[0]?.name,
+          assignedTo: formattedLeads[0]?.assignedTo,
+        });
+
         setLeads(formattedLeads);
         return formattedLeads;
       } catch (error) {
@@ -132,14 +159,16 @@ export const useLeads = () => {
     mutationFn: async ({
       leadIds,
       userId,
+      leadsData,
     }: {
       leadIds: string[];
       userId: string;
+      leadsData?: LeadData[];
     }) => {
       const response = await fetch("/api/leads/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadIds, userId }),
+        body: JSON.stringify({ leadIds, userId, leadsData }),
       });
 
       if (!response.ok) {

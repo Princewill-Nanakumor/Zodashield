@@ -25,93 +25,50 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Lead } from "@/types/leads";
 import useUrlFilterSync from "@/hooks/useUrlFilterSync";
-import useDataSync from "@/hooks/useDataSync";
 import useLeadUpdate from "@/hooks/useLeadUpdate";
 
 const USER_ROLES = {
   ADMIN: "ADMIN",
 } as const;
 
-// Utility functions
+// Clean utility function with no logging
 const getAssignedUserId = (assignedTo: Lead["assignedTo"]): string | null => {
-  console.log("getAssignedUserId called with:", assignedTo);
-
-  if (!assignedTo) {
-    console.log("assignedTo is null/undefined, returning null");
-    return null;
-  }
+  if (!assignedTo) return null;
 
   if (typeof assignedTo === "string") {
-    console.log("assignedTo is string:", assignedTo);
     return assignedTo;
   }
 
-  if (assignedTo && typeof assignedTo === "object" && "id" in assignedTo) {
-    console.log("assignedTo is object with id:", assignedTo.id);
-    return assignedTo.id;
+  if (assignedTo && typeof assignedTo === "object") {
+    const assignedToObj = assignedTo as Record<string, unknown>;
+
+    if (assignedToObj.id && typeof assignedToObj.id === "string") {
+      return assignedToObj.id;
+    }
+
+    if (assignedToObj._id && typeof assignedToObj._id === "string") {
+      return assignedToObj._id;
+    }
+
+    return null;
   }
 
-  console.log("assignedTo is object but no id found:", assignedTo);
   return null;
 };
 
 const filterLeadsByUser = (leads: Lead[], filterByUser: string): Lead[] => {
-  console.log("=== FILTERING LEADS ===");
-  console.log("Filter value:", filterByUser);
-  console.log("Total leads to filter:", leads.length);
-
-  // Log sample leads for debugging
-  const sampleLeads = leads.slice(0, 3);
-  console.log(
-    "Sample leads:",
-    sampleLeads.map((lead) => ({
-      id: lead._id,
-      name: `${lead.firstName} ${lead.lastName}`,
-      assignedTo: lead.assignedTo,
-      extractedId: getAssignedUserId(lead.assignedTo),
-    }))
-  );
-
-  let filteredLeads: Lead[] = [];
-
   switch (filterByUser) {
     case "unassigned":
-      filteredLeads = leads.filter((lead) => {
-        const assignedId = getAssignedUserId(lead.assignedTo);
-        const isUnassigned = !assignedId;
-        console.log(
-          `Lead ${lead._id}: assignedId=${assignedId}, isUnassigned=${isUnassigned}`
-        );
-        return isUnassigned;
-      });
-      console.log("Unassigned leads found:", filteredLeads.length);
-      break;
+      return leads.filter((lead) => !getAssignedUserId(lead.assignedTo));
 
     case "all":
-      filteredLeads = leads;
-      console.log("Showing all leads:", filteredLeads.length);
-      break;
+      return leads;
 
     default:
-      filteredLeads = leads.filter((lead) => {
-        const assignedId = getAssignedUserId(lead.assignedTo);
-        const matches = assignedId === filterByUser;
-        console.log(
-          `Lead ${lead._id}: assignedId=${assignedId}, filterByUser=${filterByUser}, matches=${matches}`
-        );
-        return matches;
-      });
-      console.log(
-        `User leads found for ${filterByUser}:`,
-        filteredLeads.length
+      return leads.filter(
+        (lead) => getAssignedUserId(lead.assignedTo) === filterByUser
       );
-      break;
   }
-
-  console.log("Final filtered leads count:", filteredLeads.length);
-  console.log("=== END FILTERING ===");
-
-  return filteredLeads;
 };
 
 const getAssignedLeadsCount = (leads: Lead[]): number => {
@@ -135,29 +92,13 @@ const LeadsPageContent: React.FC = () => {
     isUnassigning,
   } = useLeads();
 
-  const {
-    selectedLeads,
-    setSelectedLeads,
-    filterByUser,
-    setFilterByUser,
-    setLeads,
-    setUsers,
-    setLoadingLeads,
-    setLoadingUsers,
-    leads: storeLeads,
-  } = useLeadsStore();
+  // Use local state for selected leads instead of store
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const { filterByUser, setFilterByUser } = useLeadsStore();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
-
-  // Debug logging
-  console.log("=== LEADS PAGE CONTENT DEBUG ===");
-  console.log("Hook leads count:", leads.length);
-  console.log("Store leads count:", storeLeads.length);
-  console.log("Current filterByUser:", filterByUser);
-  console.log("Users count:", users.length);
-  console.log("Is loading users:", isLoadingUsers);
 
   // Use extracted hooks
   const { isInitialized, handleFilterChange } = useUrlFilterSync(
@@ -167,73 +108,47 @@ const LeadsPageContent: React.FC = () => {
     setFilterByUser
   );
 
-  useDataSync(
-    leads,
-    users,
-    isLoadingLeads,
-    isLoadingUsers,
-    setLeads,
-    setUsers,
-    setLoadingLeads,
-    setLoadingUsers
-  );
-
-  const displayLeads = storeLeads.length > 0 ? storeLeads : leads;
   const { handleLeadUpdate, isUpdating } = useLeadUpdate(
-    displayLeads,
-    setLeads
+    leads,
+    () => {} // No need to sync back since we're using useLeads directly
   );
 
-  // Memoized filtered leads - Use store leads if available, otherwise use hook leads
+  // Memoized filtered leads - Use leads directly from useLeads hook
   const filteredLeads = useMemo(() => {
-    console.log("=== FILTERED LEADS MEMO ===");
-    console.log("isInitialized:", isInitialized);
-    console.log("displayLeads count:", displayLeads.length);
-    console.log("filterByUser:", filterByUser);
-
     if (!isInitialized) {
-      console.log("Not initialized yet, showing all leads");
-      return displayLeads;
+      return leads;
     }
 
-    const result = filterLeadsByUser(displayLeads, filterByUser);
-    console.log("Filtered result count:", result.length);
-    return result;
-  }, [displayLeads, filterByUser, isInitialized]);
+    return filterLeadsByUser(leads, filterByUser);
+  }, [leads, filterByUser, isInitialized]);
+
+  // Convert selectedLeadIds to full Lead objects for compatibility
+  const selectedLeads = useMemo(() => {
+    return filteredLeads.filter((lead) => selectedLeadIds.includes(lead._id));
+  }, [filteredLeads, selectedLeadIds]);
 
   const handleAssignLeads = useCallback(async () => {
-    if (selectedLeads.length === 0 || !selectedUser) return;
+    if (selectedLeadIds.length === 0 || !selectedUser) return;
 
     try {
-      const leadsToAssign = selectedLeads.map((selectedLead) => {
-        const fullLead = displayLeads.find((l) => l._id === selectedLead._id);
+      const leadsToAssign = selectedLeadIds.map((leadId) => {
+        const fullLead = leads.find((l) => l._id === leadId);
         if (!fullLead) {
-          throw new Error(`Lead ${selectedLead._id} not found`);
+          throw new Error(`Lead ${leadId} not found`);
         }
         return fullLead;
       });
 
+      // Create the assignment data without leadsData
       const assignmentData = {
         leadIds: leadsToAssign.map((l) => l._id),
         userId: selectedUser,
-        leadsData: leadsToAssign.map((lead) => ({
-          _id: lead._id,
-          firstName: lead.firstName,
-          lastName: lead.lastName,
-          email: lead.email,
-          phone: lead.phone,
-          source: lead.source,
-          status: lead.status,
-          country: lead.country,
-          comments: lead.comments,
-          createdAt: lead.createdAt,
-          updatedAt: new Date().toISOString(),
-        })),
+        // Remove leadsData to avoid type conflicts
       };
 
       await assignLeads(assignmentData);
 
-      setSelectedLeads([]);
+      setSelectedLeadIds([]);
       setIsDialogOpen(false);
       setSelectedUser("");
 
@@ -253,12 +168,12 @@ const LeadsPageContent: React.FC = () => {
       });
     }
   }, [
-    selectedLeads,
+    selectedLeadIds,
     selectedUser,
     assignLeads,
-    setSelectedLeads,
+    setSelectedLeadIds,
     toast,
-    displayLeads,
+    leads,
   ]);
 
   const handleUnassignLeads = useCallback(async () => {
@@ -279,7 +194,7 @@ const LeadsPageContent: React.FC = () => {
       const leadIds = leadsToUnassign.map((l) => l._id);
       const result = await unassignLeads({ leadIds });
 
-      setSelectedLeads([]);
+      setSelectedLeadIds([]);
       setIsUnassignDialogOpen(false);
 
       if (result?.unassignedCount === leadIds.length) {
@@ -304,7 +219,13 @@ const LeadsPageContent: React.FC = () => {
         variant: "destructive",
       });
     }
-  }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
+  }, [selectedLeads, unassignLeads, setSelectedLeadIds, toast]);
+
+  // Handle selection change
+  const handleSelectionChange = useCallback((newSelectedLeads: Lead[]) => {
+    const newSelectedIds = newSelectedLeads.map((lead) => lead._id);
+    setSelectedLeadIds(newSelectedIds);
+  }, []);
 
   // Computed values
   const isLoading = isLoadingLeads || isLoadingUsers || isUpdating;
@@ -371,7 +292,7 @@ const LeadsPageContent: React.FC = () => {
               isLoading={isLoading}
               selectedLeads={selectedLeads}
               users={users}
-              onSelectionChange={setSelectedLeads}
+              onSelectionChange={handleSelectionChange}
             />
           )}
         </div>

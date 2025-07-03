@@ -20,7 +20,6 @@ import {
   useSetPageSize,
   useSetPageIndex,
   useSetSorting,
-  useLeadsStore,
 } from "@/stores/leadsStore";
 
 import { useTableSorting } from "./TableSorting";
@@ -66,17 +65,16 @@ export default function LeadsTable({
   const setPageIndex = useSetPageIndex();
   const setSorting = useSetSorting();
 
-  // Get leads from store instead of props
-  const storeLeads = useLeadsStore((state) => state.leads);
-  const displayLeads = storeLeads.length > 0 ? storeLeads : leads;
-
   // Local state
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
+  // Always use the leads prop (filtered by parent)
+  const displayLeads = leads;
+
   // Custom hooks
   const { sortedLeads, handleSort } = useTableSorting({
-    leads: displayLeads, // Use displayLeads here
+    leads: displayLeads,
     sortField,
     sortOrder,
     users,
