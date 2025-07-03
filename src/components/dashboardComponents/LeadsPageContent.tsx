@@ -92,9 +92,9 @@ const LeadsPageContent: React.FC = () => {
     isUnassigning,
   } = useLeads();
 
-  // Use local state for selected leads instead of store
-  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
-  const { filterByUser, setFilterByUser } = useLeadsStore();
+  // Use Zustand store for selected leads and filter
+  const { selectedLeads, setSelectedLeads, filterByUser, setFilterByUser } =
+    useLeadsStore();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
@@ -122,59 +122,35 @@ const LeadsPageContent: React.FC = () => {
     return filterLeadsByUser(leads, filterByUser);
   }, [leads, filterByUser, isInitialized]);
 
-  // Convert selectedLeadIds to full Lead objects for compatibility
-  const selectedLeads = useMemo(() => {
-    return filteredLeads.filter((lead) => selectedLeadIds.includes(lead._id));
-  }, [filteredLeads, selectedLeadIds]);
-
   const handleAssignLeads = useCallback(async () => {
-    if (selectedLeadIds.length === 0 || !selectedUser) return;
+    if (selectedLeads.length === 0 || !selectedUser) return;
 
     try {
-      const leadsToAssign = selectedLeadIds.map((leadId) => {
-        const fullLead = leads.find((l) => l._id === leadId);
-        if (!fullLead) {
-          throw new Error(`Lead ${leadId} not found`);
-        }
-        return fullLead;
-      });
-
-      // Create the assignment data without leadsData
+      const leadsToAssign = selectedLeads;
       const assignmentData = {
         leadIds: leadsToAssign.map((l) => l._id),
         userId: selectedUser,
-        // Remove leadsData to avoid type conflicts
       };
 
       await assignLeads(assignmentData);
 
-      setSelectedLeadIds([]);
+      setSelectedLeads([]);
       setIsDialogOpen(false);
       setSelectedUser("");
 
       toast({
         title: "Success",
-        description: `${leadsToAssign.length} lead${
-          leadsToAssign.length > 1 ? "s" : ""
-        } assigned successfully.`,
+        description: `${leadsToAssign.length} lead${leadsToAssign.length > 1 ? "s" : ""} assigned successfully.`,
         variant: "success",
       });
-    } catch (error) {
-      console.error("Error assigning leads:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to assign leads. Please try again.",
         variant: "destructive",
       });
     }
-  }, [
-    selectedLeadIds,
-    selectedUser,
-    assignLeads,
-    setSelectedLeadIds,
-    toast,
-    leads,
-  ]);
+  }, [selectedLeads, selectedUser, assignLeads, setSelectedLeads, toast]);
 
   const handleUnassignLeads = useCallback(async () => {
     const leadsToUnassign = selectedLeads.filter(
@@ -194,7 +170,7 @@ const LeadsPageContent: React.FC = () => {
       const leadIds = leadsToUnassign.map((l) => l._id);
       const result = await unassignLeads({ leadIds });
 
-      setSelectedLeadIds([]);
+      setSelectedLeads([]);
       setIsUnassignDialogOpen(false);
 
       if (result?.unassignedCount === leadIds.length) {
@@ -219,13 +195,15 @@ const LeadsPageContent: React.FC = () => {
         variant: "destructive",
       });
     }
-  }, [selectedLeads, unassignLeads, setSelectedLeadIds, toast]);
+  }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
 
   // Handle selection change
-  const handleSelectionChange = useCallback((newSelectedLeads: Lead[]) => {
-    const newSelectedIds = newSelectedLeads.map((lead) => lead._id);
-    setSelectedLeadIds(newSelectedIds);
-  }, []);
+  const handleSelectionChange = useCallback(
+    (newSelectedLeads: Lead[]) => {
+      setSelectedLeads(newSelectedLeads);
+    },
+    [setSelectedLeads]
+  );
 
   // Computed values
   const isLoading = isLoadingLeads || isLoadingUsers || isUpdating;

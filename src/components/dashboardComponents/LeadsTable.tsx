@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { EmptyStateAdminLeadsTable } from "@/components/dashboardComponents/EmptyStateAdminLeadsTable";
+import { useMemo } from "react";
+import { EmptyStateAdminLeadsTable } from "./EmptyStateAdminLeadsTable";
 import LeadDetailsPanel from "@/components/dashboardComponents/LeadDetailsPanel";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
@@ -20,7 +20,10 @@ import {
   useSetPageSize,
   useSetPageIndex,
   useSetSorting,
+  useSelectedLeads,
+  useSetSelectedLeads,
 } from "@/stores/leadsStore";
+import { SortField } from "@/types/table";
 
 import { useTableSorting } from "./TableSorting";
 import { useRowSelection } from "./RowSelection";
@@ -36,15 +39,6 @@ interface LeadsTableProps {
   selectedLeads?: Lead[];
   onSelectionChange?: (leads: Lead[]) => void;
 }
-
-type SortField =
-  | "name"
-  | "country"
-  | "status"
-  | "source"
-  | "createdAt"
-  | "assignedTo";
-type SortOrder = "asc" | "desc";
 
 export default function LeadsTable({
   leads = [],
@@ -64,23 +58,20 @@ export default function LeadsTable({
   const setPageSize = useSetPageSize();
   const setPageIndex = useSetPageIndex();
   const setSorting = useSetSorting();
+  const storeSelectedLeads = useSelectedLeads();
+  const setStoreSelectedLeads = useSetSelectedLeads();
 
-  // Local state
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
-
-  // Always use the leads prop (filtered by parent)
-  const displayLeads = leads;
+  // Use props selectedLeads if provided, otherwise use store
+  const displaySelectedLeads =
+    selectedLeads.length > 0 ? selectedLeads : storeSelectedLeads;
 
   // Custom hooks
   const { sortedLeads, handleSort } = useTableSorting({
-    leads: displayLeads,
-    sortField,
-    sortOrder,
+    leads,
+    sortField: (sorting[0]?.id as SortField) || "name",
+    sortOrder: sorting[0]?.desc ? "desc" : "asc",
     users,
     onSortChange: (field, order) => {
-      setSortField(field);
-      setSortOrder(order);
       setSorting([{ id: field, desc: order === "desc" }]);
     },
   });
@@ -99,9 +90,12 @@ export default function LeadsTable({
     handleSelectAll,
     handleRowSelection,
   } = useRowSelection({
-    selectedLeads,
+    selectedLeads: displaySelectedLeads,
     currentPageLeads,
-    onSelectionChange,
+    onSelectionChange: (leads) => {
+      setStoreSelectedLeads(leads);
+      onSelectionChange?.(leads);
+    },
   });
 
   const { handleRowClick, handlePanelClose, handleNavigate, currentIndex } =
@@ -113,10 +107,10 @@ export default function LeadsTable({
     });
 
   const { columns } = useTableColumns({
-    sortField,
+    sortField: (sorting[0]?.id as SortField) || "name",
     handleSort,
     allSelected,
-    selectedLeads,
+    selectedLeads: displaySelectedLeads,
     handleSelectAll,
     handleRowSelection,
     users,
