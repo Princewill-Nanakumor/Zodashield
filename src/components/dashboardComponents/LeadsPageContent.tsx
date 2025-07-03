@@ -2,8 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Loader2, Users } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
@@ -31,7 +31,6 @@ const USER_ROLES = {
   ADMIN: "ADMIN",
 } as const;
 
-// Clean utility function with no logging
 const getAssignedUserId = (assignedTo: Lead["assignedTo"]): string | null => {
   if (!assignedTo) return null;
 
@@ -80,7 +79,6 @@ const LeadsPageContent: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Get data and actions from hooks
   const {
     leads,
     users,
@@ -92,15 +90,14 @@ const LeadsPageContent: React.FC = () => {
     isUnassigning,
   } = useLeads();
 
-  // Use Zustand store for selected leads and filter
   const { selectedLeads, setSelectedLeads, filterByUser, setFilterByUser } =
     useLeadsStore();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
+  const [isDataReady, setIsDataReady] = useState(false);
 
-  // Use extracted hooks
   const { isInitialized, handleFilterChange } = useUrlFilterSync(
     users,
     isLoadingUsers,
@@ -108,19 +105,53 @@ const LeadsPageContent: React.FC = () => {
     setFilterByUser
   );
 
-  const { handleLeadUpdate, isUpdating } = useLeadUpdate(
-    leads,
-    () => {} // No need to sync back since we're using useLeads directly
-  );
+  const { handleLeadUpdate, isUpdating } = useLeadUpdate(leads, () => {});
 
-  // Memoized filtered leads - Use leads directly from useLeads hook
+  // Memoized filtered leads with proper loading state handling
   const filteredLeads = useMemo(() => {
-    if (!isInitialized) {
-      return leads;
+    // Don't filter if data isn't ready yet
+    if (!isDataReady || !isInitialized) {
+      return [];
     }
 
     return filterLeadsByUser(leads, filterByUser);
-  }, [leads, filterByUser, isInitialized]);
+  }, [leads, filterByUser, isInitialized, isDataReady]);
+
+  // Memoized counts to prevent unnecessary recalculations
+  const counts = useMemo(() => {
+    if (!isDataReady) {
+      return {
+        total: 0,
+        filtered: 0,
+        assigned: 0,
+      };
+    }
+
+    return {
+      total: leads.length,
+      filtered: filteredLeads.length,
+      assigned: getAssignedLeadsCount(selectedLeads),
+    };
+  }, [leads.length, filteredLeads.length, selectedLeads, isDataReady]);
+
+  // Determine if we should show loading states
+  const isLoading = isLoadingLeads || isLoadingUsers || isUpdating;
+  const isInitialLoading = isLoadingLeads && leads.length === 0;
+  const shouldShowLoading = isInitialLoading || !isDataReady;
+
+  // Set data ready state when initial load completes
+  useEffect(() => {
+    if (!isLoadingLeads && !isLoadingUsers && isInitialized) {
+      setIsDataReady(true);
+    }
+  }, [isLoadingLeads, isLoadingUsers, isInitialized]);
+
+  // Reset data ready state when starting a new load
+  useEffect(() => {
+    if (isLoadingLeads || isLoadingUsers) {
+      setIsDataReady(false);
+    }
+  }, [isLoadingLeads, isLoadingUsers]);
 
   const handleAssignLeads = useCallback(async () => {
     if (selectedLeads.length === 0 || !selectedUser) return;
@@ -197,7 +228,6 @@ const LeadsPageContent: React.FC = () => {
     }
   }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
 
-  // Handle selection change
   const handleSelectionChange = useCallback(
     (newSelectedLeads: Lead[]) => {
       setSelectedLeads(newSelectedLeads);
@@ -205,12 +235,9 @@ const LeadsPageContent: React.FC = () => {
     [setSelectedLeads]
   );
 
-  // Computed values
-  const isLoading = isLoadingLeads || isLoadingUsers || isUpdating;
   const hasAssignedLeads = selectedLeads.some(
     (lead) => !!getAssignedUserId(lead.assignedTo)
   );
-  const assignedLeadsCount = getAssignedLeadsCount(selectedLeads);
 
   if (status === "loading") {
     return (
@@ -231,51 +258,93 @@ const LeadsPageContent: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 bg-background dark:bg-gray-900 p-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Leads
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Manage and track all your leads in one place
-          </p>
-        </div>
-        <div className="flex gap-4">
-          <FilterControls
-            filterByUser={filterByUser}
-            onFilterChange={handleFilterChange}
-            users={users}
-            isLoading={isLoadingUsers}
-          />
-          <BulkActions
-            selectedLeads={selectedLeads}
-            hasAssignedLeads={hasAssignedLeads}
-            assignedLeadsCount={assignedLeadsCount}
-            isUpdating={isUpdating}
-            onAssign={() => setIsDialogOpen(true)}
-            onUnassign={() => setIsUnassignDialogOpen(true)}
-          />
+    <div className="flex flex-col h-full bg-background dark:bg-gray-900">
+      {/* Main Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-8 py-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <Users className="h-8 w-8 text-blue-600" />
+              Leads Management
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Manage and track all your leads in one centralized dashboard
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Total Leads Badge */}
+            {shouldShowLoading ? (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                Loading...
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                {counts.total.toLocaleString()} Total Leads
+              </span>
+            )}
+
+            {/* Filtered Leads Badge */}
+            {shouldShowLoading ? (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                Loading...
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
+                {counts.filtered.toLocaleString()} Filtered
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      <LoadingState isLoading={isLoading}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          {filteredLeads.length === 0 ? (
-            <EmptyState filterByUser={filterByUser} />
-          ) : (
-            <LeadsTable
-              leads={filteredLeads}
-              onLeadUpdated={handleLeadUpdate}
-              isLoading={isLoading}
+      {/* Sticky Filter Controls */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <BulkActions
               selectedLeads={selectedLeads}
-              users={users}
-              onSelectionChange={handleSelectionChange}
+              hasAssignedLeads={hasAssignedLeads}
+              assignedLeadsCount={counts.assigned}
+              isUpdating={isUpdating}
+              onAssign={() => setIsDialogOpen(true)}
+              onUnassign={() => setIsUnassignDialogOpen(true)}
             />
-          )}
-        </div>
-      </LoadingState>
+          </div>
 
+          <div className="flex items-center gap-3">
+            <FilterControls
+              filterByUser={filterByUser}
+              onFilterChange={handleFilterChange}
+              users={users}
+              isLoading={isLoadingUsers}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto px-8 py-6">
+        <LoadingState isLoading={shouldShowLoading}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {!shouldShowLoading && filteredLeads.length === 0 ? (
+              <EmptyState filterByUser={filterByUser} />
+            ) : (
+              <LeadsTable
+                leads={filteredLeads}
+                onLeadUpdated={handleLeadUpdate}
+                isLoading={isLoading}
+                selectedLeads={selectedLeads}
+                users={users}
+                onSelectionChange={handleSelectionChange}
+              />
+            )}
+          </div>
+        </LoadingState>
+      </div>
+
+      {/* Dialogs */}
       <AssignLeadsDialog
         isOpen={isDialogOpen}
         onClose={() => {
@@ -299,8 +368,8 @@ const LeadsPageContent: React.FC = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Unassign {assignedLeadsCount} lead
-              {assignedLeadsCount > 1 ? "s" : ""}?
+              Unassign {counts.assigned} lead
+              {counts.assigned > 1 ? "s" : ""}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This will remove the assignment from the selected leads. They will

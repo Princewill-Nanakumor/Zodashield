@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { BarChart3, LogOut, Users, ListChecks } from "lucide-react";
+import { BarChart3, LogOut, Users, ListChecks, Search } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { Lead } from "@/types/leads";
 
 type StatusCount = {
   id: string;
@@ -28,6 +29,21 @@ interface User {
   lastLogin?: string;
 }
 
+// Utility function to get assigned user ID
+const getAssignedUserId = (assignedTo: unknown): string | null => {
+  if (!assignedTo) return null;
+  if (typeof assignedTo === "string") return assignedTo;
+  if (assignedTo && typeof assignedTo === "object") {
+    const assignedToObj = assignedTo as Record<string, unknown>;
+    if (assignedToObj.id && typeof assignedToObj.id === "string")
+      return assignedToObj.id;
+    if (assignedToObj._id && typeof assignedToObj._id === "string")
+      return assignedToObj._id;
+    return null;
+  }
+  return null;
+};
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const { toast } = useToast();
@@ -35,6 +51,11 @@ export default function DashboardPage() {
   const [leadCount, setLeadCount] = useState<number | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
+  const [leadStats, setLeadStats] = useState({
+    total: 0,
+    assigned: 0,
+    unassigned: 0,
+  });
 
   const fetchLeadCount = useCallback(async () => {
     try {
@@ -102,13 +123,39 @@ export default function DashboardPage() {
     }
   }, [toast]);
 
+  // Fetch lead statistics
+  const fetchLeadStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/leads/all");
+      if (!res.ok) throw new Error("Failed to fetch leads");
+      const data = await res.json();
+      const leads = Array.isArray(data) ? data : [];
+
+      const total = leads.length;
+      const unassigned = leads.filter(
+        (lead: Lead) => !getAssignedUserId(lead.assignedTo)
+      ).length;
+      const assigned = total - unassigned;
+
+      setLeadStats({ total, assigned, unassigned });
+    } catch (error) {
+      console.error("Error fetching lead stats:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load lead statistics.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   useEffect(() => {
     if (status === "authenticated") {
       fetchLeadCount();
       fetchUsers();
       fetchStatusCounts();
+      fetchLeadStats();
     }
-  }, [status, fetchLeadCount, fetchUsers, fetchStatusCounts]);
+  }, [status, fetchLeadCount, fetchUsers, fetchStatusCounts, fetchLeadStats]);
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/signin" });
@@ -148,6 +195,60 @@ export default function DashboardPage() {
           <LogOut className="h-4 w-4" />
           Logout
         </Button>
+      </div>
+
+      {/* Lead Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Leads Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Total Leads
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {leadStats.total.toLocaleString()}
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Assigned Leads Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Assigned Leads
+              </p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {leadStats.assigned.toLocaleString()}
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Unassigned Leads Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Unassigned Leads
+              </p>
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                {leadStats.unassigned.toLocaleString()}
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+              <Search className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div
