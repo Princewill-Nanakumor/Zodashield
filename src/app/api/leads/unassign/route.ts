@@ -61,13 +61,21 @@ export async function POST(request: Request) {
     const updatePromises = beforeLeads.map(async (lead) => {
       const oldAssignedTo = lead.assignedTo;
 
-      // Get the user being unassigned
-      const unassignedUser = await db
-        .collection("users")
-        .findOne(
-          { _id: new mongoose.Types.ObjectId(oldAssignedTo) },
-          { projection: { firstName: 1, lastName: 1 } }
-        );
+      // Get the user being unassigned (handle both object and ObjectId formats)
+      let unassignedUser = null;
+      if (oldAssignedTo) {
+        const userId =
+          typeof oldAssignedTo === "object" && oldAssignedTo._id
+            ? oldAssignedTo._id
+            : oldAssignedTo;
+
+        unassignedUser = await db
+          .collection("users")
+          .findOne(
+            { _id: new mongoose.Types.ObjectId(userId) },
+            { projection: { firstName: 1, lastName: 1 } }
+          );
+      }
 
       // Update lead
       const updatedLead = await db.collection("leads").findOneAndUpdate(
@@ -92,13 +100,13 @@ export async function POST(request: Request) {
           assignedTo: null,
           assignedFrom: unassignedUser
             ? {
-                id: unassignedUser._id.toString(),
+                _id: unassignedUser._id,
                 firstName: unassignedUser.firstName,
                 lastName: unassignedUser.lastName,
               }
             : null,
           assignedBy: {
-            id: assignedByUser._id.toString(),
+            _id: assignedByUser._id,
             firstName: assignedByUser.firstName,
             lastName: assignedByUser.lastName,
           },

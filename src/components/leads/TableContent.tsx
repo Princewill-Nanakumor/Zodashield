@@ -19,6 +19,80 @@ interface TableContentProps {
   isLoading?: boolean;
 }
 
+// Loading Skeleton Components
+const TableHeaderSkeleton = ({ columnCount }: { columnCount: number }) => (
+  <TableHeader className="bg-gray-100 dark:bg-gray-800">
+    <TableRow>
+      {Array.from({ length: columnCount }).map((_, index) => (
+        <TableHead
+          key={`skeleton-header-${index}`}
+          className={`text-gray-700 dark:text-gray-300 font-semibold text-left ${
+            index === 0
+              ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
+              : "px-4"
+          }`}
+        >
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        </TableHead>
+      ))}
+    </TableRow>
+  </TableHeader>
+);
+
+const TableRowSkeleton = ({
+  columnCount,
+  isLast,
+}: {
+  columnCount: number;
+  isLast: boolean;
+}) => (
+  <TableRow className="bg-white dark:bg-gray-800">
+    {Array.from({ length: columnCount }).map((_, index) => (
+      <TableCell
+        key={`skeleton-cell-${index}`}
+        className={`
+          py-3.5
+          ${
+            index === 0
+              ? "px-3 border-r border-gray-200 dark:border-gray-700"
+              : "px-4"
+          }
+          border-b border-gray-200 dark:border-gray-700
+          ${isLast ? "border-b-2" : ""}
+        `}
+      >
+        <div className="flex items-center space-x-2">
+          {index === 0 && (
+            <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          )}
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex-1"></div>
+        </div>
+      </TableCell>
+    ))}
+  </TableRow>
+);
+
+const TableSkeleton = ({
+  columnCount,
+  rowCount = 5,
+}: {
+  columnCount: number;
+  rowCount?: number;
+}) => (
+  <>
+    <TableHeaderSkeleton columnCount={columnCount} />
+    <TableBody className="dark:bg-gray-900">
+      {Array.from({ length: rowCount }).map((_, index) => (
+        <TableRowSkeleton
+          key={`skeleton-row-${index}`}
+          columnCount={columnCount}
+          isLast={index === rowCount - 1}
+        />
+      ))}
+    </TableBody>
+  </>
+);
+
 export function TableContent({
   table,
   onRowClick,
@@ -133,6 +207,12 @@ export function TableContent({
   };
 
   const showLoadingState = isLoading || isStatusLoading;
+  const columnCount = table.getAllColumns().length;
+
+  // Show skeleton when loading
+  if (showLoadingState) {
+    return <TableSkeleton columnCount={columnCount} rowCount={5} />;
+  }
 
   return (
     <>
@@ -166,21 +246,7 @@ export function TableContent({
         ))}
       </TableHeader>
       <TableBody className="dark:bg-gray-900">
-        {showLoadingState ? (
-          <TableRow>
-            <TableCell
-              colSpan={table.getAllColumns().length}
-              className="h-24 text-center"
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-gray-500 dark:text-gray-400" />
-                <span className="text-gray-600 dark:text-gray-400">
-                  Loading data...
-                </span>
-              </div>
-            </TableCell>
-          </TableRow>
-        ) : table.getRowModel().rows.length ? (
+        {table.getRowModel().rows.length ? (
           table.getRowModel().rows.map((row, idx, arr) => {
             const lead = row.original;
             const isSelected = selectedLead && lead._id === selectedLead._id;
@@ -232,11 +298,11 @@ export function TableContent({
                     {cell.column.id === "status"
                       ? renderStatus(lead.status)
                       : cell.column.id === "createdAt"
-                      ? formatDateDMY(lead.createdAt)
-                      : flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        ? formatDateDMY(lead.createdAt)
+                        : flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
                   </TableCell>
                 ))}
               </TableRow>

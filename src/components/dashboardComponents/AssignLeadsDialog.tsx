@@ -1,32 +1,8 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/AssignLeadsDialog.tsx
-
+// src/app/components/dashboardComponents/AssignLeadsDialog.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { User } from "@/types/user.types";
 import { Lead } from "@/types/leads";
@@ -59,41 +35,14 @@ export function AssignLeadsDialog({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedUser("");
-    }
-  }, [isOpen, setSelectedUser]);
-
-  // Helper function to get assigned user ID
-  const getAssignedUserId = (
-    assignedTo:
-      | string
-      | { id: string; firstName: string; lastName: string }
-      | null
-      | undefined
-  ) => {
-    if (!assignedTo) return null;
-    return typeof assignedTo === "string" ? assignedTo : assignedTo.id;
-  };
-
-  // Helper function to get assigned user name
-  const getAssignedUserName = (
-    assignedTo:
-      | string
-      | { id: string; firstName: string; lastName: string }
-      | null
-      | undefined
-  ) => {
-    if (!assignedTo) return "Unassigned";
-    return typeof assignedTo === "string"
-      ? assignedTo
-      : `${assignedTo.firstName} ${assignedTo.lastName}`;
+  const handleClose = () => {
+    setSelectedUser(""); // Reset when closing
+    onClose();
   };
 
   const handleAssignClick = () => {
-    // If "unassign" is selected, trigger unassign
-    if (selectedUser === "unassign") {
+    // If no user is selected, this means we want to unassign
+    if (!selectedUser) {
       if (onUnassign) {
         setIsUnassignDialogOpen(true);
       }
@@ -122,56 +71,50 @@ export function AssignLeadsDialog({
   };
 
   const firstSelectedLead = selectedLeads?.[0];
-  const hasAssignedLeads = selectedLeads.some((l) => l.assignedTo);
-  const assignedLeadsCount = selectedLeads.filter((l) => l.assignedTo).length;
 
-  // Check if assign button should be disabled
-  const isAssignDisabled =
-    isAssigning || !selectedUser || selectedUser === "unassign";
-
-  // Button text logic
-  const getButtonText = () => {
-    if (isAssigning) {
-      return "Processing...";
-    }
-    if (selectedUser === "unassign") {
-      return "Unassign";
-    }
-    if (hasAssignedLeads) {
-      return "Reassign";
-    }
-    return "Assign";
-  };
+  // Don't render anything if not open
+  if (!isOpen) return null;
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
+      {/* Main Dialog */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
+        <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {selectedLeads.length > 1
-                ? "Manage Lead Assignments"
+                ? "Assign Multiple Leads"
                 : firstSelectedLead?.assignedTo
                   ? "Reassign Lead"
                   : "Assign Lead"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+            </h2>
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
             {firstSelectedLead?.assignedTo && selectedLeads.length === 1 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Currently assigned to
                 </label>
                 <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-md text-sm text-gray-700 dark:text-gray-300">
-                  {getAssignedUserName(firstSelectedLead.assignedTo)}
+                  {typeof firstSelectedLead.assignedTo === "string"
+                    ? firstSelectedLead.assignedTo
+                    : `${firstSelectedLead.assignedTo.firstName} ${firstSelectedLead.assignedTo.lastName}`}
                 </div>
               </div>
             )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {hasAssignedLeads
-                  ? "Select new assignee or unassign"
+                {selectedLeads.some((l) => l.assignedTo)
+                  ? "Select new assignee"
                   : "Select User"}
               </label>
               {isLoadingUsers ? (
@@ -179,95 +122,112 @@ export function AssignLeadsDialog({
                   <Loader2 className="h-4 w-4 animate-spin text-gray-500 dark:text-gray-400" />
                 </div>
               ) : (
-                <Select value={selectedUser} onValueChange={setSelectedUser}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user or unassign" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassign">Unassign</SelectItem>
-                    {users && users.length > 0 ? (
-                      users.map((user) => {
-                        const isCurrentAssignee = selectedLeads.some(
-                          (l) => getAssignedUserId(l.assignedTo) === user.id
-                        );
-                        return (
-                          <SelectItem
-                            key={user.id}
-                            value={user.id}
-                            disabled={isCurrentAssignee}
-                          >
-                            {user.firstName} {user.lastName}
-                            {isCurrentAssignee && " (Current)"}
-                          </SelectItem>
-                        );
-                      })
-                    ) : (
-                      <SelectItem value="no-users" disabled>
-                        No users available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={selectedUser}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a user</option>
+                  {users && users.length > 0 ? (
+                    users.map((user) => {
+                      const isCurrentAssignee = selectedLeads.some(
+                        (l) => l.assignedTo?.id === user.id
+                      );
+                      return (
+                        <option
+                          key={user.id}
+                          value={user.id}
+                          disabled={isCurrentAssignee}
+                        >
+                          {user.firstName} {user.lastName}
+                          {isCurrentAssignee && " (Current)"}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option value="no-users" disabled>
+                      No users available
+                    </option>
+                  )}
+                </select>
               )}
             </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={onClose}>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button onClick={handleAssignClick} disabled={isAssignDisabled}>
-                {isAssigning && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Button
+                onClick={handleAssignClick}
+                disabled={isAssigning || !selectedUser}
+              >
+                {isAssigning ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Assigning...
+                  </>
+                ) : selectedLeads.some((l) => l.assignedTo) ? (
+                  "Reassign"
+                ) : (
+                  "Assign"
                 )}
-                {getButtonText()}
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+        </div>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {isConfirmOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsConfirmOpen(false)}
+          />
+          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Are you sure you want to reassign?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {assignedLeadsCount} of {selectedLeads.length} selected lead
-              {selectedLeads.length > 1 ? "s" : ""}
-              {assignedLeadsCount > 1 ? " are" : " is"} already assigned.
-              Reassigning will change the owner.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAssign}>
-              Yes, Reassign
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog
-        open={isUnassignDialogOpen}
-        onOpenChange={setIsUnassignDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Are you sure you want to unassign {assignedLeadsCount} lead
-              {assignedLeadsCount > 1 ? "s" : ""}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the assignment from the selected leads. They will
-              become unassigned and available for reassignment.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUnassignConfirm}>
-              Yes, Unassign
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              One or more of these leads are already assigned. Reassigning will
+              change the owner.
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmAssign}>Yes, Reassign</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unassign Dialog */}
+      {isUnassignDialogOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsUnassignDialogOpen(false)}
+          />
+          <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Are you sure you want to unassign?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Unassigning will remove the owner from these leads.
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsUnassignDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleUnassignConfirm}>Yes, Unassign</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

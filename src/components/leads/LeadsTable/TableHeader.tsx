@@ -1,12 +1,6 @@
+// src/components/leads/LeadsTable/TableHeader.tsx
 import { Table } from "@tanstack/react-table";
 import { Lead } from "@/types/leads";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface TableHeaderProps {
   table: Table<Lead>;
@@ -32,23 +26,20 @@ export function TableHeader({
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Show
         </label>
-        <Select
+        {/* Replaced Radix UI Select with simple HTML select */}
+        <select
           value={pageSize.toString()}
-          onValueChange={(value) => {
-            table.setPageSize(Number(value));
+          onChange={(e) => {
+            table.setPageSize(Number(e.target.value));
           }}
+          className="w-[80px] h-8 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
         >
-          <SelectTrigger className="w-[80px]">
-            <SelectValue placeholder={pageSize} />
-          </SelectTrigger>
-          <SelectContent>
-            {pageSizeOptions.map((size) => (
-              <SelectItem key={size} value={size.toString()}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {pageSizeOptions.map((size) => (
+            <option key={size} value={size.toString()}>
+              {size}
+            </option>
+          ))}
+        </select>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           entries
         </span>

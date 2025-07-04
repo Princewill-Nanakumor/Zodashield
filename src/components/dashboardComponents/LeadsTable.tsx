@@ -1,3 +1,4 @@
+// src/app/components/dashboardComponents/LeadsTable.tsx
 "use client";
 
 import { useMemo } from "react";
@@ -76,12 +77,26 @@ export default function LeadsTable({
     },
   });
 
-  // Memoized current page leads
+  // Memoized current page leads with page preservation logic
   const currentPageLeads = useMemo(() => {
     const startIndex = pageIndex * pageSize;
     const endIndex = startIndex + pageSize;
+
+    // If the current page would be empty after filtering, adjust to the last valid page
+    if (startIndex >= sortedLeads.length && sortedLeads.length > 0) {
+      const newPageIndex = Math.floor((sortedLeads.length - 1) / pageSize);
+      // Only update if the page actually changed
+      if (newPageIndex !== pageIndex) {
+        setPageIndex(newPageIndex);
+        return sortedLeads.slice(
+          newPageIndex * pageSize,
+          (newPageIndex + 1) * pageSize
+        );
+      }
+    }
+
     return sortedLeads.slice(startIndex, endIndex);
-  }, [sortedLeads, pageIndex, pageSize]);
+  }, [sortedLeads, pageIndex, pageSize, setPageIndex]);
 
   const {
     rowSelection,
