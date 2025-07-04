@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Globe } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
@@ -23,6 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Lead } from "@/types/leads";
 import useUrlFilterSync from "@/hooks/useUrlFilterSync";
 import useLeadUpdate from "@/hooks/useLeadUpdate";
@@ -70,6 +77,19 @@ const filterLeadsByUser = (leads: Lead[], filterByUser: string): Lead[] => {
   }
 };
 
+const filterLeadsByCountry = (
+  leads: Lead[],
+  filterByCountry: string
+): Lead[] => {
+  if (!filterByCountry || filterByCountry === "all") {
+    return leads;
+  }
+
+  return leads.filter(
+    (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
+  );
+};
+
 const getAssignedLeadsCount = (leads: Lead[]): number => {
   return leads.filter((lead) => !!getAssignedUserId(lead.assignedTo)).length;
 };
@@ -97,6 +117,7 @@ const LeadsPageContent: React.FC = () => {
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [isDataReady, setIsDataReady] = useState(false);
+  const [filterByCountry, setFilterByCountry] = useState<string>("all");
 
   const { isInitialized, handleFilterChange } = useUrlFilterSync(
     users,
@@ -107,6 +128,23 @@ const LeadsPageContent: React.FC = () => {
 
   const { handleLeadUpdate, isUpdating } = useLeadUpdate(leads, () => {});
 
+  // Get unique countries from leads
+  const availableCountries = useMemo(() => {
+    if (!isDataReady) return [];
+
+    const countries = leads
+      .map((lead) => lead.country)
+      .filter(
+        (country): country is string =>
+          country !== undefined && country !== null && country.trim() !== ""
+      )
+      .map((country) => country.toLowerCase())
+      .filter((country, index, arr) => arr.indexOf(country) === index)
+      .sort();
+
+    return countries;
+  }, [leads, isDataReady]);
+
   // Memoized filtered leads with proper loading state handling
   const filteredLeads = useMemo(() => {
     // Don't filter if data isn't ready yet
@@ -114,8 +152,14 @@ const LeadsPageContent: React.FC = () => {
       return [];
     }
 
-    return filterLeadsByUser(leads, filterByUser);
-  }, [leads, filterByUser, isInitialized, isDataReady]);
+    // First filter by user
+    let filtered = filterLeadsByUser(leads, filterByUser);
+
+    // Then filter by country
+    filtered = filterLeadsByCountry(filtered, filterByCountry);
+
+    return filtered;
+  }, [leads, filterByUser, filterByCountry, isInitialized, isDataReady]);
 
   // Memoized counts to prevent unnecessary recalculations
   const counts = useMemo(() => {
@@ -124,6 +168,7 @@ const LeadsPageContent: React.FC = () => {
         total: 0,
         filtered: 0,
         assigned: 0,
+        countries: 0,
       };
     }
 
@@ -131,8 +176,15 @@ const LeadsPageContent: React.FC = () => {
       total: leads.length,
       filtered: filteredLeads.length,
       assigned: getAssignedLeadsCount(selectedLeads),
+      countries: availableCountries.length,
     };
-  }, [leads.length, filteredLeads.length, selectedLeads, isDataReady]);
+  }, [
+    leads.length,
+    filteredLeads.length,
+    selectedLeads,
+    availableCountries.length,
+    isDataReady,
+  ]);
 
   // Determine if we should show loading states
   const isLoading = isLoadingLeads || isLoadingUsers || isUpdating;
@@ -235,6 +287,10 @@ const LeadsPageContent: React.FC = () => {
     [setSelectedLeads]
   );
 
+  const handleCountryFilterChange = useCallback((country: string) => {
+    setFilterByCountry(country);
+  }, []);
+
   const hasAssignedLeads = selectedLeads.some(
     (lead) => !!getAssignedUserId(lead.assignedTo)
   );
@@ -295,12 +351,25 @@ const LeadsPageContent: React.FC = () => {
                 {counts.filtered.toLocaleString()} Filtered
               </span>
             )}
+
+            {/* Countries Badge */}
+            {shouldShowLoading ? (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                Loading...
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                <Globe className="h-3 w-3 mr-1" />
+                {counts.countries} Countries
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       {/* Sticky Filter Controls */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700 ">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <BulkActions
@@ -314,6 +383,37 @@ const LeadsPageContent: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Country Filter */}
+            <Select
+              value={filterByCountry}
+              onValueChange={handleCountryFilterChange}
+              disabled={shouldShowLoading}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Countries">
+                  {shouldShowLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </div>
+                  ) : filterByCountry === "all" ? (
+                    "All Countries"
+                  ) : (
+                    filterByCountry.charAt(0).toUpperCase() +
+                    filterByCountry.slice(1)
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Countries</SelectItem>
+                {availableCountries.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country.charAt(0).toUpperCase() + country.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <FilterControls
               filterByUser={filterByUser}
               onFilterChange={handleFilterChange}
@@ -329,7 +429,11 @@ const LeadsPageContent: React.FC = () => {
         <LoadingState isLoading={shouldShowLoading}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             {!shouldShowLoading && filteredLeads.length === 0 ? (
-              <EmptyState filterByUser={filterByUser} />
+              <EmptyState
+                filterByUser={filterByUser}
+                filterByCountry={filterByCountry}
+                users={users}
+              />
             ) : (
               <LeadsTable
                 leads={filteredLeads}
