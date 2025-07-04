@@ -81,7 +81,7 @@ export const useLeads = () => {
     setLoadingStatuses,
   } = useLeadsStore();
 
-  // Fetch statuses
+  // Fetch statuses with retry logic
   const { data: statuses = [] } = useQuery({
     queryKey: ["statuses"],
     queryFn: async (): Promise<
@@ -89,39 +89,80 @@ export const useLeads = () => {
     > => {
       setLoadingStatuses(true);
       try {
-        const response = await fetch("/api/statuses");
-        if (!response.ok) throw new Error("Failed to fetch statuses");
+        const response = await fetch("/api/statuses", {
+          // Add cache control to prevent stale data
+          cache: "no-store",
+          // Add timeout
+          signal: AbortSignal.timeout(10000), // 10 second timeout
+        });
+
+        if (!response.ok) {
+          if (response.status === 503) {
+            throw new Error("Database connection error. Please try again.");
+          }
+          throw new Error("Failed to fetch statuses");
+        }
+
         const data = await response.json();
         const statusesArray = data.statuses || data || [];
         setStatuses(statusesArray);
         return statusesArray;
       } catch (error) {
         console.error("Error fetching statuses:", error);
+
+        // Show user-friendly error message
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred.";
+
         toast({
           title: "Error loading statuses",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An unknown error occurred.",
+          description: errorMessage,
           variant: "destructive",
         });
+
+        // Return empty array as fallback
         return [];
       } finally {
         setLoadingStatuses(false);
       }
     },
-    staleTime: 10 * 60 * 1000,
+    // Add retry configuration
+    retry: (failureCount, error) => {
+      // Retry up to 3 times for connection errors
+      if (
+        failureCount < 3 &&
+        error instanceof Error &&
+        (error.message.includes("connection") ||
+          error.message.includes("timeout"))
+      ) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // Add stale time to prevent unnecessary refetches
+    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  // Fetch users
+  // Fetch users with retry logic
   const { data: users = [] } = useQuery({
     queryKey: ["users"],
     queryFn: async (): Promise<User[]> => {
       setLoadingUsers(true);
       try {
-        const res = await fetch("/api/users");
-        if (!res.ok) throw new Error("Failed to fetch users");
-        const usersData = await res.json();
+        const response = await fetch("/api/users", {
+          cache: "no-store",
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!response.ok) {
+          if (response.status === 503) {
+            throw new Error("Database connection error. Please try again.");
+          }
+          throw new Error("Failed to fetch users");
+        }
+
+        const usersData = await response.json();
         const usersArray = Array.isArray(usersData)
           ? usersData
           : usersData.users;
@@ -135,30 +176,51 @@ export const useLeads = () => {
         return activeUsers;
       } catch (error) {
         console.error("Error fetching users:", error);
+
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred.";
+
         toast({
           title: "Error loading users",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An unknown error occurred.",
+          description: errorMessage,
           variant: "destructive",
         });
+
         return [];
       } finally {
         setLoadingUsers(false);
       }
     },
-    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (
+        failureCount < 3 &&
+        error instanceof Error &&
+        (error.message.includes("connection") ||
+          error.message.includes("timeout"))
+      ) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch leads
+  // Fetch leads with retry logic
   const { data: leads = [], isLoading: isLoadingLeads } = useQuery({
     queryKey: ["leads"],
     queryFn: async (): Promise<Lead[]> => {
       setLoadingLeads(true);
       try {
-        const response = await fetch("/api/leads/all");
+        const response = await fetch("/api/leads/all", {
+          cache: "no-store",
+          signal: AbortSignal.timeout(15000), // 15 second timeout for leads
+        });
+
         if (!response.ok) {
+          if (response.status === 503) {
+            throw new Error("Database connection error. Please try again.");
+          }
           const errorData = await response.json();
           throw new Error(errorData.message || "Failed to fetch leads");
         }
@@ -177,21 +239,38 @@ export const useLeads = () => {
         return formattedLeads;
       } catch (error) {
         console.error("Error fetching leads:", error);
+
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred.";
+
         toast({
-          title: "Error",
-          description: "Failed to fetch leads",
+          title: "Error loading leads",
+          description: errorMessage,
           variant: "destructive",
         });
+
         return [];
       } finally {
         setLoadingLeads(false);
       }
     },
     enabled: users.length > 0,
-    staleTime: 2 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (
+        failureCount < 3 &&
+        error instanceof Error &&
+        (error.message.includes("connection") ||
+          error.message.includes("timeout"))
+      ) {
+        return true;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 2 * 60 * 1000, // 2 minutes for leads
   });
 
-  // Assignment mutation - REMOVED optimistic updates to avoid conflicts
+  // Assignment mutation with retry logic
   const assignLeadsMutation = useMutation({
     mutationFn: async ({
       leadIds,
@@ -204,12 +283,15 @@ export const useLeads = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds, userId }),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {
-        throw new Error(
-          (await response.json()).message || "Failed to assign leads."
-        );
+        if (response.status === 503) {
+          throw new Error("Database connection error. Please try again.");
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to assign leads");
       }
 
       return response.json();
@@ -235,19 +317,22 @@ export const useLeads = () => {
     },
   });
 
-  // Unassignment mutation - REMOVED optimistic updates to avoid conflicts
+  // Unassignment mutation with retry logic
   const unassignLeadsMutation = useMutation({
     mutationFn: async ({ leadIds }: { leadIds: string[] }) => {
       const response = await fetch("/api/leads/unassign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds }),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {
-        throw new Error(
-          (await response.json()).message || "Failed to unassign leads."
-        );
+        if (response.status === 503) {
+          throw new Error("Database connection error. Please try again.");
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to unassign leads");
       }
 
       return response.json();

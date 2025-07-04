@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import Lead from "@/models/Lead"; // Change this line - use default import
+import Lead from "@/models/Lead";
 import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
@@ -20,34 +20,43 @@ async function getStatusName(statusId: string): Promise<string> {
   }
 
   try {
-    const db = mongoose.connection.db;
-    if (db) {
-      const statusCollection = db.collection("status");
-
-      // Try to find by ObjectId first
-      let statusDoc = null;
-      if (mongoose.Types.ObjectId.isValid(statusId)) {
-        statusDoc = await statusCollection.findOne({
-          _id: new mongoose.Types.ObjectId(statusId),
-        });
-      }
-
-      // If not found by ObjectId, try by name (fallback)
-      if (!statusDoc) {
-        statusDoc = await statusCollection.findOne({
-          name: statusId,
-        });
-      }
-
-      const statusName = statusDoc?.name || statusId;
-      statusNameCache.set(normalizedId, statusName);
-      return statusName;
+    // Ensure database connection is active
+    if (mongoose.connection.readyState !== 1) {
+      console.log("Database connection not ready, reconnecting...");
+      await connectMongoDB();
     }
+
+    const db = mongoose.connection.db;
+    if (!db) {
+      console.error("Database connection not available");
+      return statusId;
+    }
+
+    const statusCollection = db.collection("status");
+
+    // Try to find by ObjectId first
+    let statusDoc = null;
+    if (mongoose.Types.ObjectId.isValid(statusId)) {
+      statusDoc = await statusCollection.findOne({
+        _id: new mongoose.Types.ObjectId(statusId),
+      });
+    }
+
+    // If not found by ObjectId, try by name (fallback)
+    if (!statusDoc) {
+      statusDoc = await statusCollection.findOne({
+        name: statusId,
+      });
+    }
+
+    const statusName = statusDoc?.name || statusId;
+    statusNameCache.set(normalizedId, statusName);
+    return statusName;
   } catch (error) {
     console.error("Error fetching status name:", error);
+    // Return the original statusId as fallback
+    return statusId;
   }
-
-  return statusId;
 }
 
 export async function PATCH(req: Request) {
@@ -57,7 +66,12 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongoDB();
+    // Ensure database connection is active
+    if (mongoose.connection.readyState !== 1) {
+      console.log("Database connection not ready, reconnecting...");
+      await connectMongoDB();
+    }
+
     const { status: newStatus } = await req.json();
 
     if (!newStatus) {
@@ -89,37 +103,52 @@ export async function PATCH(req: Request) {
       return NextResponse.json(currentLead);
     }
 
-    // Get status names for better activity logging
-    const [oldStatusName, newStatusName] = await Promise.all([
-      oldStatus ? getStatusName(oldStatus) : "Unknown",
-      getStatusName(newStatus),
-    ]);
+    // Get status names for better activity logging with error handling
+    let oldStatusName = "Unknown";
+    let newStatusName = newStatus;
+
+    try {
+      [oldStatusName, newStatusName] = await Promise.all([
+        oldStatus ? getStatusName(oldStatus) : "Unknown",
+        getStatusName(newStatus),
+      ]);
+    } catch (error) {
+      console.error("Error getting status names:", error);
+      // Continue with fallback names
+      oldStatusName = oldStatus || "Unknown";
+      newStatusName = newStatus;
+    }
 
     // Validate that the new status exists
-    const db = mongoose.connection.db;
-    if (db) {
-      const statusCollection = db.collection("status");
-      let statusExists = false;
+    try {
+      const db = mongoose.connection.db;
+      if (db) {
+        const statusCollection = db.collection("status");
+        let statusExists = false;
 
-      if (mongoose.Types.ObjectId.isValid(newStatus)) {
-        const statusDoc = await statusCollection.findOne({
-          _id: new mongoose.Types.ObjectId(newStatus),
-        });
-        statusExists = !!statusDoc;
-      } else {
-        // Try by name
-        const statusDoc = await statusCollection.findOne({
-          name: newStatus,
-        });
-        statusExists = !!statusDoc;
-      }
+        if (mongoose.Types.ObjectId.isValid(newStatus)) {
+          const statusDoc = await statusCollection.findOne({
+            _id: new mongoose.Types.ObjectId(newStatus),
+          });
+          statusExists = !!statusDoc;
+        } else {
+          // Try by name
+          const statusDoc = await statusCollection.findOne({
+            name: newStatus,
+          });
+          statusExists = !!statusDoc;
+        }
 
-      if (!statusExists) {
-        return NextResponse.json(
-          { error: "Invalid status ID or name" },
-          { status: 400 }
-        );
+        if (!statusExists) {
+          return NextResponse.json(
+            { error: "Invalid status ID or name" },
+            { status: 400 }
+          );
+        }
       }
+    } catch (error) {
+      console.error("Error validating status:", error);
+      // Continue without validation if there's an error
     }
 
     const updatedLead = await Lead.findByIdAndUpdate(
@@ -136,35 +165,49 @@ export async function PATCH(req: Request) {
     }
 
     // Create activity log for status change using unified Activity model
-    const activity = new Activity({
-      type: "STATUS_CHANGE",
-      userId: new mongoose.Types.ObjectId(session.user.id),
-      details: `Status changed from ${oldStatusName} to ${newStatusName}`,
-      leadId: new mongoose.Types.ObjectId(id),
-      timestamp: new Date(),
-      metadata: {
-        oldStatusId: oldStatus,
-        newStatusId: newStatus,
-        oldStatus: oldStatusName,
-        newStatus: newStatusName,
-        status: newStatusName,
-      },
-    });
+    try {
+      const activity = new Activity({
+        type: "STATUS_CHANGE",
+        userId: new mongoose.Types.ObjectId(session.user.id),
+        details: `Status changed from ${oldStatusName} to ${newStatusName}`,
+        leadId: new mongoose.Types.ObjectId(id),
+        timestamp: new Date(),
+        metadata: {
+          oldStatusId: oldStatus,
+          newStatusId: newStatus,
+          oldStatus: oldStatusName,
+          newStatus: newStatusName,
+          status: newStatusName,
+        },
+      });
 
-    await activity.save();
+      await activity.save();
 
-    console.log("Status updated successfully:", {
-      leadId: id,
-      oldStatus,
-      newStatus,
-      oldStatusName,
-      newStatusName,
-      activityId: activity._id,
-    });
+      console.log("Status updated successfully:", {
+        leadId: id,
+        oldStatus,
+        newStatus,
+        oldStatusName,
+        newStatusName,
+        activityId: activity._id,
+      });
+    } catch (activityError) {
+      console.error("Error creating activity log:", activityError);
+      // Don't fail the entire request if activity logging fails
+    }
 
     return NextResponse.json(updatedLead);
   } catch (error) {
     console.error("API Error:", error);
+
+    // Check if it's a connection error
+    if (error instanceof Error && error.message.includes("connection")) {
+      return NextResponse.json(
+        { error: "Database connection error. Please try again." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
