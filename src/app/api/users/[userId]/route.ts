@@ -3,70 +3,99 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import User from "@/models/User";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 
-function extractUserIdFromUrl(urlString: string): string {
-  const url = new URL(urlString);
-  const parts = url.pathname.split("/");
-  // Assumes route: /api/users/[userId]
-  // e.g. /api/users/123 -> parts = ["", "api", "users", "123"]
-  return parts[parts.length - 1];
-}
-
-export async function GET(request: Request) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ userId: string }> }
+) {
   try {
-    const userId = extractUserIdFromUrl(request.url);
-
     const session = await getServerSession(authOptions);
-
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectMongoDB();
+    const { userId } = await params;
 
-    const user = await User.findOne({
-      _id: userId,
-      createdBy: session.user.id,
-    }).select("-password");
-
-    if (!user) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    if (!ObjectId.isValid(userId)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
-    return NextResponse.json(user);
-  } catch (error: unknown) {
+    const db = mongoose.connection.db;
+    if (!db) throw new Error("Database connection not available");
+
+    const user = await db
+      .collection("users")
+      .findOne({ _id: new ObjectId(userId) });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Return only necessary user fields for lead assignment
+    const userData = {
+      _id: user._id.toString(),
+      id: user._id.toString(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    };
+
+    return NextResponse.json(userData);
+  } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json(
-      { message: "Error fetching user" },
+      { error: "Failed to fetch user" },
       { status: 500 }
     );
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ userId: string }> }
+) {
   try {
-    const userId = extractUserIdFromUrl(request.url);
-
     const session = await getServerSession(authOptions);
-
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const { userId } = await params;
     const { action, ...data } = await request.json();
 
     await connectMongoDB();
 
+    const db = mongoose.connection.db;
+    if (!db) throw new Error("Database connection not available");
+
     switch (action) {
       case "update-status": {
-        await User.findOneAndUpdate(
-          { _id: userId, createdBy: session.user.id },
-          { status: data.status }
+        const result = await db.collection("users").findOneAndUpdate(
+          {
+            _id: new ObjectId(userId),
+            createdBy: new ObjectId(session.user.id),
+          },
+          { $set: { status: data.status, updatedAt: new Date() } },
+          { returnDocument: "after" }
         );
+
+        // Check if result is null or if result.value is null
+        if (!result || !result.value) {
+          return NextResponse.json(
+            { message: "User not found" },
+            { status: 404 }
+          );
+        }
+
         return NextResponse.json({
           message: "Status updated successfully",
+          user: result.value,
         });
       }
 
@@ -76,7 +105,7 @@ export async function PATCH(request: Request) {
           { status: 400 }
         );
     }
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json(
       { message: "Error updating user" },

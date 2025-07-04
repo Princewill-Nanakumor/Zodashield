@@ -3,7 +3,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useCallback, useTransition, Suspense } from "react";
+import { useState, useMemo, useCallback, Suspense } from "react";
 import { Loader2, Users, Globe } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
@@ -150,7 +150,6 @@ const LeadsPageContent: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
 
   const {
     leads,
@@ -217,9 +216,8 @@ const LeadsPageContent: React.FC = () => {
     ]
   );
 
-  const isLoading = isLoadingLeads || isLoadingUsers || isPending;
+  const isLoading = isLoadingLeads || isLoadingUsers;
 
-  // FIXED: Improved loading state logic to prevent empty state flashing
   const shouldShowLoading = isLoadingLeads || isLoadingUsers;
   const showEmptyState =
     !shouldShowLoading &&
@@ -230,29 +228,22 @@ const LeadsPageContent: React.FC = () => {
   const handleAssignLeads = useCallback(async () => {
     if (selectedLeads.length === 0 || !uiState.selectedUser) return;
 
-    startTransition(async () => {
-      try {
-        await assignLeads({
-          leadIds: selectedLeads.map((l) => l._id),
-          userId: uiState.selectedUser,
-        });
-        setSelectedLeads([]);
-        setUiState((prev) => ({
-          ...prev,
-          isDialogOpen: false,
-          selectedUser: "",
-        }));
-      } catch (error) {
-        console.error("Assignment error:", error);
-      }
-    });
-  }, [
-    selectedLeads,
-    uiState.selectedUser,
-    assignLeads,
-    setSelectedLeads,
-    startTransition,
-  ]);
+    try {
+      await assignLeads({
+        leadIds: selectedLeads.map((l) => l._id),
+        userId: uiState.selectedUser,
+      });
+      setSelectedLeads([]);
+      setUiState((prev) => ({
+        ...prev,
+        isDialogOpen: false,
+        selectedUser: "",
+      }));
+    } catch (error) {
+      console.error("Assignment error:", error);
+      // Error is already handled in the mutation
+    }
+  }, [selectedLeads, uiState.selectedUser, assignLeads, setSelectedLeads]);
 
   const handleUnassignLeads = useCallback(async () => {
     const leadsToUnassign = selectedLeads.filter(
@@ -268,16 +259,15 @@ const LeadsPageContent: React.FC = () => {
       return;
     }
 
-    startTransition(async () => {
-      try {
-        await unassignLeads({ leadIds: leadsToUnassign.map((l) => l._id) });
-        setSelectedLeads([]);
-        setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
-      } catch (error) {
-        console.error("Unassignment error:", error);
-      }
-    });
-  }, [selectedLeads, unassignLeads, setSelectedLeads, toast, startTransition]);
+    try {
+      await unassignLeads({ leadIds: leadsToUnassign.map((l) => l._id) });
+      setSelectedLeads([]);
+      setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
+    } catch (error) {
+      console.error("Unassignment error:", error);
+      // Error is already handled in the mutation
+    }
+  }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
 
   const handleSelectionChange = useCallback(
     (newSelectedLeads: Lead[]) => setSelectedLeads(newSelectedLeads),
@@ -380,7 +370,7 @@ const LeadsPageContent: React.FC = () => {
                 selectedLeads={selectedLeads}
                 hasAssignedLeads={hasAssignedLeads}
                 assignedLeadsCount={counts.assigned}
-                isUpdating={false}
+                isUpdating={isAssigning || isUnassigning}
                 onAssign={() =>
                   setUiState((prev) => ({ ...prev, isDialogOpen: true }))
                 }

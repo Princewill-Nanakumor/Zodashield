@@ -1,3 +1,5 @@
+// /Users/safeconnection/Downloads/drivecrm-main/src/app/api/leads/[id]/route.ts
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -11,19 +13,30 @@ async function getAssignedToUser(
   assignedTo: ObjectId | string | null | undefined
 ) {
   if (!assignedTo) return null;
-  const user = await db.collection("users").findOne(
-    {
-      _id:
-        typeof assignedTo === "string" ? new ObjectId(assignedTo) : assignedTo,
-    },
-    { projection: { firstName: 1, lastName: 1 } }
-  );
-  if (!user) return null;
-  return {
-    id: user._id.toString(),
-    firstName: user.firstName,
-    lastName: user.lastName,
-  };
+
+  try {
+    const user = await db.collection("users").findOne(
+      {
+        _id:
+          typeof assignedTo === "string"
+            ? new ObjectId(assignedTo)
+            : assignedTo,
+      },
+      { projection: { firstName: 1, lastName: 1, email: 1 } }
+    );
+
+    if (!user) return null;
+
+    return {
+      id: user._id.toString(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    };
+  } catch (error) {
+    console.error("Error getting assigned user:", error);
+    return null;
+  }
 }
 
 // GET /api/leads/[id]
@@ -55,6 +68,7 @@ export async function GET(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
+    // Populate assignedTo with user details
     const assignedToUser = await getAssignedToUser(db, lead.assignedTo);
 
     const transformedLead = {
@@ -68,7 +82,7 @@ export async function GET(
       source: lead.source,
       status: lead.status,
       country: lead.country || "",
-      assignedTo: assignedToUser,
+      assignedTo: assignedToUser, // This will be { id, firstName, lastName, email } or null
       createdAt:
         lead.createdAt instanceof Date
           ? lead.createdAt.toISOString()
@@ -124,6 +138,7 @@ export async function PUT(
     const updatePayload: Record<string, unknown> = {
       updatedAt: new Date(),
     };
+
     if (updateData.firstName !== undefined)
       updatePayload.firstName = updateData.firstName;
     if (updateData.lastName !== undefined)
@@ -138,6 +153,8 @@ export async function PUT(
       updatePayload.country = updateData.country;
     if (updateData.comments !== undefined)
       updatePayload.comments = updateData.comments;
+
+    // Handle assignedTo field
     if (updateData.assignedTo !== undefined) {
       updatePayload.assignedTo = updateData.assignedTo
         ? new ObjectId(updateData.assignedTo)
@@ -159,6 +176,7 @@ export async function PUT(
       );
     }
 
+    // Populate assignedTo with user details for the response
     const assignedToUser = await getAssignedToUser(db, result.value.assignedTo);
 
     const transformedLead = {

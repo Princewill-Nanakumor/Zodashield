@@ -137,8 +137,9 @@ export async function GET() {
 
     const db = mongoose.connection.db;
 
+    // For lead assignment, we need all users (not just those created by the current admin)
+    // But we'll filter by role to exclude admins
     const query = {
-      createdBy: new mongoose.Types.ObjectId(session.user.id),
       role: { $ne: "ADMIN" },
     };
 

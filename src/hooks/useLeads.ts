@@ -1,4 +1,3 @@
-// src/hooks/useLeads.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
@@ -34,7 +33,7 @@ interface AssignedToObject {
   lastName: string;
 }
 
-// Simplified formatLead function
+// Enhanced formatLead function with better assignedTo handling
 const formatLead = (apiLead: ApiLead, users: User[]): Lead => {
   let assignedToObject:
     | Pick<User, "id" | "firstName" | "lastName">
@@ -90,10 +89,8 @@ export const useLeads = () => {
       setLoadingStatuses(true);
       try {
         const response = await fetch("/api/statuses", {
-          // Add cache control to prevent stale data
           cache: "no-store",
-          // Add timeout
-          signal: AbortSignal.timeout(10000), // 10 second timeout
+          signal: AbortSignal.timeout(10000),
         });
 
         if (!response.ok) {
@@ -110,7 +107,6 @@ export const useLeads = () => {
       } catch (error) {
         console.error("Error fetching statuses:", error);
 
-        // Show user-friendly error message
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred.";
 
@@ -120,15 +116,12 @@ export const useLeads = () => {
           variant: "destructive",
         });
 
-        // Return empty array as fallback
         return [];
       } finally {
         setLoadingStatuses(false);
       }
     },
-    // Add retry configuration
     retry: (failureCount, error) => {
-      // Retry up to 3 times for connection errors
       if (
         failureCount < 3 &&
         error instanceof Error &&
@@ -140,8 +133,7 @@ export const useLeads = () => {
       return false;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    // Add stale time to prevent unnecessary refetches
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 
   // Fetch users with retry logic
@@ -203,7 +195,7 @@ export const useLeads = () => {
       return false;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch leads with retry logic
@@ -214,7 +206,7 @@ export const useLeads = () => {
       try {
         const response = await fetch("/api/leads/all", {
           cache: "no-store",
-          signal: AbortSignal.timeout(15000), // 15 second timeout for leads
+          signal: AbortSignal.timeout(15000),
         });
 
         if (!response.ok) {
@@ -226,15 +218,14 @@ export const useLeads = () => {
         }
 
         const data: ApiLead[] = await response.json();
-        console.log("Raw API leads data:", data.slice(0, 2)); // Debug log
+        console.log("Raw API leads data:", data.slice(0, 2));
 
         const formattedLeads = data.map((apiLead) =>
           formatLead(apiLead, users)
         );
 
-        console.log("Formatted leads:", formattedLeads.slice(0, 2)); // Debug log
+        console.log("Formatted leads:", formattedLeads.slice(0, 2));
 
-        // Update Zustand store
         setLeads(formattedLeads);
         return formattedLeads;
       } catch (error) {
@@ -267,10 +258,10 @@ export const useLeads = () => {
       return false;
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    staleTime: 2 * 60 * 1000, // 2 minutes for leads
+    staleTime: 2 * 60 * 1000,
   });
 
-  // Assignment mutation with retry logic
+  // Assignment mutation with optimistic updates
   const assignLeadsMutation = useMutation({
     mutationFn: async ({
       leadIds,
@@ -296,18 +287,49 @@ export const useLeads = () => {
 
       return response.json();
     },
-    onSuccess: (data) => {
-      console.log("Assignment successful:", data);
-      // Invalidate and refetch leads to get fresh data from server
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast({
-        title: "Success",
-        description: "Leads assigned successfully",
-        variant: "default",
-      });
+    onMutate: async ({ leadIds, userId }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
+
+      // Snapshot the previous value
+      const previousLeads = queryClient.getQueryData(["leads"]) as Lead[];
+
+      // Find the user being assigned
+      const assignedUser = users.find((u) => u.id === userId);
+      if (!assignedUser) throw new Error("User not found");
+
+      // Optimistically update the leads
+      const optimisticLeads =
+        previousLeads?.map((lead) =>
+          leadIds.includes(lead._id)
+            ? {
+                ...lead,
+                assignedTo: {
+                  id: assignedUser.id,
+                  firstName: assignedUser.firstName,
+                  lastName: assignedUser.lastName,
+                },
+                updatedAt: new Date().toISOString(),
+              }
+            : lead
+        ) || [];
+
+      // Update the cache optimistically
+      queryClient.setQueryData(["leads"], optimisticLeads);
+
+      // Update Zustand store
+      setLeads(optimisticLeads);
+
+      // Return a context object with the snapshotted value
+      return { previousLeads };
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
       console.error("Assignment failed:", err);
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads"], context.previousLeads);
+        setLeads(context.previousLeads);
+      }
+
       toast({
         title: "Assignment Failed",
         description:
@@ -315,9 +337,27 @@ export const useLeads = () => {
         variant: "destructive",
       });
     },
+    onSuccess: (data, variables) => {
+      console.log("Assignment successful:", data);
+
+      const { leadIds, userId } = variables;
+      const assignedUser = users.find((u) => u.id === userId);
+      const leadCount = leadIds.length;
+
+      const userFullName = assignedUser
+        ? `${assignedUser.firstName} ${assignedUser.lastName}`
+        : "Unknown User";
+
+      const leadText = leadCount === 1 ? "lead" : "leads";
+
+      toast({
+        title: "Leads Assigned Successfully",
+        description: `${leadCount} ${leadText} assigned to ${userFullName}`,
+        variant: "success",
+      });
+    },
   });
 
-  // Unassignment mutation with retry logic
   const unassignLeadsMutation = useMutation({
     mutationFn: async ({ leadIds }: { leadIds: string[] }) => {
       const response = await fetch("/api/leads/unassign", {
@@ -337,23 +377,114 @@ export const useLeads = () => {
 
       return response.json();
     },
-    onSuccess: (data) => {
-      console.log("Unassignment successful:", data);
-      // Invalidate and refetch leads to get fresh data from server
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast({
-        title: "Success",
-        description: "Leads unassigned successfully",
-        variant: "default",
-      });
+    onMutate: async ({ leadIds }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
+
+      // Snapshot the previous value
+      const previousLeads = queryClient.getQueryData(["leads"]) as Lead[];
+
+      // Get the users that the leads were assigned to before unassignment
+      const leadsToUnassign =
+        previousLeads?.filter(
+          (lead) => leadIds.includes(lead._id) && lead.assignedTo
+        ) || [];
+
+      // Group leads by assigned user
+      const leadsByUser = leadsToUnassign.reduce(
+        (acc, lead) => {
+          if (lead.assignedTo) {
+            const userId = lead.assignedTo.id;
+            if (!acc[userId]) {
+              acc[userId] = {
+                user: lead.assignedTo,
+                count: 0,
+              };
+            }
+            acc[userId].count++;
+          }
+          return acc;
+        },
+        {} as Record<
+          string,
+          {
+            user: { id: string; firstName: string; lastName: string };
+            count: number;
+          }
+        >
+      );
+
+      // Optimistically update the leads
+      const optimisticLeads =
+        previousLeads?.map((lead) =>
+          leadIds.includes(lead._id)
+            ? {
+                ...lead,
+                assignedTo: null,
+                updatedAt: new Date().toISOString(),
+              }
+            : lead
+        ) || [];
+
+      // Update the cache optimistically
+      queryClient.setQueryData(["leads"], optimisticLeads);
+
+      // Update Zustand store
+      setLeads(optimisticLeads);
+
+      // Return a context object with the snapshotted value and user info
+      return { previousLeads, leadsByUser };
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
       console.error("Unassignment failed:", err);
+
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads"], context.previousLeads);
+        setLeads(context.previousLeads);
+      }
+
       toast({
         title: "Unassignment Failed",
         description:
           err instanceof Error ? err.message : "An unknown error occurred.",
         variant: "destructive",
+      });
+    },
+    onSuccess: (data, variables, context) => {
+      console.log("Unassignment successful:", data);
+
+      const { leadIds } = variables;
+      const leadCount = leadIds.length;
+      const leadText = leadCount === 1 ? "lead" : "leads";
+
+      // Get user information from context
+      const leadsByUser = context?.leadsByUser || {};
+      const userEntries = Object.values(leadsByUser);
+
+      let description = "";
+
+      if (userEntries.length === 0) {
+        description = `${leadCount} ${leadText} unassigned (were not assigned to anyone)`;
+      } else if (userEntries.length === 1) {
+        const { user, count } = userEntries[0];
+        const userFullName = `${user.firstName} ${user.lastName}`;
+        const countText = count === 1 ? "lead" : "leads";
+        description = `${count} ${countText} unassigned from ${userFullName}`;
+      } else {
+        // Multiple users
+        const userNames = userEntries.map(({ user, count }) => {
+          const userFullName = `${user.firstName} ${user.lastName}`;
+          const countText = count === 1 ? "lead" : "leads";
+          return `${count} ${countText} from ${userFullName}`;
+        });
+        description = `${leadCount} ${leadText} unassigned: ${userNames.join(", ")}`;
+      }
+
+      toast({
+        title: "Leads Unassigned Successfully",
+        description,
+        variant: "success",
       });
     },
   });

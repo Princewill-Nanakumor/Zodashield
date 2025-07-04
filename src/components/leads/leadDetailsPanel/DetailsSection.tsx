@@ -15,17 +15,27 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
 }) => {
   if (!lead) return null;
 
-  // Helper function to get assigned user name
+  // Helper function to get assigned user name - FIXED VERSION
   const getAssignedUserName = () => {
     if (!lead.assignedTo) return "Unassigned";
 
     if (typeof lead.assignedTo === "string") {
-      return lead.assignedTo; // Return the string as is
+      return "Unassigned";
     }
+    if (lead.assignedTo && typeof lead.assignedTo === "object") {
+      const assignedTo = lead.assignedTo as {
+        firstName?: string;
+        lastName?: string;
+      };
 
-    // If it's an object with firstName and lastName
-    if (lead.assignedTo.firstName && lead.assignedTo.lastName) {
-      return `${lead.assignedTo.firstName} ${lead.assignedTo.lastName}`;
+      if (assignedTo.firstName && assignedTo.lastName) {
+        const fullName = `${assignedTo.firstName} ${assignedTo.lastName}`;
+
+        return fullName;
+      }
+      // If only one name is available
+      if (assignedTo.firstName) return assignedTo.firstName;
+      if (assignedTo.lastName) return assignedTo.lastName;
     }
 
     return "Unknown User";

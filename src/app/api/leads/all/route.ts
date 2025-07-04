@@ -40,7 +40,10 @@ async function getAssignedToUser(
 
     const user = await db
       .collection("users")
-      .findOne({ _id: userId }, { projection: { firstName: 1, lastName: 1 } });
+      .findOne(
+        { _id: userId },
+        { projection: { firstName: 1, lastName: 1, email: 1 } }
+      );
 
     if (!user) {
       return null;
@@ -50,6 +53,7 @@ async function getAssignedToUser(
       id: user._id.toString(),
       firstName: user.firstName,
       lastName: user.lastName,
+      email: user.email,
     };
   } catch (error) {
     console.error("Error getting assigned user:", error);
@@ -99,7 +103,7 @@ export async function GET() {
           source: lead.source as string,
           status: lead.status as string,
           country: (lead.country as string) || "",
-          assignedTo: assignedToUser, // This will be { id, firstName, lastName } or null
+          assignedTo: assignedToUser, // This will be { id, firstName, lastName, email } or null
           createdAt:
             lead.createdAt instanceof Date
               ? lead.createdAt.toISOString()
