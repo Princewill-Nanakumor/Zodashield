@@ -10,7 +10,6 @@ import React, {
 import { useToast } from "@/components/ui/use-toast";
 import { Lead, LeadSource } from "@/types/leads";
 import { User } from "@/types/user.types";
-import { invalidateLeadCache } from "@/components/dashboardComponents/LeadDetailsPanel";
 
 interface ApiLead {
   _id?: string;
@@ -272,11 +271,6 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
           );
         }
 
-        // Invalidate cache for assigned leads
-        selectedLeads.forEach((lead) => {
-          invalidateLeadCache(lead._id);
-        });
-
         toastRef.current({
           title: "Success",
           description: `Assigned ${selectedLeads.length} lead(s) to ${user.firstName}.`,
@@ -336,11 +330,6 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
           (await response.json()).message || "Failed to unassign leads."
         );
       }
-
-      // Invalidate cache for unassigned leads
-      leadsToUnassign.forEach((lead) => {
-        invalidateLeadCache(lead._id);
-      });
 
       toastRef.current({
         title: "Success",

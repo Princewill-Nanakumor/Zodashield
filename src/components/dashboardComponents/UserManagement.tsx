@@ -20,7 +20,6 @@ import {
 } from "@/components/dashboardComponents/UserFormModal";
 import { PasswordResetModal } from "@/components/dashboardComponents/PasswordRestModal";
 import { useToast } from "@/components/ui/use-toast";
-import { invalidateLeadCache } from "@/components/dashboardComponents/LeadDetailsPanel";
 
 interface User {
   id: string;
@@ -327,9 +326,6 @@ export default function UsersManagement({
         const error = await response.json();
         throw new Error(error.message || "Failed to delete user");
       }
-
-      // Invalidate lead cache to force refresh of assignment data
-      invalidateLeadCache();
 
       await fetchUsers();
       toast({

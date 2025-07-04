@@ -30,10 +30,8 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
 
       if (assignedTo.firstName && assignedTo.lastName) {
         const fullName = `${assignedTo.firstName} ${assignedTo.lastName}`;
-
         return fullName;
       }
-      // If only one name is available
       if (assignedTo.firstName) return assignedTo.firstName;
       if (assignedTo.lastName) return assignedTo.lastName;
     }
