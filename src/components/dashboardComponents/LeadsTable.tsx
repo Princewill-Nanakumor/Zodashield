@@ -39,6 +39,9 @@ interface LeadsTableProps {
   users: User[];
   selectedLeads?: Lead[];
   onSelectionChange?: (leads: Lead[]) => void;
+  searchQuery?: string;
+  filterByUser?: string;
+  filterByCountry?: string;
 }
 
 export default function LeadsTable({
@@ -48,6 +51,9 @@ export default function LeadsTable({
   users = [],
   selectedLeads = [],
   onSelectionChange,
+  searchQuery = "",
+  filterByUser = "all",
+  filterByCountry = "all",
 }: LeadsTableProps) {
   // Store hooks
   const selectedLead = useSelectedLead();
@@ -163,23 +169,22 @@ export default function LeadsTable({
           pageIndex={pageIndex}
           totalRows={sortedLeads.length}
         />
-        <Table>
-          {showEmptyState ? (
-            <tbody>
-              <tr>
-                <td colSpan={columns.length}>
-                  <EmptyStateAdminLeadsTable />
-                </td>
-              </tr>
-            </tbody>
-          ) : (
+        {showEmptyState ? (
+          <EmptyStateAdminLeadsTable
+            searchQuery={searchQuery}
+            filterByUser={filterByUser}
+            filterByCountry={filterByCountry}
+            hasFilters={filterByUser !== "all" || filterByCountry !== "all"}
+          />
+        ) : (
+          <Table>
             <TableContent
               table={table}
               onRowClick={handleRowClick}
               selectedLead={selectedLead}
             />
-          )}
-        </Table>
+          </Table>
+        )}
         <TablePagination
           pageIndex={pageIndex}
           pageCount={table.getPageCount()}

@@ -475,6 +475,9 @@ const LeadsPageContent: React.FC = () => {
                   selectedLeads={selectedLeads}
                   users={users}
                   onSelectionChange={handleSelectionChange}
+                  searchQuery={uiState.searchQuery}
+                  filterByUser={filterByUser}
+                  filterByCountry={uiState.filterByCountry}
                 />
               </div>
             )}
