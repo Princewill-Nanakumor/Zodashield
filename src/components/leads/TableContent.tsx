@@ -216,7 +216,7 @@ export function TableContent({
 
   return (
     <>
-      <TableHeader className="bg-gray-100 dark:bg-gray-800">
+      <TableHeader className="bg-gray-100 border-l-4  dark:bg-gray-800">
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={generateUniqueKey("header-group", headerGroup.id)}>
             {headerGroup.headers.map((header) => {
@@ -225,7 +225,7 @@ export function TableContent({
                 <TableHead
                   key={generateUniqueKey("header", header.id)}
                   className={`
-                    text-gray-700 dark:text-gray-300 font-semibold text-left
+                    text-gray-700  dark:text-gray-300 font-semibold text-left
                     ${
                       isSelectColumn
                         ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
@@ -245,7 +245,7 @@ export function TableContent({
           </TableRow>
         ))}
       </TableHeader>
-      <TableBody className="dark:bg-gray-900">
+      <TableBody className="dark:bg-gray-900 border-l-4 ">
         {table.getRowModel().rows.length ? (
           table.getRowModel().rows.map((row, idx, arr) => {
             const lead = row.original;
@@ -264,12 +264,16 @@ export function TableContent({
                 }}
                 className={`
                   cursor-pointer transition-colors duration-150 ease-in-out
+                  border-l-4 border-b
                   ${
                     isSelected
-                      ? "bg-blue-50 dark:bg-gray-600 border-l-4 border-purple-500 dark:border-purple-500 font-bold"
-                      : "bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80"
+                      ? "bg-blue-50 dark:bg-gray-600 border-purple-500 dark:border-purple-500 font-bold"
+                      : "bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 border-l-transparent border-gray-200 dark:border-gray-700"
                   }
                 `}
+                style={
+                  isSelected ? { borderBottom: "2px solid #9333ea" } : undefined
+                }
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
@@ -289,11 +293,6 @@ export function TableContent({
                       border-b border-gray-200 dark:border-gray-700
                       ${isLastRow ? "border-b-2" : ""}
                     `}
-                    style={
-                      isSelected
-                        ? { borderBottom: "1px solid #9333ea" }
-                        : undefined
-                    }
                   >
                     {cell.column.id === "status"
                       ? renderStatus(lead.status)
