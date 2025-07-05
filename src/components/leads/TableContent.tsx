@@ -245,7 +245,7 @@ export function TableContent({
           </TableRow>
         ))}
       </TableHeader>
-      <TableBody className="dark:bg-gray-900 border-l-4 ">
+      <TableBody className="dark:bg-gray-900 ">
         {table.getRowModel().rows.length ? (
           table.getRowModel().rows.map((row, idx, arr) => {
             const lead = row.original;
