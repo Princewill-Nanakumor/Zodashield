@@ -11,6 +11,7 @@ import LeadsTable from "@/components/dashboardComponents/LeadsTable";
 import { AssignLeadsDialog } from "@/components/dashboardComponents/AssignLeadsDialog";
 import { FilterControls } from "@/components/dashboardComponents/FilterControls";
 import { BulkActions } from "@/components/dashboardComponents/BulkActions";
+import { SearchLeads } from "@/components/dashboardComponents/SearchLeads";
 import EmptyState from "@/components/dashboardComponents/EmptyState";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -60,6 +61,19 @@ const filterLeadsByCountry = (
   return leads.filter(
     (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
   );
+};
+
+const searchLeads = (leads: Lead[], searchQuery: string): Lead[] => {
+  if (!searchQuery.trim()) return leads;
+
+  const query = searchQuery.toLowerCase().trim();
+
+  return leads.filter((lead) => {
+    const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
+    const email = lead.email.toLowerCase();
+
+    return fullName.includes(query) || email.includes(query);
+  });
 };
 
 const getAssignedLeadsCount = (leads: Lead[]): number => {
@@ -170,11 +184,20 @@ const LeadsPageContent: React.FC = () => {
     isUnassignDialogOpen: false,
     selectedUser: "",
     filterByCountry: "all",
+    searchQuery: "",
   });
 
   const handleLeadUpdate = useCallback(async (updatedLead: Lead) => {
     console.log("Lead updated:", updatedLead);
     return true;
+  }, []);
+
+  const handleSearch = useCallback((query: string) => {
+    setUiState((prev) => ({ ...prev, searchQuery: query }));
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setUiState((prev) => ({ ...prev, searchQuery: "" }));
   }, []);
 
   const availableCountries = useMemo(() => {
@@ -190,16 +213,23 @@ const LeadsPageContent: React.FC = () => {
   const filteredLeads = useMemo(() => {
     let filtered = leads;
 
+    // Apply search filter first
+    if (uiState.searchQuery.trim()) {
+      filtered = searchLeads(filtered, uiState.searchQuery);
+    }
+
+    // Apply user filter
     if (filterByUser !== "all") {
       filtered = filterLeadsByUser(filtered, filterByUser);
     }
 
+    // Apply country filter
     if (uiState.filterByCountry !== "all") {
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
     }
 
     return filtered;
-  }, [leads, filterByUser, uiState.filterByCountry]);
+  }, [leads, uiState.searchQuery, filterByUser, uiState.filterByCountry]);
 
   const counts = useMemo(
     () => ({
@@ -354,6 +384,18 @@ const LeadsPageContent: React.FC = () => {
               </span>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-8 py-4">
+        <div className="max-w-md">
+          <SearchLeads
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            isLoading={isLoading}
+            placeholder="Search leads by name or email..."
+          />
         </div>
       </div>
 
