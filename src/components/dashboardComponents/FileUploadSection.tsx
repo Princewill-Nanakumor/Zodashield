@@ -1,5 +1,5 @@
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import { ImportHistoryItem } from "@/types/import";
 import { RequiredFieldsModal } from "./RequireFieldModal";
 import { ImportHistory } from "@/components/dashboardComponents/ImportHistory";
@@ -28,6 +28,29 @@ export const FileUploadSection = ({
   onDelete,
 }: FileUploadSectionProps) => {
   const [showRequiredFields, setShowRequiredFields] = useState(false);
+  const { toast } = useToast();
+
+  // Show error toast
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Import Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+
+  // Show success toast
+  useEffect(() => {
+    if (successMessage) {
+      toast({
+        title: "Import Success",
+        description: successMessage,
+        variant: "success",
+      });
+    }
+  }, [successMessage, toast]);
 
   return (
     <div className="p-6">
@@ -91,19 +114,31 @@ export const FileUploadSection = ({
             </label>
           </div>
 
-          {error && (
-            <div className="mt-4 text-red-600 dark:text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-          {successMessage && (
-            <div className="mt-4 text-green-600 dark:text-green-400 text-sm">
-              {successMessage}
-            </div>
-          )}
+          {/* Show loading bar instead of text */}
           {isLoading && (
-            <div className="mt-4 text-blue-600 dark:text-blue-400 text-sm">
-              Processing...
+            <div className="mt-4 w-full">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full animate-loading-bar"
+                  style={{ width: "100%" }}
+                ></div>
+              </div>
+              <div className="text-center text-blue-600 dark:text-blue-400 text-xs mt-2">
+                Importing, please wait...
+              </div>
+              <style jsx>{`
+                @keyframes loading-bar {
+                  0% {
+                    transform: translateX(-100%);
+                  }
+                  100% {
+                    transform: translateX(100%);
+                  }
+                }
+                .animate-loading-bar {
+                  animation: loading-bar 1.2s linear infinite;
+                }
+              `}</style>
             </div>
           )}
         </div>

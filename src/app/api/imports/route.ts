@@ -84,7 +84,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if database connection is available
     if (!mongoose.connection.db) {
       throw new Error("Database connection not available");
     }
@@ -105,16 +104,21 @@ export async function DELETE(request: Request) {
         );
       }
 
-      await mongoose.connection.db
+      // Match both string and ObjectId for importId
+      const objectId = new mongoose.Types.ObjectId(id);
+      const deleteLeadsResult = await mongoose.connection.db
         .collection("leads")
-        .deleteMany({ importId: id });
+        .deleteMany({
+          $or: [{ importId: id }, { importId: objectId }],
+        });
 
       await mongoose.connection.db
         .collection("imports")
-        .deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+        .deleteOne({ _id: objectId });
 
       return NextResponse.json({
         message: "Import and associated leads deleted",
+        deletedLeads: deleteLeadsResult.deletedCount,
       });
     } else {
       // Delete all imports and leads

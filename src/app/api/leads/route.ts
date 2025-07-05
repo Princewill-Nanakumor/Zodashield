@@ -189,18 +189,19 @@ export async function POST(request: Request) {
       } duplicates found`
     );
 
-    if (importId) {
+    if (importId && mongoose.connection && mongoose.connection.db) {
       try {
-        const Import = mongoose.models.Import;
-        if (Import) {
-          await Import.findByIdAndUpdate(importId, {
+        await mongoose.connection.db.collection("imports").updateOne(
+          { _id: new mongoose.Types.ObjectId(importId) },
+          {
             $set: {
               status: "completed",
               successCount: result.upsertedCount,
               failureCount: leads.length - result.upsertedCount,
+              updatedAt: new Date(),
             },
-          });
-        }
+          }
+        );
       } catch (error) {
         console.error("Error updating import status:", error);
       }
