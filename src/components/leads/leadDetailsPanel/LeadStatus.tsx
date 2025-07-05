@@ -11,7 +11,8 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { useUpdateLeadOptimistically } from "@/stores/leadsStore"; // Add this import
+import { useUpdateLeadOptimistically } from "@/stores/leadsStore";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Status {
   _id: string;
@@ -30,6 +31,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>(lead.status);
+  const queryClient = useQueryClient();
 
   // Fetch statuses on mount
   useEffect(() => {
@@ -76,6 +78,9 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
       // Update the store so the table reflects the change
       updateLeadOptimistically(lead._id, updatedLead);
 
+      // Invalidate and refetch leads
+      await queryClient.invalidateQueries({ queryKey: ["leads"] });
+
       toast({
         title: "Status updated",
         description: `Lead status changed successfully.`,
@@ -91,7 +96,6 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
       setIsUpdating(false);
     }
   };
-
   const currentStatusObj = statuses.find((s) => s._id === currentStatus);
   const currentStatusColor = currentStatusObj?.color || "#2563eb"; // default blue
 
