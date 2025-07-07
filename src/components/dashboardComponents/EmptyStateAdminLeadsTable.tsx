@@ -102,7 +102,7 @@ export const EmptyStateAdminLeadsTable: React.FC<
   const { icon, title, description, action } = getEmptyStateContent();
 
   return (
-    <div className="h-[calc(100vh-200px)] flex items-center justify-center">
+    <div className="flex items-center justify-center py-16">
       <div className="text-center space-y-4 max-w-md mx-auto px-4">
         <div className="text-gray-400">{icon}</div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">

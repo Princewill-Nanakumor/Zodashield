@@ -1,4 +1,3 @@
-///Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/TableSorting.tsx
 "use client";
 
 import { useMemo, useCallback } from "react";
@@ -19,6 +18,7 @@ interface TableSortingProps {
   sortField: SortField;
   sortOrder: SortOrder;
   users: User[];
+  searchQuery?: string;
   onSortChange: (field: SortField, order: SortOrder) => void;
 }
 
@@ -27,13 +27,37 @@ export const useTableSorting = ({
   sortField,
   sortOrder,
   users,
+  searchQuery = "",
   onSortChange,
 }: TableSortingProps) => {
+  // Search function
+  const searchLeads = (leads: Lead[], query: string): Lead[] => {
+    if (!query.trim()) return leads;
+
+    const searchTerm = query.toLowerCase().trim();
+
+    return leads.filter((lead) => {
+      const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
+      const email = lead.email.toLowerCase();
+      const phone = (lead.phone || "").toLowerCase();
+
+      return (
+        fullName.includes(searchTerm) ||
+        email.includes(searchTerm) ||
+        phone.includes(searchTerm)
+      );
+    });
+  };
+
   // Memoized sorting function with stable dependencies
   const sortedLeads = useMemo(() => {
     if (!Array.isArray(leads) || leads.length === 0) return [];
 
-    return [...leads].sort((a, b) => {
+    // First apply search filter
+    const filteredLeads = searchLeads(leads, searchQuery);
+
+    // Then apply sorting
+    return [...filteredLeads].sort((a, b) => {
       const multiplier = sortOrder === "asc" ? 1 : -1;
 
       switch (sortField) {
@@ -78,7 +102,7 @@ export const useTableSorting = ({
           return 0;
       }
     });
-  }, [leads, sortField, sortOrder, users]);
+  }, [leads, searchQuery, sortField, sortOrder, users]);
 
   const handleSort = useCallback(
     (field: SortField) => {

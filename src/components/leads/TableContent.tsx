@@ -225,7 +225,7 @@ export function TableContent({
                 <TableHead
                   key={generateUniqueKey("header", header.id)}
                   className={`
-                    text-gray-700  dark:text-gray-300 font-semibold text-left
+                    text-gray-700 dark:text-gray-300 font-semibold text-left
                     ${
                       isSelectColumn
                         ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
@@ -245,7 +245,7 @@ export function TableContent({
           </TableRow>
         ))}
       </TableHeader>
-      <TableBody className="dark:bg-gray-900 ">
+      <TableBody className="dark:bg-gray-900">
         {table.getRowModel().rows.length ? (
           table.getRowModel().rows.map((row, idx, arr) => {
             const lead = row.original;

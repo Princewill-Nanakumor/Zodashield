@@ -1,11 +1,11 @@
-//drivecrm/src/app/dashboard/all-leads/page.tsx
-
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LeadsPageContent from "@/components/dashboardComponents/LeadsPageContent";
+import { useEffect } from "react";
+import { useSearchContext } from "@/context/SearchContext";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -20,6 +20,17 @@ const queryClient = new QueryClient({
 const AllLeadsPage: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Get search context from layout
+  const { searchQuery, isLoading, setLayoutLoading } = useSearchContext();
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("AllLeadsPage: Received context values:", {
+      searchQuery,
+      isLoading,
+    });
+  }, [searchQuery, isLoading]);
 
   if (status === "loading") {
     return (
@@ -41,7 +52,11 @@ const AllLeadsPage: React.FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LeadsPageContent />
+      <LeadsPageContent
+        searchQuery={searchQuery}
+        isLoading={isLoading}
+        setLayoutLoading={setLayoutLoading}
+      />
     </QueryClientProvider>
   );
 };

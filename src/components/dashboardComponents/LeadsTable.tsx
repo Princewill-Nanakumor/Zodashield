@@ -1,7 +1,6 @@
-// src/app/components/dashboardComponents/LeadsTable.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { EmptyStateAdminLeadsTable } from "./EmptyStateAdminLeadsTable";
 import LeadDetailsPanel from "@/components/dashboardComponents/LeadDetailsPanel";
 import { Lead } from "@/types/leads";
@@ -68,6 +67,15 @@ export default function LeadsTable({
   const storeSelectedLeads = useSelectedLeads();
   const setStoreSelectedLeads = useSetSelectedLeads();
 
+  useEffect(() => {
+    console.log("LeadsTable: Received leads:", {
+      count: leads.length,
+      searchQuery,
+      filterByUser,
+      filterByCountry,
+    });
+  }, [leads, searchQuery, filterByUser, filterByCountry]);
+
   // Use props selectedLeads if provided, otherwise use store
   const displaySelectedLeads =
     selectedLeads.length > 0 ? selectedLeads : storeSelectedLeads;
@@ -78,6 +86,7 @@ export default function LeadsTable({
     sortField: (sorting[0]?.id as SortField) || "name",
     sortOrder: sorting[0]?.desc ? "desc" : "asc",
     users,
+    searchQuery, // Add this prop
     onSortChange: (field, order) => {
       setSorting([{ id: field, desc: order === "desc" }]);
     },
@@ -169,22 +178,24 @@ export default function LeadsTable({
           pageIndex={pageIndex}
           totalRows={sortedLeads.length}
         />
-        {showEmptyState ? (
-          <EmptyStateAdminLeadsTable
-            searchQuery={searchQuery}
-            filterByUser={filterByUser}
-            filterByCountry={filterByCountry}
-            hasFilters={filterByUser !== "all" || filterByCountry !== "all"}
-          />
-        ) : (
-          <Table>
+
+        <Table>
+          {showEmptyState ? (
+            <EmptyStateAdminLeadsTable
+              searchQuery={searchQuery}
+              filterByUser={filterByUser}
+              filterByCountry={filterByCountry}
+              hasFilters={filterByUser !== "all" || filterByCountry !== "all"}
+            />
+          ) : (
             <TableContent
               table={table}
               onRowClick={handleRowClick}
               selectedLead={selectedLead}
             />
-          </Table>
-        )}
+          )}
+        </Table>
+
         <TablePagination
           pageIndex={pageIndex}
           pageCount={table.getPageCount()}

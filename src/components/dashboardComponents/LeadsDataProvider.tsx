@@ -1,5 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/LeadsDataProvider.tsx
-
 "use client";
 
 import React, {
@@ -47,15 +45,19 @@ interface LeadsDataProviderProps {
     handleAssignLeads: (userId: string) => Promise<void>;
     handleUnassignLeads: () => Promise<void>;
     handleLeadUpdate: (updatedLead: Lead) => Promise<boolean>;
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
   }) => React.ReactNode;
   isAdmin: boolean;
   initialFilter: string;
+  searchQuery?: string;
 }
 
 const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
   children,
   isAdmin,
   initialFilter,
+  searchQuery = "",
 }) => {
   const { toast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -65,10 +67,35 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
   const [filterByUser, setFilterByUser] = useState(initialFilter);
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [internalSearchQuery, setInternalSearchQuery] = useState(searchQuery);
 
   // Use ref to store toast function to avoid dependency issues
   const toastRef = useRef(toast);
   toastRef.current = toast;
+
+  // Sync external searchQuery with internal state
+  useEffect(() => {
+    setInternalSearchQuery(searchQuery);
+  }, [searchQuery]);
+
+  // Search function
+  const searchLeads = useCallback((leads: Lead[], query: string): Lead[] => {
+    if (!query.trim()) return leads;
+
+    const searchTerm = query.toLowerCase().trim();
+
+    return leads.filter((lead) => {
+      const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
+      const email = lead.email.toLowerCase();
+      const phone = (lead.phone || "").toLowerCase();
+
+      return (
+        fullName.includes(searchTerm) ||
+        email.includes(searchTerm) ||
+        phone.includes(searchTerm)
+      );
+    });
+  }, []);
 
   const fetchLeads = useCallback(
     async (currentUsers: User[]) => {
@@ -356,40 +383,53 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
     console.log(" Filtering leads:", {
       totalLeads: leads.length,
       filterByUser,
+      searchQuery: internalSearchQuery,
       leadsWithAssignedTo: leads.filter((lead) => lead.assignedTo).length,
       leadsWithoutAssignedTo: leads.filter((lead) => !lead.assignedTo).length,
     });
 
+    let filtered = leads;
+
+    // Apply search filter first
+    if (internalSearchQuery.trim()) {
+      filtered = searchLeads(filtered, internalSearchQuery);
+      console.log(" After search filter:", filtered.length);
+    }
+
+    // Apply user filter
     if (filterByUser === "unassigned") {
-      const unassigned = leads.filter((lead) => !lead.assignedTo);
-      console.log("📋 Unassigned leads:", unassigned.length);
-      return unassigned;
+      filtered = filtered.filter((lead) => !lead.assignedTo);
+      console.log("📋 Unassigned leads:", filtered.length);
+    } else if (filterByUser !== "all") {
+      // Helper function to get assigned user ID
+      const getAssignedUserId = (
+        assignedTo:
+          | string
+          | { id: string; firstName: string; lastName: string }
+          | null
+          | undefined
+      ) => {
+        if (!assignedTo) return null;
+        return typeof assignedTo === "string" ? assignedTo : assignedTo.id;
+      };
+
+      filtered = filtered.filter((lead) => {
+        const assignedUserId = getAssignedUserId(lead.assignedTo);
+        return assignedUserId === filterByUser;
+      });
+
+      console.log(
+        " Assigned leads for user",
+        filterByUser,
+        ":",
+        filtered.length
+      );
+    } else {
+      console.log(" All leads:", filtered.length);
     }
-    if (filterByUser === "all") {
-      console.log(" All leads:", leads.length);
-      return leads;
-    }
 
-    // Helper function to get assigned user ID
-    const getAssignedUserId = (
-      assignedTo:
-        | string
-        | { id: string; firstName: string; lastName: string }
-        | null
-        | undefined
-    ) => {
-      if (!assignedTo) return null;
-      return typeof assignedTo === "string" ? assignedTo : assignedTo.id;
-    };
-
-    const assigned = leads.filter((lead) => {
-      const assignedUserId = getAssignedUserId(lead.assignedTo);
-      return assignedUserId === filterByUser;
-    });
-
-    console.log(" Assigned leads for user", filterByUser, ":", assigned.length);
-    return assigned;
-  }, [leads, filterByUser]);
+    return filtered;
+  }, [leads, filterByUser, internalSearchQuery, searchLeads]);
 
   return children({
     leads: filteredLeads,
@@ -404,6 +444,8 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
     handleAssignLeads,
     handleUnassignLeads,
     handleLeadUpdate,
+    searchQuery: internalSearchQuery,
+    setSearchQuery: setInternalSearchQuery,
   });
 };
 

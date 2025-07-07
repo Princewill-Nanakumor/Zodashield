@@ -1,9 +1,8 @@
-// src/app/components/dashboardComponents/LeadsPageContent.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useCallback, Suspense } from "react";
+import { useState, useMemo, useCallback, Suspense, useEffect } from "react";
 import { Loader2, Users, Globe } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
@@ -11,7 +10,6 @@ import LeadsTable from "@/components/dashboardComponents/LeadsTable";
 import { AssignLeadsDialog } from "@/components/dashboardComponents/AssignLeadsDialog";
 import { FilterControls } from "@/components/dashboardComponents/FilterControls";
 import { BulkActions } from "@/components/dashboardComponents/BulkActions";
-import { SearchLeads } from "@/components/dashboardComponents/SearchLeads";
 import EmptyState from "@/components/dashboardComponents/EmptyState";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -63,17 +61,54 @@ const filterLeadsByCountry = (
   );
 };
 
+// Update the searchLeads function in LeadsPageContent.tsx:
 const searchLeads = (leads: Lead[], searchQuery: string): Lead[] => {
-  if (!searchQuery.trim()) return leads;
+  if (!searchQuery.trim()) {
+    console.log("searchLeads: No search query, returning all leads");
+    return leads;
+  }
 
   const query = searchQuery.toLowerCase().trim();
+  console.log(
+    "searchLeads: Searching for:",
+    query,
+    "in",
+    leads.length,
+    "leads"
+  );
 
-  return leads.filter((lead) => {
-    const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
-    const email = lead.email.toLowerCase();
+  const results = leads.filter((lead) => {
+    const fullName = `${lead.firstName || ""} ${lead.lastName || ""}`
+      .toLowerCase()
+      .trim();
+    const email = (lead.email || "").toLowerCase();
+    const phone = (lead.phone || "").toLowerCase();
 
-    return fullName.includes(query) || email.includes(query);
+    const matches =
+      fullName.includes(query) ||
+      email.includes(query) ||
+      phone.includes(query);
+
+    if (matches) {
+      console.log("searchLeads: Match found:", {
+        id: lead._id,
+        name: fullName,
+        email,
+        phone,
+        query,
+      });
+    }
+
+    return matches;
   });
+
+  console.log(
+    "searchLeads: Found",
+    results.length,
+    "matches for query:",
+    query
+  );
+  return results;
 };
 
 const getAssignedLeadsCount = (leads: Lead[]): number => {
@@ -160,7 +195,17 @@ const CountryFilter = ({
   </select>
 );
 
-const LeadsPageContent: React.FC = () => {
+interface LeadsPageContentProps {
+  searchQuery?: string;
+  isLoading?: boolean;
+  setLayoutLoading?: (loading: boolean) => void;
+}
+
+const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
+  searchQuery = "",
+  isLoading = false,
+  setLayoutLoading,
+}) => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
@@ -184,20 +229,35 @@ const LeadsPageContent: React.FC = () => {
     isUnassignDialogOpen: false,
     selectedUser: "",
     filterByCountry: "all",
-    searchQuery: "",
+    searchQuery: searchQuery, // Initialize with prop value
   });
+
+  // Sync searchQuery prop with local state
+  useEffect(() => {
+    console.log("LeadsPageContent: searchQuery prop received:", searchQuery);
+    console.log(
+      "LeadsPageContent: Current uiState.searchQuery:",
+      uiState.searchQuery
+    );
+  }, [searchQuery, uiState.searchQuery]);
+
+  useEffect(() => {
+    console.log(
+      "LeadsPageContent: Updating uiState.searchQuery from prop:",
+      searchQuery
+    );
+    setUiState((prev) => ({ ...prev, searchQuery }));
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (setLayoutLoading) {
+      setLayoutLoading(isLoadingLeads || isLoadingUsers);
+    }
+  }, [isLoadingLeads, isLoadingUsers, setLayoutLoading]);
 
   const handleLeadUpdate = useCallback(async (updatedLead: Lead) => {
     console.log("Lead updated:", updatedLead);
     return true;
-  }, []);
-
-  const handleSearch = useCallback((query: string) => {
-    setUiState((prev) => ({ ...prev, searchQuery: query }));
-  }, []);
-
-  const handleClearSearch = useCallback(() => {
-    setUiState((prev) => ({ ...prev, searchQuery: "" }));
   }, []);
 
   const availableCountries = useMemo(() => {
@@ -211,11 +271,27 @@ const LeadsPageContent: React.FC = () => {
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
+    console.log("LeadsPageContent: Filtering leads with:", {
+      totalLeads: leads.length,
+      searchQuery: uiState.searchQuery,
+      filterByUser,
+      filterByCountry: uiState.filterByCountry,
+    });
+
     let filtered = leads;
 
     // Apply search filter first
     if (uiState.searchQuery.trim()) {
+      console.log(
+        "LeadsPageContent: Applying search filter for:",
+        uiState.searchQuery
+      );
       filtered = searchLeads(filtered, uiState.searchQuery);
+      console.log(
+        "LeadsPageContent: After search filter:",
+        filtered.length,
+        "leads"
+      );
     }
 
     // Apply user filter
@@ -228,6 +304,10 @@ const LeadsPageContent: React.FC = () => {
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
     }
 
+    console.log(
+      "LeadsPageContent: Final filtered leads count:",
+      filtered.length
+    );
     return filtered;
   }, [leads, uiState.searchQuery, filterByUser, uiState.filterByCountry]);
 
@@ -245,8 +325,6 @@ const LeadsPageContent: React.FC = () => {
       availableCountries.length,
     ]
   );
-
-  const isLoading = isLoadingLeads || isLoadingUsers;
 
   const shouldShowLoading = isLoadingLeads || isLoadingUsers;
   const showEmptyState =
@@ -384,18 +462,6 @@ const LeadsPageContent: React.FC = () => {
               </span>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-8 py-4">
-        <div className="max-w-md">
-          <SearchLeads
-            onSearch={handleSearch}
-            onClear={handleClearSearch}
-            isLoading={isLoading}
-            placeholder="Search leads by name or email..."
-          />
         </div>
       </div>
 
