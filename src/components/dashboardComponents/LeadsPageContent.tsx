@@ -3,197 +3,32 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, Suspense, useEffect } from "react";
-import { Loader2, Users, Globe } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
-import { AssignLeadsDialog } from "@/components/dashboardComponents/AssignLeadsDialog";
-import { FilterControls } from "@/components/dashboardComponents/FilterControls";
-import { BulkActions } from "@/components/dashboardComponents/BulkActions";
 import EmptyState from "@/components/dashboardComponents/EmptyState";
-import { useToast } from "@/components/ui/use-toast";
+import { LeadsHeader } from "./LeadHeader";
+import { LeadsFilterControls } from "./LeadFilter";
+import { LeadsDialogs } from "./LeadDialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  getAssignedUserId,
+  filterLeadsByUser,
+  filterLeadsByCountry,
+  searchLeads,
+  getAssignedLeadsCount,
+  getAvailableCountries,
+} from "@/utils/LeadsUtils";
+
+import {
+  TableSkeleton,
+  LoadingSpinner,
+  ErrorBoundary,
+} from "./LeadsLoadingState";
 import { Lead } from "@/types/leads";
 
 const USER_ROLES = {
   ADMIN: "ADMIN",
 } as const;
-
-// Utility functions
-const getAssignedUserId = (assignedTo: Lead["assignedTo"]): string | null => {
-  if (!assignedTo) return null;
-  if (typeof assignedTo === "string") return assignedTo;
-  if (assignedTo && typeof assignedTo === "object") {
-    const assignedToObj = assignedTo as Record<string, unknown>;
-    return (
-      (assignedToObj.id as string) || (assignedToObj._id as string) || null
-    );
-  }
-  return null;
-};
-
-const filterLeadsByUser = (leads: Lead[], filterByUser: string): Lead[] => {
-  if (filterByUser === "all") return leads;
-  if (filterByUser === "unassigned") {
-    return leads.filter((lead) => !getAssignedUserId(lead.assignedTo));
-  }
-  return leads.filter(
-    (lead) => getAssignedUserId(lead.assignedTo) === filterByUser
-  );
-};
-
-const filterLeadsByCountry = (
-  leads: Lead[],
-  filterByCountry: string
-): Lead[] => {
-  if (!filterByCountry || filterByCountry === "all") return leads;
-  return leads.filter(
-    (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
-  );
-};
-
-// Update the searchLeads function in LeadsPageContent.tsx:
-const searchLeads = (leads: Lead[], searchQuery: string): Lead[] => {
-  if (!searchQuery.trim()) {
-    console.log("searchLeads: No search query, returning all leads");
-    return leads;
-  }
-
-  const query = searchQuery.toLowerCase().trim();
-  console.log(
-    "searchLeads: Searching for:",
-    query,
-    "in",
-    leads.length,
-    "leads"
-  );
-
-  const results = leads.filter((lead) => {
-    const fullName = `${lead.firstName || ""} ${lead.lastName || ""}`
-      .toLowerCase()
-      .trim();
-    const email = (lead.email || "").toLowerCase();
-    const phone = (lead.phone || "").toLowerCase();
-
-    const matches =
-      fullName.includes(query) ||
-      email.includes(query) ||
-      phone.includes(query);
-
-    if (matches) {
-      console.log("searchLeads: Match found:", {
-        id: lead._id,
-        name: fullName,
-        email,
-        phone,
-        query,
-      });
-    }
-
-    return matches;
-  });
-
-  console.log(
-    "searchLeads: Found",
-    results.length,
-    "matches for query:",
-    query
-  );
-  return results;
-};
-
-const getAssignedLeadsCount = (leads: Lead[]): number => {
-  return leads.filter((lead) => !!getAssignedUserId(lead.assignedTo)).length;
-};
-
-const FilterSkeleton = () => (
-  <div className="flex items-center gap-3 animate-pulse">
-    <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
-    <div className="w-[200px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
-  </div>
-);
-
-const TableSkeleton = () => (
-  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-    <div className="animate-pulse">
-      {/* Table header skeleton */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-      </div>
-
-      {/* Table rows skeleton */}
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div
-          key={i}
-          className="px-6 py-4 border-b border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-const ErrorBoundary = ({
-  children,
-  fallback,
-}: {
-  children: React.ReactNode;
-  fallback: React.ReactNode;
-}) => {
-  const [hasError, setHasError] = useState(false);
-
-  if (hasError) return <>{fallback}</>;
-
-  try {
-    return <>{children}</>;
-  } catch {
-    setHasError(true);
-    return <>{fallback}</>;
-  }
-};
-
-// Simple Country Filter Component - replaces Radix UI Select
-const CountryFilter = ({
-  value,
-  onChange,
-  countries,
-  disabled,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  countries: string[];
-  disabled: boolean;
-}) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    disabled={disabled}
-    className="w-[180px] h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-  >
-    <option value="all">All Countries</option>
-    {countries.map((country) => (
-      <option key={country} value={country}>
-        {country.charAt(0).toUpperCase() + country.slice(1)}
-      </option>
-    ))}
-  </select>
-);
 
 interface LeadsPageContentProps {
   searchQuery?: string;
@@ -208,7 +43,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { toast } = useToast();
 
   const {
     leads,
@@ -229,23 +63,11 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     isUnassignDialogOpen: false,
     selectedUser: "",
     filterByCountry: "all",
-    searchQuery: searchQuery, // Initialize with prop value
+    searchQuery: searchQuery,
   });
 
   // Sync searchQuery prop with local state
   useEffect(() => {
-    console.log("LeadsPageContent: searchQuery prop received:", searchQuery);
-    console.log(
-      "LeadsPageContent: Current uiState.searchQuery:",
-      uiState.searchQuery
-    );
-  }, [searchQuery, uiState.searchQuery]);
-
-  useEffect(() => {
-    console.log(
-      "LeadsPageContent: Updating uiState.searchQuery from prop:",
-      searchQuery
-    );
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
 
@@ -256,42 +78,20 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   }, [isLoadingLeads, isLoadingUsers, setLayoutLoading]);
 
   const handleLeadUpdate = useCallback(async (updatedLead: Lead) => {
-    console.log("Lead updated:", updatedLead);
+    console.log("Lead update requested:", updatedLead._id);
     return true;
   }, []);
 
   const availableCountries = useMemo(() => {
-    const countrySet = new Set<string>();
-    leads.forEach((lead) => {
-      if (lead.country?.trim()) {
-        countrySet.add(lead.country.toLowerCase());
-      }
-    });
-    return Array.from(countrySet).sort();
+    return getAvailableCountries(leads);
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
-    console.log("LeadsPageContent: Filtering leads with:", {
-      totalLeads: leads.length,
-      searchQuery: uiState.searchQuery,
-      filterByUser,
-      filterByCountry: uiState.filterByCountry,
-    });
-
     let filtered = leads;
 
     // Apply search filter first
     if (uiState.searchQuery.trim()) {
-      console.log(
-        "LeadsPageContent: Applying search filter for:",
-        uiState.searchQuery
-      );
       filtered = searchLeads(filtered, uiState.searchQuery);
-      console.log(
-        "LeadsPageContent: After search filter:",
-        filtered.length,
-        "leads"
-      );
     }
 
     // Apply user filter
@@ -304,10 +104,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
     }
 
-    console.log(
-      "LeadsPageContent: Final filtered leads count:",
-      filtered.length
-    );
     return filtered;
   }, [leads, uiState.searchQuery, filterByUser, uiState.filterByCountry]);
 
@@ -349,7 +145,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       }));
     } catch (error) {
       console.error("Assignment error:", error);
-      // Error is already handled in the mutation
     }
   }, [selectedLeads, uiState.selectedUser, assignLeads, setSelectedLeads]);
 
@@ -359,10 +154,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     );
 
     if (leadsToUnassign.length === 0) {
-      toast({
-        title: "No action needed",
-        description: "All selected leads are already unassigned.",
-      });
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
       return;
     }
@@ -373,9 +164,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
     } catch (error) {
       console.error("Unassignment error:", error);
-      // Error is already handled in the mutation
     }
-  }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
+  }, [selectedLeads, unassignLeads, setSelectedLeads]);
 
   const handleSelectionChange = useCallback(
     (newSelectedLeads: Lead[]) => setSelectedLeads(newSelectedLeads),
@@ -396,11 +186,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   );
 
   if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 dark:border-white border-t-transparent"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (status === "unauthenticated") {
@@ -416,105 +202,30 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   return (
     <div className="flex flex-col h-full bg-background dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-8 py-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <Users className="h-8 w-8 text-blue-600" />
-              Leads Management
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Manage and track all your leads in one centralized dashboard
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {shouldShowLoading ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                Loading...
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                {counts.total.toLocaleString()} Total Leads
-              </span>
-            )}
-
-            {shouldShowLoading ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                Loading...
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
-                {counts.filtered.toLocaleString()} Filtered
-              </span>
-            )}
-
-            {shouldShowLoading ? (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                Loading...
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                <Globe className="h-3 w-3 mr-1" />
-                {counts.countries} Countries
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+      <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
 
       {/* Filter Controls */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ErrorBoundary
-              fallback={
-                <div className="text-red-500">Bulk actions failed to load</div>
-              }
-            >
-              <BulkActions
-                selectedLeads={selectedLeads}
-                hasAssignedLeads={hasAssignedLeads}
-                assignedLeadsCount={counts.assigned}
-                isUpdating={isAssigning || isUnassigning}
-                onAssign={() =>
-                  setUiState((prev) => ({ ...prev, isDialogOpen: true }))
-                }
-                onUnassign={() =>
-                  setUiState((prev) => ({
-                    ...prev,
-                    isUnassignDialogOpen: true,
-                  }))
-                }
-              />
-            </ErrorBoundary>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <ErrorBoundary fallback={<FilterSkeleton />}>
-              <Suspense fallback={<FilterSkeleton />}>
-                {/* Simple Country Filter */}
-                <CountryFilter
-                  value={uiState.filterByCountry}
-                  onChange={handleCountryFilterChange}
-                  countries={availableCountries}
-                  disabled={isLoading}
-                />
-
-                {/* Simple User Filter */}
-                <FilterControls
-                  filterByUser={filterByUser}
-                  onFilterChange={handleFilterChange}
-                  users={users}
-                  isLoading={isLoadingUsers}
-                />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
-        </div>
-      </div>
+      <LeadsFilterControls
+        selectedLeads={selectedLeads}
+        hasAssignedLeads={hasAssignedLeads}
+        assignedLeadsCount={counts.assigned}
+        isUpdating={isAssigning || isUnassigning}
+        onAssign={() => setUiState((prev) => ({ ...prev, isDialogOpen: true }))}
+        onUnassign={() =>
+          setUiState((prev) => ({
+            ...prev,
+            isUnassignDialogOpen: true,
+          }))
+        }
+        filterByCountry={uiState.filterByCountry}
+        onCountryFilterChange={handleCountryFilterChange}
+        availableCountries={availableCountries}
+        isLoading={isLoading}
+        filterByUser={filterByUser}
+        onFilterChange={handleFilterChange}
+        users={users}
+        isLoadingUsers={isLoadingUsers}
+      />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto px-8 py-6">
@@ -552,16 +263,16 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       </div>
 
       {/* Dialogs */}
-      <AssignLeadsDialog
-        isOpen={uiState.isDialogOpen}
-        onClose={() =>
+      <LeadsDialogs
+        isDialogOpen={uiState.isDialogOpen}
+        onDialogClose={() =>
           setUiState((prev) => ({
             ...prev,
             isDialogOpen: false,
             selectedUser: "",
           }))
         }
-        users={users.filter((user) => user.status === "ACTIVE")}
+        users={users}
         selectedUser={uiState.selectedUser}
         setSelectedUser={(user) =>
           setUiState((prev) => ({ ...prev, selectedUser: user }))
@@ -571,42 +282,13 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
         onAssign={handleAssignLeads}
         onUnassign={handleUnassignLeads}
         selectedLeads={selectedLeads}
-      />
-
-      <AlertDialog
-        open={uiState.isUnassignDialogOpen}
-        onOpenChange={(open) =>
+        isUnassignDialogOpen={uiState.isUnassignDialogOpen}
+        onUnassignDialogChange={(open) =>
           setUiState((prev) => ({ ...prev, isUnassignDialogOpen: open }))
         }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Unassign {counts.assigned} lead{counts.assigned > 1 ? "s" : ""}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the assignment from the selected leads. They will
-              become unassigned and available for reassignment.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleUnassignLeads}
-              disabled={isUnassigning}
-            >
-              {isUnassigning ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Unassigning...
-                </>
-              ) : (
-                "Yes, Unassign"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        isUnassigning={isUnassigning}
+        assignedLeadsCount={counts.assigned}
+      />
     </div>
   );
 };
