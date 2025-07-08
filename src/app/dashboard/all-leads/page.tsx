@@ -11,8 +11,13 @@ import { useSearchContext } from "@/context/SearchContext";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 1,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      refetchOnWindowFocus: false, // Prevent refetch on focus
+      refetchOnReconnect: true,
+      refetchOnMount: true,
+      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
     },
   },
 });

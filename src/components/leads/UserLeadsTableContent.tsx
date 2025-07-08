@@ -15,14 +15,12 @@ import { TablePagination } from "@/components/leads/TablePagination";
 import LeadDetailsPanel from "@/components/dashboardComponents/LeadDetailsPanel";
 import { UserLeadTable } from "@/components/user-leads/UserLeadTable";
 import { UserLeadTableControls } from "@/components/user-leads/UserLeadTableControls";
-import { Loader2, Users, Globe } from "lucide-react";
+import { UserLeadsHeader } from "@/components/leads/UserLeadsHeader";
+import { UserLeadsFilterControls } from "@/components/leads/UserLeadsFilterControls";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  LoadingSpinner,
+  TableSkeleton,
+} from "@/components/leads/UserLeadsLoadingStates";
 
 interface LeadFromAPI {
   _id: string;
@@ -68,67 +66,6 @@ const filterLeadsByCountry = (
     (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
   );
 };
-
-// Loading Skeleton Components
-const FilterSkeleton = () => (
-  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-24 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-        <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
-      </div>
-      <div className="w-48 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-    </div>
-  </div>
-);
-
-const TableSkeleton = () => (
-  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-    <div className="animate-pulse">
-      {/* Table header skeleton */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-          <div className="flex items-center gap-3">
-            <div className="w-[120px] h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="w-[100px] h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Table rows skeleton */}
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div
-          key={i}
-          className="px-6 py-4 border-b border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-const HeaderSkeleton = () => (
-  <div className="flex items-center justify-between">
-    <div>
-      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse mb-2"></div>
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64 animate-pulse"></div>
-    </div>
-    <div className="flex items-center gap-3">
-      <div className="w-24 h-6 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-      <div className="w-20 h-6 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-      <div className="w-28 h-6 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-    </div>
-  </div>
-);
 
 export default function UserLeadsContent() {
   const { data: session, status } = useSession();
@@ -473,92 +410,22 @@ export default function UserLeadsContent() {
       : -1;
 
   if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-12 w-12 animate-spin text-gray-500 dark:text-gray-400" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
     <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        {shouldShowLoading ? (
-          <HeaderSkeleton />
-        ) : (
-          <>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-                <Users className="h-6 w-6 text-blue-600" />
-                My Leads
-              </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                View and manage your assigned leads
-              </p>
-            </div>
-
-            {/* Stats Badges */}
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                {counts.total.toLocaleString()} Total Leads
-              </span>
-
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
-                {counts.filtered.toLocaleString()} Filtered
-              </span>
-
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                <Globe className="h-3 w-3 mr-1" />
-                {counts.countries} Countries
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+      <UserLeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
 
       {/* Filter Controls */}
-      {shouldShowLoading ? (
-        <FilterSkeleton />
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Filter by Country:
-              </label>
-              <Select
-                value={filterByCountry}
-                onValueChange={handleCountryFilterChange}
-                disabled={shouldShowLoading}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Countries">
-                    {filterByCountry === "all"
-                      ? "All Countries"
-                      : filterByCountry.charAt(0).toUpperCase() +
-                        filterByCountry.slice(1)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Countries</SelectItem>
-                  {availableCountries.map((country) => (
-                    <SelectItem key={country} value={country}>
-                      {country.charAt(0).toUpperCase() + country.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {counts.currentPage} of {counts.filtered} leads
-              {counts.filtered !== counts.total &&
-                ` (filtered from ${counts.total} total)`}
-            </div>
-          </div>
-        </div>
-      )}
+      <UserLeadsFilterControls
+        shouldShowLoading={shouldShowLoading}
+        filterByCountry={filterByCountry}
+        onCountryFilterChange={handleCountryFilterChange}
+        availableCountries={availableCountries}
+        counts={counts}
+      />
 
       {/* Main Content */}
       {shouldShowLoading ? (

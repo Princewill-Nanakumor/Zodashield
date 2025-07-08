@@ -18,6 +18,7 @@ import {
   getAssignedLeadsCount,
   getAvailableCountries,
 } from "@/utils/LeadsUtils";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 import {
   TableSkeleton,
@@ -43,6 +44,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const isOnline = useNetworkStatus();
 
   const {
     leads,
@@ -159,7 +161,9 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     }
 
     try {
-      await unassignLeads({ leadIds: leadsToUnassign.map((l) => l._id) });
+      await unassignLeads({
+        leadIds: leadsToUnassign.map((l) => l._id),
+      });
       setSelectedLeads([]);
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
     } catch (error) {
@@ -184,6 +188,25 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const hasAssignedLeads = selectedLeads.some(
     (lead) => !!getAssignedUserId(lead.assignedTo)
   );
+
+  // Show offline message
+  if (!isOnline) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-500">
+            You are offline. Please check your connection.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (status === "loading") {
     return <LoadingSpinner />;
