@@ -86,7 +86,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
 
   return (
     <div
-      className={`fixed inset-y-0 right-0 flex bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
+      className={`fixed inset-y-0 right-0 flex bg-white dark:bg-gray-800  border-l-2 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}
       style={{ width: "80vw", maxWidth: "1200px" }}
@@ -113,7 +113,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
           />
         </div>
       </div>
-      <div className="flex-1 bg-white dark:bg-gray-900">
+      <div className="flex-1 bg-white dark:bg-gray-800">
         <CommentsAndActivities
           lead={currentLead}
           onLeadUpdated={handleLeadUpdated}

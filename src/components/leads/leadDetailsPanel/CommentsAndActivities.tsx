@@ -210,7 +210,7 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
   );
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 h-full min-h-0">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 h-full min-h-0">
       <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex gap-1">
           <button

@@ -85,7 +85,7 @@ button,
 }
 
 .dark {
-  --background: #1b1b1f;
+  --background: #1f2937;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);

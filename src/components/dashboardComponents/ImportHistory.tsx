@@ -47,7 +47,7 @@ export const ImportHistory: React.FC<ImportHistoryProps> = ({
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="bg-white dark:bg-gray-800 rounded divide-y divide-gray-200 dark:divide-gray-700">
           {imports.length > 0 ? (
             imports.map((importItem) => {
               const dateTime = formatDateTime(importItem.timestamp);
@@ -77,8 +77,8 @@ export const ImportHistory: React.FC<ImportHistoryProps> = ({
                         importItem.status === "completed"
                           ? "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200"
                           : importItem.status === "failed"
-                          ? "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200"
-                          : "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200"
+                            ? "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200"
+                            : "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200"
                       }`}
                     >
                       {importItem.status.charAt(0).toUpperCase() +

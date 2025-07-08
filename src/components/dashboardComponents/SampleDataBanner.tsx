@@ -2,7 +2,7 @@
 import { FileSpreadsheet } from "lucide-react";
 
 export const SampleDataBanner = () => (
-  <div className="bg-white dark:bg-gray-900 rounded-lg p-6 mb-8 border flex items-center justify-between dark:text-white">
+  <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-8 border flex items-center justify-between dark:text-white">
     <div className="flex items-center gap-4">
       <div className="bg-blue-100 rounded-lg p-3">
         <FileSpreadsheet className="w-6 h-6 text-blue-600" />

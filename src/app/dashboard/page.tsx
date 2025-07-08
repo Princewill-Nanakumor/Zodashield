@@ -150,7 +150,7 @@ export default function DashboardPage() {
   const isAdmin = session.user.role === "ADMIN";
 
   return (
-    <div className="container mx-auto p-8 space-y-8 bg-background dark:bg-gray-900 min-h-screen">
+    <div className="container mx-auto p-8 space-y-8 bg-background dark:bg-gray-800 rounded-md border ">
       {/* Dashboard Header */}
       <div className="flex items-center justify-between">
         <div>

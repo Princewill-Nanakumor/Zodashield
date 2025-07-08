@@ -354,7 +354,7 @@ export default function UsersManagement({
 
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center h-screen bg-background dark:bg-gray-900">
+      <div className="flex justify-center items-center h-screen bg-background dark:bg-gray-800">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 dark:border-white border-t-transparent"></div>
       </div>
     );
@@ -365,7 +365,7 @@ export default function UsersManagement({
   }
 
   return (
-    <div className="space-y-6 p-6 bg-background dark:bg-gray-900">
+    <div className="space-y-6 p-6 bg-background dark:bg-gray-800 rounded border">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

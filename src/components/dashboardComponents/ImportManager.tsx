@@ -229,7 +229,7 @@ export const ImportManager = () => {
   if (!session || session.user.role !== "ADMIN") return null;
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 ">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-800 rounded ">
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-8">
           <SampleDataBanner />
