@@ -186,6 +186,7 @@ export default function LeadsTable({
               filterByUser={filterByUser}
               filterByCountry={filterByCountry}
               hasFilters={filterByUser !== "all" || filterByCountry !== "all"}
+              users={users}
             />
           ) : (
             <TableContent

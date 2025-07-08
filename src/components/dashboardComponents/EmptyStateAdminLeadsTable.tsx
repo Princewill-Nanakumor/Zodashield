@@ -1,9 +1,18 @@
-// src/components/dashboardComponents/EmptyStateAdminLeadsTable.tsx
+import React from "react";
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  // Add other fields if needed
+}
+
 interface EmptyStateAdminLeadsTableProps {
   searchQuery?: string;
   filterByUser?: string;
   filterByCountry?: string;
   hasFilters?: boolean;
+  users?: User[];
 }
 
 export const EmptyStateAdminLeadsTable: React.FC<
@@ -13,6 +22,7 @@ export const EmptyStateAdminLeadsTable: React.FC<
   filterByUser = "all",
   filterByCountry = "all",
   hasFilters = false,
+  users = [],
 }) => {
   const getEmptyStateContent = () => {
     // Search-specific empty state
@@ -41,13 +51,18 @@ export const EmptyStateAdminLeadsTable: React.FC<
 
     // Filter-specific empty state
     if (hasFilters) {
-      const filters = [];
+      const filters: string[] = [];
       if (filterByUser !== "all") {
-        filters.push(
-          filterByUser === "unassigned"
-            ? "unassigned leads"
-            : `leads assigned to user ${filterByUser}`
-        );
+        if (filterByUser === "unassigned") {
+          filters.push("unassigned leads");
+        } else {
+          const user = users?.find((u) => u.id === filterByUser);
+          filters.push(
+            user
+              ? `leads assigned to user ${user.firstName} ${user.lastName}`
+              : `leads assigned to user ${filterByUser}`
+          );
+        }
       }
       if (filterByCountry !== "all") {
         filters.push(`leads from ${filterByCountry}`);
@@ -70,7 +85,9 @@ export const EmptyStateAdminLeadsTable: React.FC<
           </svg>
         ),
         title: "No leads found",
-        description: `No leads match your current filters: ${filters.join(", ")}. Try adjusting your filters or clearing them.`,
+        description: `No leads match your current filters: ${filters.join(
+          ", "
+        )}. Try adjusting your filters or clearing them.`,
         action: "Clear filters or adjust search criteria",
       };
     }
@@ -102,17 +119,25 @@ export const EmptyStateAdminLeadsTable: React.FC<
   const { icon, title, description, action } = getEmptyStateContent();
 
   return (
-    <div className="flex items-center justify-center py-16">
-      <div className="text-center space-y-4 max-w-md mx-auto px-4">
-        <div className="text-gray-400">{icon}</div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-          {title}
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-          {description}
-        </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">{action}</p>
-      </div>
-    </div>
+    <tbody>
+      <tr>
+        <td colSpan={100} className="px-4 py-16">
+          <div className="flex items-center justify-center">
+            <div className="text-center space-y-4 max-w-md mx-auto">
+              <div className="text-gray-400">{icon}</div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                {title}
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
+                {description}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {action}
+              </p>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
   );
 };
