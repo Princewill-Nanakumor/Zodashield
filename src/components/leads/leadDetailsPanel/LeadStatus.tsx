@@ -7,7 +7,6 @@ import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
@@ -24,6 +23,15 @@ interface LeadStatusProps {
   lead: Lead;
 }
 
+// Helper to add alpha to hex color (opacity: 0-255 as hex, e.g. "CC" or "B3")
+function hexWithAlpha(hex: string, alpha: string) {
+  if (!hex) return "#3b82f6" + alpha;
+  if (hex.length === 7) return hex + alpha;
+  if (hex.length === 4)
+    return "#" + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3] + alpha;
+  return hex + alpha;
+}
+
 const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const { toast } = useToast();
   const updateLeadOptimistically = useUpdateLeadOptimistically();
@@ -33,25 +41,20 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const [currentStatus, setCurrentStatus] = useState<string>(lead.status);
   const queryClient = useQueryClient();
 
-  // Helper to determine if a color is light
-  const isLightColor = (hex: string) => {
-    if (!hex || hex.length < 4) return false;
-    const c = hex.substring(1);
-    const num = parseInt(
-      c.length === 3
-        ? c
-            .split("")
-            .map((x) => x + x)
-            .join("")
-        : c,
-      16
-    );
-    const r = (num >> 16) & 255;
-    const g = (num >> 8) & 255;
-    const b = num & 255;
-    return (r * 299 + g * 587 + b * 114) / 1000 > 180;
-  };
+  // Opacity for dark mode (hex alpha: "B3"=70%)
+  const darkAlpha = "B3";
 
+  // Detect dark mode
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const match = window.matchMedia("(prefers-color-scheme: dark)");
+    setIsDark(match.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    match.addEventListener("change", handler);
+    return () => match.removeEventListener("change", handler);
+  }, []);
+
+  // Fetch statuses on mount
   useEffect(() => {
     const fetchStatuses = async () => {
       setIsLoadingStatuses(true);
@@ -73,6 +76,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     fetchStatuses();
   }, [toast]);
 
+  // Keep currentStatus in sync with lead prop
   useEffect(() => {
     setCurrentStatus(lead.status);
   }, [lead.status]);
@@ -110,6 +114,13 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const currentStatusObj = statuses.find((s) => s._id === currentStatus);
   const currentStatusColor = currentStatusObj?.color || "#3b82f6";
 
+  // Light mode: text is always white, bg is status color
+  // Dark mode: text is always white, bg is faded status color
+  const triggerBg = isDark
+    ? hexWithAlpha(currentStatusColor, darkAlpha)
+    : currentStatusColor;
+  const triggerTextColor = "#fff";
+
   return (
     <div className="flex items-center">
       <div className="flex-1">
@@ -127,49 +138,62 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
             <SelectTrigger
               className="w-[200px] border rounded-md cursor-pointer dark:border-gray-600"
               style={{
-                backgroundColor: `${currentStatusColor}15`,
-                borderColor: `${currentStatusColor}50`,
+                backgroundColor: triggerBg,
+                color: triggerTextColor,
+                borderColor: currentStatusColor,
               }}
             >
               <div className="flex items-center gap-2">
                 <div
                   className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: currentStatusColor }}
-                />
-                <SelectValue
-                  className="font-medium"
                   style={{
-                    color: currentStatusColor,
+                    backgroundColor: "#fff",
+                    border: `2px solid ${currentStatusColor}`,
                   }}
                 />
+                <span
+                  className="font-medium"
+                  style={{
+                    color: triggerTextColor,
+                  }}
+                >
+                  {currentStatusObj?.name ||
+                    statuses.find((s) => s._id === currentStatus)?.name ||
+                    "New"}
+                </span>
                 {isUpdating && (
-                  <Loader2 className="h-3 w-3 animate-spin ml-auto text-gray-500 dark:text-gray-400" />
+                  <Loader2
+                    className="h-3 w-3 animate-spin ml-auto"
+                    style={{ color: triggerTextColor }}
+                  />
                 )}
               </div>
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <SelectContent className="border-gray-200 dark:border-gray-700">
               {statuses.map((status) => {
-                const isLight = isLightColor(status.color);
-                const textColor = isLight ? "text-gray-900" : "text-white";
-
+                const itemBg = isDark
+                  ? hexWithAlpha(status.color, darkAlpha)
+                  : status.color;
+                const textColor = "#fff";
                 return (
                   <SelectItem
                     key={status._id}
                     value={status._id}
-                    className={`my-1 rounded-md transition-colors font-medium cursor-pointer ${textColor}`}
-                    style={
-                      {
-                        backgroundColor: `${status.color}${isLight ? "99" : "D9"}`,
-                        "--select-item-hover-bg": `${status.color}${isLight ? "40" : "55"}`,
-                      } as React.CSSProperties
-                    }
+                    className="my-1 rounded-md transition-colors font-medium cursor-pointer"
+                    style={{
+                      backgroundColor: itemBg,
+                      color: textColor,
+                    }}
                   >
                     <div className="flex items-center gap-2">
                       <div
                         className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: status.color }}
+                        style={{
+                          backgroundColor: "#fff",
+                          border: `2px solid ${status.color}`,
+                        }}
                       />
-                      <span>{status.name}</span>
+                      <span style={{ color: textColor }}>{status.name}</span>
                     </div>
                   </SelectItem>
                 );
