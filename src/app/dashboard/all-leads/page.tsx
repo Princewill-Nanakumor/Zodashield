@@ -14,10 +14,10 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 1,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      refetchOnWindowFocus: false, // Prevent refetch on focus
+      refetchOnWindowFocus: true,
       refetchOnReconnect: true,
       refetchOnMount: true,
-      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+      gcTime: 10 * 60 * 1000,
     },
   },
 });

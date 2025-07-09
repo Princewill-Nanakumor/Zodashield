@@ -39,13 +39,7 @@ const TableHeaderSkeleton = ({ columnCount }: { columnCount: number }) => (
   </TableHeader>
 );
 
-const TableRowSkeleton = ({
-  columnCount,
-  isLast,
-}: {
-  columnCount: number;
-  isLast: boolean;
-}) => (
+const TableRowSkeleton = ({ columnCount }: { columnCount: number }) => (
   <TableRow className="bg-white dark:bg-gray-800">
     {Array.from({ length: columnCount }).map((_, index) => (
       <TableCell
@@ -58,7 +52,6 @@ const TableRowSkeleton = ({
               : "px-4"
           }
           border-b border-gray-200 dark:border-gray-700
-          ${isLast ? "border-b-2" : ""}
         `}
       >
         <div className="flex items-center space-x-2">
@@ -86,7 +79,6 @@ const TableSkeleton = ({
         <TableRowSkeleton
           key={`skeleton-row-${index}`}
           columnCount={columnCount}
-          isLast={index === rowCount - 1}
         />
       ))}
     </TableBody>
@@ -216,7 +208,7 @@ export function TableContent({
 
   return (
     <>
-      <TableHeader className="bg-gray-100 border-l-4  dark:bg-gray-800">
+      <TableHeader className="bg-gray-100 dark:bg-gray-700 border-t">
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={generateUniqueKey("header-group", headerGroup.id)}>
             {headerGroup.headers.map((header) => {
@@ -247,10 +239,10 @@ export function TableContent({
       </TableHeader>
       <TableBody className="dark:bg-gray-900">
         {table.getRowModel().rows.length ? (
-          table.getRowModel().rows.map((row, idx, arr) => {
+          table.getRowModel().rows.map((row) => {
             const lead = row.original;
             const isSelected = selectedLead && lead._id === selectedLead._id;
-            const isLastRow = idx === arr.length - 1;
+
             return (
               <TableRow
                 key={row.id}
@@ -264,34 +256,32 @@ export function TableContent({
                 }}
                 className={`
                   cursor-pointer transition-colors duration-150 ease-in-out
-                  border-l-4 border-b
                   ${
                     isSelected
-                      ? "bg-blue-50 dark:bg-gray-600 border-purple-500 dark:border-purple-500 font-bold"
-                      : "bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80 border-l-transparent border-gray-200 dark:border-gray-700"
+                      ? "bg-blue-50 dark:bg-gray-600"
+                      : "bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700/80"
                   }
                 `}
-                style={
-                  isSelected ? { borderBottom: "2px solid #9333ea" } : undefined
-                }
+                style={{
+                  borderLeft: isSelected
+                    ? "4px solid #9333ea"
+                    : "4px solid transparent",
+                  borderBottom: isSelected
+                    ? "2px solid #9333ea"
+                    : "1px solid var(--tw-prose-invert-borders, #374151)",
+                }}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
                     className={`
                       py-3.5
-                      ${
-                        isSelected
-                          ? "text-gray-900 dark:text-white"
-                          : "text-gray-800 dark:text-gray-300"
-                      }
+                      ${isSelected ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-300"}
                       ${
                         cell.column.id === "select"
                           ? "px-3 border-r border-gray-200 dark:border-gray-700"
                           : "px-4"
                       }
-                      border-b border-gray-200 dark:border-gray-700
-                      ${isLastRow ? "border-b-2" : ""}
                     `}
                   >
                     {cell.column.id === "status"
@@ -311,7 +301,7 @@ export function TableContent({
           <TableRow>
             <TableCell
               colSpan={table.getAllColumns().length}
-              className="h-24 text-center text-gray-600 dark:text-gray-400 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+              className="h-24 text-center text-gray-600 dark:text-gray-400 dark:bg-gray-800"
             >
               No results found
             </TableCell>

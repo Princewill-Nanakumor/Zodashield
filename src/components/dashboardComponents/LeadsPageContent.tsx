@@ -223,7 +223,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background dark:bg-gray-800 border-2  rounded-md">
+    <div className="flex flex-col h-full bg-background dark:bg-gray-800 border-1  rounded-lg">
       {/* Header */}
       <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
 
