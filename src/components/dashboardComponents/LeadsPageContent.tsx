@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, Suspense, useEffect } from "react";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
@@ -19,7 +19,6 @@ import {
   getAvailableCountries,
 } from "@/utils/LeadsUtils";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-
 import {
   TableSkeleton,
   LoadingSpinner,
@@ -46,6 +45,13 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const router = useRouter();
   const isOnline = useNetworkStatus();
 
+  // URL query sync
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Get initial country filter from URL
+  const initialCountry = searchParams.get("country") || "all";
+
   const {
     leads,
     users,
@@ -64,7 +70,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     isDialogOpen: false,
     isUnassignDialogOpen: false,
     selectedUser: "",
-    filterByCountry: "all",
+    filterByCountry: initialCountry,
     searchQuery: searchQuery,
   });
 
@@ -72,6 +78,12 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   useEffect(() => {
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
+
+  // Sync filterByCountry with URL changes (e.g. user edits URL)
+  useEffect(() => {
+    const urlCountry = searchParams.get("country") || "all";
+    setUiState((prev) => ({ ...prev, filterByCountry: urlCountry }));
+  }, [searchParams]);
 
   useEffect(() => {
     if (setLayoutLoading) {
@@ -176,9 +188,24 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     [setSelectedLeads]
   );
 
-  const handleCountryFilterChange = useCallback((country: string) => {
-    setUiState((prev) => ({ ...prev, filterByCountry: country }));
-  }, []);
+  // --- URL sync for country filter ---
+  const handleCountryFilterChange = useCallback(
+    (country: string) => {
+      setUiState((prev) => ({ ...prev, filterByCountry: country }));
+
+      // Update the URL query string
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      if (country === "all") {
+        params.delete("country");
+      } else {
+        params.set("country", country);
+      }
+      // Use replace to avoid adding to browser history
+      window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
+    },
+    [pathname, searchParams]
+  );
+  // ---
 
   const handleFilterChange = useCallback(
     (value: string) => setFilterByUser(value),
