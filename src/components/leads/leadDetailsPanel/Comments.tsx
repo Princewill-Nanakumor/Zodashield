@@ -1,6 +1,6 @@
 "use client";
 
-import { FC, useState, KeyboardEvent } from "react";
+import { FC, useState, useEffect, KeyboardEvent } from "react";
 import { useSession } from "next-auth/react";
 import { Loader2, Plus, Trash2, Pencil, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ interface CommentsProps {
   onCommentDeleted?: (commentId: string) => void;
   onCommentEdited?: (updatedComment: CommentType) => void;
 }
+
+const LOCAL_STORAGE_KEY = "lead_comment_draft";
 
 const Comments: FC<CommentsProps> = ({
   comments,
@@ -35,11 +37,29 @@ const Comments: FC<CommentsProps> = ({
 
   const isAdmin = session?.user?.role === "ADMIN";
 
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved && !commentContent) {
+      setCommentContent(saved);
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  // Save draft to localStorage on change
+  useEffect(() => {
+    if (commentContent) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, commentContent);
+    } else {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
+  }, [commentContent]);
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
       if (!isValid(date)) return "Invalid date";
-      return format(date, "d MMM, yyyy 'at' h:mm a"); // Changed to day first
+      return format(date, "d MMM, yyyy 'at' h:mm a");
     } catch (error) {
       console.error("Error formatting date", error);
       return "";
@@ -56,7 +76,6 @@ const Comments: FC<CommentsProps> = ({
     }
   };
 
-  // Only call the parent's delete handler, don't do API here
   const handleDelete = (commentId: string) => {
     if (deletingId === commentId || !onCommentDeleted) return;
     setDeletingId(commentId);
