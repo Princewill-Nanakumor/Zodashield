@@ -1,16 +1,9 @@
 "use client";
 
-import { Search, UserCircle, Moon, Sun, Loader2 } from "lucide-react";
-import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Search, UserCircle, Loader2 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { DashboardSearchBar } from "./DashboardSearchBar";
+import ThemeToggle from "./ThemeToggle";
 
 interface DashboardNavbarProps {
   onSearch: (query: string) => void;
@@ -23,7 +16,6 @@ export default function DashboardNavbar({
   searchQuery,
   isLoading = false,
 }: DashboardNavbarProps) {
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -62,9 +54,6 @@ export default function DashboardNavbar({
           />
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" className="opacity-0">
-            <Sun className="h-[1.2rem] w-[1.2rem]" />
-          </Button>
           <UserCircle className="h-9 w-9 text-white" />
         </div>
       </nav>
@@ -99,43 +88,7 @@ export default function DashboardNavbar({
       {/* Right: Theme/User Controls */}
       <div className="flex items-center space-x-4">
         {/* Theme Toggle */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-white/20 hover:bg-white/30 border-white/30 text-white"
-              disabled={isLoading}
-            >
-              {theme === "dark" ? (
-                <Moon className="h-[1.2rem] w-[1.2rem]" />
-              ) : (
-                <Sun className="h-[1.2rem] w-[1.2rem]" />
-              )}
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => setTheme("light")}
-              className="cursor-pointer"
-            >
-              Light
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("dark")}
-              className="cursor-pointer"
-            >
-              Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("system")}
-              className="cursor-pointer"
-            >
-              System
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ThemeToggle isLoading={isLoading} />
 
         {/* User Avatar */}
         <button
