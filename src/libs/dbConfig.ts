@@ -42,8 +42,16 @@ const options: mongoose.ConnectOptions = {
 
 export const connectMongoDB = async (): Promise<typeof mongoose> => {
   try {
+    // Always check for a healthy connection
     if (mongoose.connection.readyState === 1) {
       return mongoose;
+    }
+
+    // If not connected, clear the cache and reconnect
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+      globalWithCache.mongooseCache.conn = null;
+      globalWithCache.mongooseCache.promise = null;
     }
 
     if (globalWithCache.mongooseCache.promise) {
@@ -84,6 +92,7 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
       console.error("MongoDB connection error:", err);
       globalWithCache.mongooseCache.conn = null;
       globalWithCache.mongooseCache.promise = null;
+      mongoose.disconnect();
     });
 
     mongoose.connection.on("disconnected", () => {
