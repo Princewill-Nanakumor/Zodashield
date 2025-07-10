@@ -40,6 +40,9 @@ const options: mongoose.ConnectOptions = {
   dbName: process.env.MONGODB_DB || "your_default_db_name",
 };
 
+// --- Only add event listeners once ---
+let listenersSet = false;
+
 export const connectMongoDB = async (): Promise<typeof mongoose> => {
   try {
     // Always check for a healthy connection
@@ -57,6 +60,32 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
     if (globalWithCache.mongooseCache.promise) {
       return await globalWithCache.mongooseCache.promise;
     }
+
+    // --- Add event listeners only once ---
+    if (!listenersSet) {
+      mongoose.connection.on("connected", () => {
+        console.log("MongoDB connection established");
+      });
+
+      mongoose.connection.on("error", (err) => {
+        console.error("MongoDB connection error:", err);
+        globalWithCache.mongooseCache.conn = null;
+        globalWithCache.mongooseCache.promise = null;
+        mongoose.disconnect();
+      });
+
+      mongoose.connection.on("disconnected", () => {
+        console.log("MongoDB disconnected");
+        globalWithCache.mongooseCache.conn = null;
+        globalWithCache.mongooseCache.promise = null;
+      });
+
+      process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+      process.on("SIGINT", () => handleShutdown("SIGINT"));
+
+      listenersSet = true;
+    }
+    // ---
 
     globalWithCache.mongooseCache.promise = mongoose
       .connect(MONGODB_URI, options)
@@ -83,26 +112,6 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
           throw error;
         }
       });
-
-    mongoose.connection.on("connected", () => {
-      console.log("MongoDB connection established");
-    });
-
-    mongoose.connection.on("error", (err) => {
-      console.error("MongoDB connection error:", err);
-      globalWithCache.mongooseCache.conn = null;
-      globalWithCache.mongooseCache.promise = null;
-      mongoose.disconnect();
-    });
-
-    mongoose.connection.on("disconnected", () => {
-      console.log("MongoDB disconnected");
-      globalWithCache.mongooseCache.conn = null;
-      globalWithCache.mongooseCache.promise = null;
-    });
-
-    process.on("SIGTERM", () => handleShutdown("SIGTERM"));
-    process.on("SIGINT", () => handleShutdown("SIGINT"));
 
     return await globalWithCache.mongooseCache.promise;
   } catch (error) {
