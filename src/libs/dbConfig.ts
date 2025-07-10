@@ -40,13 +40,20 @@ const options: mongoose.ConnectOptions = {
   dbName: process.env.MONGODB_DB || "your_default_db_name",
 };
 
-// --- Only add event listeners once ---
 let listenersSet = false;
+
+function isConnectionUsable(): boolean {
+  // readyState 1 = connected, 2 = connecting
+  // But sometimes readyState is 1 but the connection is broken, so we check .db
+  return (
+    mongoose.connection.readyState === 1 && mongoose.connection.db !== undefined
+  );
+}
 
 export const connectMongoDB = async (): Promise<typeof mongoose> => {
   try {
-    // Always check for a healthy connection
-    if (mongoose.connection.readyState === 1) {
+    // Check for a truly healthy connection
+    if (isConnectionUsable()) {
       return mongoose;
     }
 
@@ -61,7 +68,6 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
       return await globalWithCache.mongooseCache.promise;
     }
 
-    // --- Add event listeners only once ---
     if (!listenersSet) {
       mongoose.connection.on("connected", () => {
         console.log("MongoDB connection established");
@@ -85,7 +91,6 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
 
       listenersSet = true;
     }
-    // ---
 
     globalWithCache.mongooseCache.promise = mongoose
       .connect(MONGODB_URI, options)
@@ -97,7 +102,6 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
       .catch(async (error) => {
         console.error("Initial connection error:", error);
         globalWithCache.mongooseCache.promise = null;
-
         try {
           console.log("Attempting to reconnect...");
           const reconnection = await mongoose.connect(MONGODB_URI, {
@@ -150,7 +154,6 @@ const handleShutdown = async (signal: string): Promise<void> => {
 
 export const disconnectMongoDB = async (): Promise<void> => {
   if (mongoose.connection.readyState === 0) return;
-
   try {
     await mongoose.connection.close();
     globalWithCache.mongooseCache.conn = null;
@@ -159,49 +162,6 @@ export const disconnectMongoDB = async (): Promise<void> => {
   } catch (error) {
     console.error("Error disconnecting from MongoDB:", error);
     throw error;
-  }
-};
-
-export type DatabaseOperation<T> = () => Promise<T>;
-
-export const withDatabase = async <T>(
-  operation: DatabaseOperation<T>,
-  retries = 3
-): Promise<T> => {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      await connectMongoDB();
-      return await operation();
-    } catch (err) {
-      lastError = err;
-      console.error(
-        `Database operation error (attempt ${attempt}/${retries}):`,
-        err
-      );
-
-      if (attempt === retries) break;
-
-      const backoffTime = Math.min(1000 * Math.pow(2, attempt), 10000);
-      await new Promise((resolve) => setTimeout(resolve, backoffTime));
-    }
-  }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Unknown database error");
-};
-
-export const executeDbOperation = async <T>(
-  operation: DatabaseOperation<T>,
-  errorMessage = "Database operation failed"
-): Promise<T> => {
-  try {
-    return await withDatabase(operation);
-  } catch (error) {
-    console.error(errorMessage, error);
-    throw new Error(errorMessage);
   }
 };
 

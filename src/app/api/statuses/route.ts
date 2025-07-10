@@ -5,18 +5,37 @@ import { connectMongoDB } from "@/libs/dbConfig";
 import { Status } from "@/models/Status";
 import { authOptions } from "@/libs/auth";
 
+// Helper to retry DB operation if connection fails
+async function withDbRetry<T>(
+  operation: () => Promise<T>,
+  retries = 2
+): Promise<T> {
+  let lastError;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      await connectMongoDB();
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (i === retries) throw err;
+      // Wait a bit before retrying
+      await new Promise((res) => setTimeout(res, 500 * (i + 1)));
+    }
+  }
+  throw lastError;
+}
+
 // GET /api/statuses
 export async function GET() {
   try {
-    // Do NOT pass req here in the App Router!
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongoDB();
-
-    const statuses = await Status.find({}).sort({ createdAt: 1 });
+    const statuses = await withDbRetry(() =>
+      Status.find({}).sort({ createdAt: 1 })
+    );
 
     // Set cache headers
     const headers = new Headers();
@@ -44,8 +63,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongoDB();
-
     const { name, color } = await req.json();
     if (!name || !color) {
       return NextResponse.json(
@@ -54,7 +71,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newStatus = await Status.create({ name, color });
+    const newStatus = await withDbRetry(() => Status.create({ name, color }));
     return NextResponse.json(newStatus, { status: 201 });
   } catch (error) {
     console.error("Error creating status:", error);
