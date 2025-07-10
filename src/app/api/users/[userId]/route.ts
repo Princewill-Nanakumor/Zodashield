@@ -1,8 +1,7 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/app/api/users/[userId]/route.ts
-
+// src/app/api/users/[userId]/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { connectMongoDB } from "@/libs/dbConfig";
+import { withDatabase, executeDbOperation } from "@/libs/dbConfig";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
@@ -17,42 +16,42 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongoDB();
     const { userId } = await params;
 
     if (!ObjectId.isValid(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
-    const db = mongoose.connection.db;
-    if (!db) throw new Error("Database connection not available");
+    const userData = await withDatabase(async () => {
+      const db = mongoose.connection.db;
+      if (!db) throw new Error("Database connection not available");
 
-    const user = await db
-      .collection("users")
-      .findOne({ _id: new ObjectId(userId) });
+      const user = await db
+        .collection("users")
+        .findOne({ _id: new ObjectId(userId) });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+      if (!user) {
+        throw new Error("User not found");
+      }
 
-    // Return only necessary user fields for lead assignment
-    const userData = {
-      _id: user._id.toString(),
-      id: user._id.toString(),
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-    };
+      // Return only necessary user fields for lead assignment
+      return {
+        _id: user._id.toString(),
+        id: user._id.toString(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+      };
+    });
 
     return NextResponse.json(userData);
   } catch (error) {
     console.error("Error fetching user:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch user";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -69,47 +68,42 @@ export async function PATCH(
     const { userId } = await params;
     const { action, ...data } = await request.json();
 
-    await connectMongoDB();
+    const result = await executeDbOperation(async () => {
+      const db = mongoose.connection.db;
+      if (!db) throw new Error("Database connection not available");
 
-    const db = mongoose.connection.db;
-    if (!db) throw new Error("Database connection not available");
-
-    switch (action) {
-      case "update-status": {
-        const result = await db.collection("users").findOneAndUpdate(
-          {
-            _id: new ObjectId(userId),
-            createdBy: new ObjectId(session.user.id),
-          },
-          { $set: { status: data.status, updatedAt: new Date() } },
-          { returnDocument: "after" }
-        );
-
-        // Check if result is null or if result.value is null
-        if (!result || !result.value) {
-          return NextResponse.json(
-            { message: "User not found" },
-            { status: 404 }
+      switch (action) {
+        case "update-status": {
+          const result = await db.collection("users").findOneAndUpdate(
+            {
+              _id: new ObjectId(userId),
+              createdBy: new ObjectId(session.user.id),
+            },
+            { $set: { status: data.status, updatedAt: new Date() } },
+            { returnDocument: "after" }
           );
+
+          // Check if result is null or if result.value is null
+          if (!result || !result.value) {
+            throw new Error("User not found");
+          }
+
+          return {
+            message: "Status updated successfully",
+            user: result.value,
+          };
         }
 
-        return NextResponse.json({
-          message: "Status updated successfully",
-          user: result.value,
-        });
+        default:
+          throw new Error("Invalid action");
       }
+    }, "Error updating user");
 
-      default:
-        return NextResponse.json(
-          { message: "Invalid action" },
-          { status: 400 }
-        );
-    }
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error updating user:", error);
-    return NextResponse.json(
-      { message: "Error updating user" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Error updating user";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
