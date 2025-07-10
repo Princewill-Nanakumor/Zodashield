@@ -43,8 +43,6 @@ const options: mongoose.ConnectOptions = {
 let listenersSet = false;
 
 function isConnectionUsable(): boolean {
-  // readyState 1 = connected, 2 = connecting
-  // But sometimes readyState is 1 but the connection is broken, so we check .db
   return (
     mongoose.connection.readyState === 1 && mongoose.connection.db !== undefined
   );
@@ -52,12 +50,10 @@ function isConnectionUsable(): boolean {
 
 export const connectMongoDB = async (): Promise<typeof mongoose> => {
   try {
-    // Check for a truly healthy connection
     if (isConnectionUsable()) {
       return mongoose;
     }
 
-    // If not connected, clear the cache and reconnect
     if (mongoose.connection.readyState !== 0) {
       await mongoose.disconnect();
       globalWithCache.mongooseCache.conn = null;
@@ -162,6 +158,50 @@ export const disconnectMongoDB = async (): Promise<void> => {
   } catch (error) {
     console.error("Error disconnecting from MongoDB:", error);
     throw error;
+  }
+};
+
+export type DatabaseOperation<T> = () => Promise<T>;
+
+export const withDatabase = async <T>(
+  operation: DatabaseOperation<T>,
+  retries = 3
+): Promise<T> => {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await connectMongoDB();
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      console.error(
+        `Database operation error (attempt ${attempt}/${retries}):`,
+        err
+      );
+
+      if (attempt === retries) break;
+
+      const backoffTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+      await new Promise((resolve) => setTimeout(resolve, backoffTime));
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Unknown database error");
+};
+
+export const executeDbOperation = async <T>(
+  operation: () => Promise<T>,
+  errorMessage = "Database operation failed"
+): Promise<T> => {
+  try {
+    await connectMongoDB();
+    return await operation();
+  } catch (error) {
+    console.error(errorMessage, error);
+    throw new Error(errorMessage);
   }
 };
 
