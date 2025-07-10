@@ -459,6 +459,11 @@ function ClientSideSelect({
           value={countryOptions.find((opt) => opt.label === field.value)}
           classNamePrefix="react-select"
           className="react-select-container"
+          // Mobile-specific props to prevent layout shifts
+          menuPosition="fixed"
+          menuPlacement="auto"
+          closeMenuOnScroll={true}
+          blurInputOnSelect={true}
         />
       )}
     />

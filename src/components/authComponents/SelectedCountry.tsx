@@ -150,8 +150,26 @@ export const customStyles: StylesConfig<SelectOption, false> = {
       fontFamily: inter.style.fontFamily,
       backgroundColor: dark ? "#374151" : "white",
       color: dark ? "#F3F4F6" : "#111827",
+      // Fix for mobile layout shift
+      position: "fixed" as const,
+      top: "auto",
+      left: "auto",
+      right: "auto",
+      bottom: "auto",
+      width: "100%",
+      maxWidth: "100vw",
+      zIndex: 9999,
+      // Ensure menu doesn't cause horizontal scroll
+      maxHeight: "200px",
+      overflow: "auto",
     };
   },
+  menuList: (provided) => ({
+    ...provided,
+    // Prevent horizontal scroll
+    maxHeight: "200px",
+    overflow: "auto",
+  }),
 };
 
 export const CustomOption = ({
