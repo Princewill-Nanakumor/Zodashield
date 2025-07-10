@@ -102,7 +102,17 @@ export default function UsersManagement({
       console.error("Error fetching users:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch users",
+        description: (
+          <>
+            Failed to fetch users.
+            <button
+              onClick={fetchUsers}
+              className="ml-2 underline text-blue-600"
+            >
+              Retry
+            </button>
+          </>
+        ),
         variant: "destructive",
       });
       setUsers([]);
@@ -111,10 +121,22 @@ export default function UsersManagement({
     }
   }, [toast]);
 
+  // Fetch users on mount and when session changes
   useEffect(() => {
     if (session?.user?.role === "ADMIN") {
       fetchUsers();
     }
+  }, [fetchUsers, session]);
+
+  // Refetch users when window regains focus (to recover from timeouts)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (session?.user?.role === "ADMIN") {
+        fetchUsers();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [fetchUsers, session]);
 
   const formatDate = (dateString?: string) => {
@@ -307,7 +329,6 @@ export default function UsersManagement({
     }
   };
 
-  // In the handleDeleteUser function in UsersManagement.tsx
   const handleDeleteUser = async (userId: string) => {
     if (
       !confirm(
