@@ -133,19 +133,19 @@ export default function SignUpForm() {
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 ${inter.className}`}
+      className={`bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 ${inter.className}`}
     >
-      <div className="text-center mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
           Create your account
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm sm:text-base">
+        <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 mt-2">
           Start your journey with us today!
         </p>
       </div>
 
       <form
-        className="space-y-4 sm:space-y-6"
+        className="space-y-3 sm:space-y-4 md:space-y-6"
         onSubmit={handleSubmit(onSubmit)}
       >
         <FormError
@@ -167,13 +167,13 @@ export default function SignUpForm() {
           {/* First Name */}
           <div>
             <div className="relative flex items-center">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none" />
               <input
                 id="firstName"
                 type="text"
                 autoComplete="given-name"
                 {...register("firstName")}
-                className={`pl-12 h-12 w-full px-3 rounded-lg border ${
+                className={`pl-10 sm:pl-12 h-10 sm:h-12 w-full px-3 rounded-lg border text-sm sm:text-base ${
                   errors.firstName
                     ? "border-red-500 focus:ring-red-500"
                     : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
@@ -183,8 +183,8 @@ export default function SignUpForm() {
               />
             </div>
             {errors.firstName && (
-              <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-                <AlertCircle className="h-4 w-4" />
+              <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                 {errors.firstName.message}
               </p>
             )}
@@ -193,13 +193,13 @@ export default function SignUpForm() {
           {/* Last Name */}
           <div>
             <div className="relative flex items-center">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none" />
               <input
                 id="lastName"
                 type="text"
                 autoComplete="family-name"
                 {...register("lastName")}
-                className={`pl-12 h-12 w-full px-3 rounded-lg border ${
+                className={`pl-10 sm:pl-12 h-10 sm:h-12 w-full px-3 rounded-lg border text-sm sm:text-base ${
                   errors.lastName
                     ? "border-red-500 focus:ring-red-500"
                     : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
@@ -209,8 +209,8 @@ export default function SignUpForm() {
               />
             </div>
             {errors.lastName && (
-              <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-                <AlertCircle className="h-4 w-4" />
+              <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                 {errors.lastName.message}
               </p>
             )}
@@ -220,13 +220,13 @@ export default function SignUpForm() {
         {/* Email Field */}
         <div>
           <div className="relative flex items-center">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none" />
             <input
               id="email"
               type="email"
               autoComplete="email"
               {...register("email")}
-              className={`pl-12 h-12 w-full px-3 rounded-lg border ${
+              className={`pl-10 sm:pl-12 h-10 sm:h-12 w-full px-3 rounded-lg border text-sm sm:text-base ${
                 errors.email
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
@@ -236,8 +236,8 @@ export default function SignUpForm() {
             />
           </div>
           {errors.email && (
-            <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-              <AlertCircle className="h-4 w-4" />
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               {errors.email.message}
             </p>
           )}
@@ -251,8 +251,8 @@ export default function SignUpForm() {
             loading={loading}
           />
           {errors.country && (
-            <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-              <AlertCircle className="h-4 w-4" />
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               {errors.country.message}
             </p>
           )}
@@ -261,7 +261,7 @@ export default function SignUpForm() {
         {/* Phone Input */}
         <div>
           <div className="relative flex items-center">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none z-10" />
             <Controller
               name="phoneNumber"
               control={control}
@@ -276,7 +276,7 @@ export default function SignUpForm() {
                     handlePhoneChange(value);
                     field.onChange(value);
                   }}
-                  inputClass={`!pl-12 !h-12 !w-full !rounded-lg ${
+                  inputClass={`!pl-10 sm:!pl-12 !h-10 sm:!h-12 !w-full !rounded-lg !text-sm sm:!text-base ${
                     errors.phoneNumber
                       ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500"
                       : "!border-gray-300 focus:!border-indigo-500 focus:!ring-indigo-500"
@@ -295,8 +295,8 @@ export default function SignUpForm() {
             />
           </div>
           {errors.phoneNumber && (
-            <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-              <AlertCircle className="h-4 w-4" />
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               {errors.phoneNumber.message}
             </p>
           )}
@@ -305,13 +305,13 @@ export default function SignUpForm() {
         {/* Password */}
         <div>
           <div className="relative flex items-center">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none" />
             <input
               id="password"
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               {...register("password")}
-              className={`pl-12 pr-12 h-12 w-full px-3 rounded-lg border ${
+              className={`pl-10 sm:pl-12 pr-10 sm:pr-12 h-10 sm:h-12 w-full px-3 rounded-lg border text-sm sm:text-base ${
                 errors.password
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
@@ -327,15 +327,15 @@ export default function SignUpForm() {
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
-                <EyeOff className="h-5 w-5" />
+                <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <Eye className="h-5 w-5" />
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
           </div>
           {errors.password && (
-            <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-              <AlertCircle className="h-4 w-4" />
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               {errors.password.message}
             </p>
           )}
@@ -345,13 +345,13 @@ export default function SignUpForm() {
         {/* Confirm Password */}
         <div>
           <div className="relative flex items-center">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none" />
             <input
               id="confirmPassword"
               type={showConfirm ? "text" : "password"}
               autoComplete="new-password"
               {...register("confirmPassword")}
-              className={`pl-12 pr-12 h-12 w-full px-3 rounded-lg border ${
+              className={`pl-10 sm:pl-12 pr-10 sm:pr-12 h-10 sm:h-12 w-full px-3 rounded-lg border text-sm sm:text-base ${
                 errors.confirmPassword
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
@@ -367,15 +367,15 @@ export default function SignUpForm() {
               aria-label={showConfirm ? "Hide password" : "Show password"}
             >
               {showConfirm ? (
-                <EyeOff className="h-5 w-5" />
+                <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <Eye className="h-5 w-5" />
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
           </div>
           {errors.confirmPassword && (
-            <p className="text-xs sm:text-sm text-red-500 flex items-center gap-1 mt-1">
-              <AlertCircle className="h-4 w-4" />
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               {errors.confirmPassword.message}
             </p>
           )}
@@ -385,11 +385,11 @@ export default function SignUpForm() {
         <button
           type="submit"
           disabled={loading}
-          className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="group relative w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <span className="flex items-center">
-              <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
+              <Loader2 className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
               Creating account...
             </span>
           ) : (
@@ -401,7 +401,7 @@ export default function SignUpForm() {
         </button>
 
         {/* Sign In Link */}
-        <div className="text-center text-sm">
+        <div className="text-center text-xs sm:text-sm">
           <Link
             href="/signin"
             className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
@@ -429,7 +429,7 @@ function ClientSideSelect({
     return (
       <input
         type="text"
-        className="pl-12 h-12 w-full px-3 rounded-lg border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+        className="pl-10 sm:pl-12 h-10 sm:h-12 w-full px-3 rounded-lg border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700"
         placeholder="Loading countries..."
         disabled
       />

@@ -66,47 +66,50 @@ export default function SignInForm() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+    <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
           Welcome Back
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
           Sign in to your account to continue
         </p>
       </div>
-      <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="space-y-4 sm:space-y-6"
+        onSubmit={handleSubmit(onSubmit)}
+      >
         <FormError
           message={
             formError || errors.email?.message || errors.password?.message
           }
         />
         <FormSuccess message={formSuccess} />
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-              <Mail className="h-5 w-5 text-gray-400" />
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
             </div>
             <input
               id="email"
               type="email"
               autoComplete="email"
               {...register("email")}
-              className="pl-10 appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="pl-10 sm:pl-10 appearance-none rounded-lg relative block w-full px-3 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Email address"
               disabled={loading}
             />
           </div>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-              <Lock className="h-5 w-5 text-gray-400" />
+              <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
             </div>
             <input
               id="password"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               {...register("password")}
-              className="pl-10 pr-10 appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="pl-10 sm:pl-10 pr-10 appearance-none rounded-lg relative block w-full px-3 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Password"
               disabled={loading}
             />
@@ -118,9 +121,9 @@ export default function SignInForm() {
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
-                <EyeOff className="h-5 w-5" />
+                <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <Eye className="h-5 w-5" />
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
           </div>
@@ -144,11 +147,11 @@ export default function SignInForm() {
           <button
             type="submit"
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+            className="group relative w-full flex justify-center py-2.5 sm:py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
           >
             {loading ? (
               <span className="flex items-center">
-                <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
+                <Loader2 className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
                 Signing in...
               </span>
             ) : (
@@ -159,7 +162,7 @@ export default function SignInForm() {
             )}
           </button>
         </div>
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm space-y-2 sm:space-y-0">
           <Link
             href="/forgot-password"
             className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
