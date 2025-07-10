@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import ThemeToggle from "@/components/dashboardComponents/ThemeToggle";
 import AboutComponent from "@/components/homepageComponents/About";
 import Hero from "@/components/homepageComponents/Hero";
+import ComingSoon from "@/components/homepageComponents/ComingSoon";
 
 function Skeleton({ className = "" }: { className?: string }) {
   return (
@@ -68,8 +69,11 @@ export default function HomePage() {
           </div>
         </div>
       </nav>
+
+      {/* Hero Section */}
       <Hero />
       <AboutComponent />
+      <ComingSoon />
     </div>
   );
 }
