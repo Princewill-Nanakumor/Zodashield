@@ -59,6 +59,13 @@ export default function SignUpForm() {
     null
   );
   const [phone, setPhone] = useState("");
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    }
+  }, []);
 
   const {
     register,
@@ -267,37 +274,40 @@ export default function SignUpForm() {
         <div>
           <div className="relative flex items-center">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 pointer-events-none z-10" />
-            <Controller
-              name="phoneNumber"
-              control={control}
-              render={({ field }) => (
-                <PhoneInput
-                  {...field}
-                  country={selectedCountry?.value.toLowerCase() || "us"}
-                  value={phone}
-                  countryCodeEditable={false}
-                  enableSearch={false}
-                  onChange={(value) => {
-                    handlePhoneChange(value);
-                    field.onChange(value);
-                  }}
-                  inputClass={`!pl-10 sm:!pl-12 !h-10 sm:!h-12 !w-full !rounded-lg !text-sm sm:!text-base ${
-                    errors.phoneNumber
-                      ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500"
-                      : "!border-gray-300 focus:!border-indigo-500 focus:!ring-indigo-500"
-                  } !dark:border-gray-600 !bg-white !dark:bg-gray-700 !text-gray-900 !dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors`}
-                  containerClass="!w-full"
-                  buttonClass="hidden"
-                  disabled={loading}
-                  placeholder="Phone Number"
-                  disableDropdown={true}
-                  inputProps={{
-                    name: "phoneNumber",
-                    required: true,
-                  }}
-                />
-              )}
-            />
+            <div
+              className={`phone-input-container${isDark ? " dark" : ""} w-full`}
+            >
+              <Controller
+                name="phoneNumber"
+                control={control}
+                render={({ field }) => (
+                  <PhoneInput
+                    {...field}
+                    country={selectedCountry?.value.toLowerCase() || "us"}
+                    value={phone}
+                    countryCodeEditable={false}
+                    enableSearch={false}
+                    onChange={(value) => {
+                      handlePhoneChange(value);
+                      field.onChange(value);
+                    }}
+                    inputClass={`!pl-10 sm:!pl-12 !h-10 sm:!h-12 !w-full !rounded-lg !text-sm sm:!text-base ${
+                      errors.phoneNumber
+                        ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500"
+                        : "!border-gray-300 focus:!border-indigo-500 focus:!ring-indigo-500"
+                    } placeholder-gray-500 dark:placeholder-gray-400 transition-colors`}
+                    buttonClass="hidden"
+                    disabled={loading}
+                    placeholder="Phone Number"
+                    disableDropdown={true}
+                    inputProps={{
+                      name: "phoneNumber",
+                      required: true,
+                    }}
+                  />
+                )}
+              />
+            </div>
           </div>
           {errors.phoneNumber && (
             <p className="text-xs text-red-500 flex items-center gap-1 mt-1">

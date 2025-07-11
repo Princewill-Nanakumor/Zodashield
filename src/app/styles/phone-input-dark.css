@@ -1,42 +1,52 @@
-/* src/styles/phone-input-dark.css */
 .phone-input-container.dark .react-tel-input {
-  background: #1f2937 !important;
-  border-color: #4b5563 !important;
+  background: #374151 !important; /* Tailwind gray-700 */
+  border-color: #4b5563 !important; /* Tailwind gray-600 */
 }
 
 .phone-input-container.dark .react-tel-input input {
-  background: #1f2937 !important;
-  color: #f3f4f6 !important;
-  border-color: #4b5563 !important;
+  background: #374151 !important; /* Tailwind gray-700 */
+  color: #fff !important; /* Tailwind white */
+  border-color: #4b5563 !important; /* Tailwind gray-600 */
+  box-shadow: none !important;
+}
+
+.phone-input-container.dark .react-tel-input input:focus {
+  border-color: #818cf8 !important; /* Tailwind indigo-400 for focus */
+  outline: none !important;
 }
 
 .phone-input-container.dark .react-tel-input input::placeholder {
-  color: #9ca3af !important;
+  color: #9ca3af !important; /* Tailwind gray-400 */
 }
 
-.phone-input-container.dark .react-tel-input .flag-dropdown {
-  background: #1f2937 !important;
-  border-color: #4b5563 !important;
-}
-
+.phone-input-container.dark .react-tel-input .flag-dropdown,
 .phone-input-container.dark .react-tel-input .selected-flag {
-  background: #1f2937 !important;
+  background: #374151 !important; /* Tailwind gray-700 */
+  border-color: #4b5563 !important; /* Tailwind gray-600 */
 }
 
 .phone-input-container.dark .react-tel-input .country-list {
-  background: #1f2937 !important;
-  color: #f3f4f6 !important;
+  background: #374151 !important; /* Tailwind gray-700 */
+  color: #fff !important;
   border-color: #4b5563 !important;
+  box-shadow: none !important;
 }
 
 .phone-input-container.dark .react-tel-input .country-list .country {
-  color: #f3f4f6 !important;
+  color: #fff !important;
 }
 
-.phone-input-container.dark .react-tel-input .country-list .country:hover {
-  background: #374151 !important;
-}
-
+.phone-input-container.dark .react-tel-input .country-list .country:hover,
 .phone-input-container.dark .react-tel-input .country-list .country.highlight {
-  background: #374151 !important;
+  background: #1f2937 !important; /* Tailwind gray-800 */
+}
+
+/* Remove border radius if you want squared corners, or match your other inputs */
+.phone-input-container.dark .react-tel-input,
+.phone-input-container.dark .react-tel-input input {
+  border-radius: 0.75rem !important; /* Match your other inputs */
+}
+
+.phone-input-container.dark .react-tel-input input {
+  width: 100% !important;
 }
