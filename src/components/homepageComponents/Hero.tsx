@@ -45,7 +45,7 @@ export default function Hero() {
                 href="/signup"
                 className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 dark:hover:from-indigo-600 dark:hover:to-purple-600 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
               >
-                Get Started
+                Sign up
               </Link>
               <Link
                 href="/signin"
