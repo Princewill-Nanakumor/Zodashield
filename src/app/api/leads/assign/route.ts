@@ -1,5 +1,4 @@
 // app/api/leads/assign/route.ts
-// app/api/leads/assign/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";

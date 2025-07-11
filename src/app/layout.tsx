@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DriveCRM",
-  description: "Modern CRM Solution for your business",
+  title: "ZodaShied ",
+  description: "Modern CRM Solution for your importing Excel & CSV files",
 };
 
 export default function RootLayout({

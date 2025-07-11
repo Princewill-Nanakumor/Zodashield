@@ -66,7 +66,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
         const hasNew = data.some((s: Status) => s.name.toLowerCase() === "new");
         if (!hasNew) {
           data.unshift({
-            _id: "new", // Use a string id for frontend-only
+            _id: "new",
             name: "New",
             color: "#3B82F6",
           });
