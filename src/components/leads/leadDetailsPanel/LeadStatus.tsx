@@ -54,7 +54,6 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     return () => match.removeEventListener("change", handler);
   }, []);
 
-  // Fetch statuses on mount
   useEffect(() => {
     const fetchStatuses = async () => {
       setIsLoadingStatuses(true);
@@ -62,6 +61,17 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
         const res = await fetch("/api/statuses");
         if (!res.ok) throw new Error("Failed to fetch statuses");
         const data = await res.json();
+
+        // Always ensure "New" is present
+        const hasNew = data.some((s: Status) => s.name.toLowerCase() === "new");
+        if (!hasNew) {
+          data.unshift({
+            _id: "new", // Use a string id for frontend-only
+            name: "New",
+            color: "#3B82F6",
+          });
+        }
+
         setStatuses(data);
       } catch {
         toast({

@@ -1,4 +1,4 @@
-// app/api/leads/[id]/activities/route.ts
+// /Users/safeconnection/Downloads/drivecrm/src/app/api/leads/[id]/activities/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
@@ -16,6 +16,12 @@ async function resolveStatusNames(
   const statusNames: Record<string, string> = {};
   const uncachedIds: string[] = [];
 
+  // Always resolve "new" to "New"
+  if (statusIds.has("new")) {
+    statusNames["new"] = "New";
+    statusIds.delete("new");
+  }
+
   // Check cache first
   for (const statusId of statusIds) {
     const cached = statusCache.get(statusId);
@@ -26,7 +32,7 @@ async function resolveStatusNames(
     }
   }
 
-  // Fetch uncached status names
+  // Fetch uncached status names from DB as before...
   if (uncachedIds.length > 0) {
     try {
       const db = mongoose.connection.db;
@@ -54,7 +60,6 @@ async function resolveStatusNames(
 
   return statusNames;
 }
-
 // Define session user interface
 interface SessionUser {
   id: string;
@@ -122,13 +127,30 @@ export async function GET(request: NextRequest) {
     await connectMongoDB();
     const adminId = getCorrectAdminId(session);
 
-    console.log("=== ACTIVITIES GET REQUEST ===");
+    console.log("=== ACTIVITIES GET REQUEST DEBUG ===");
     console.log("Lead ID:", leadId);
     console.log("User ID:", session.user.id);
     console.log("User Role:", session.user.role);
-    console.log("Admin ID:", adminId.toString());
     console.log("Session adminId:", session.user.adminId);
+    console.log("Calculated Admin ID:", adminId.toString());
     console.log("Page:", page, "Limit:", limit, "Skip:", skip);
+
+    // First, let's check what activities exist for this lead without any filters
+    const allActivitiesForLead = await Activity.find({
+      leadId: new mongoose.Types.ObjectId(leadId),
+    }).lean();
+
+    console.log("=== ALL ACTIVITIES FOR LEAD (NO FILTERS) ===");
+    console.log("Total activities found:", allActivitiesForLead.length);
+    allActivitiesForLead.forEach((activity, index) => {
+      console.log(`Activity ${index + 1}:`, {
+        type: activity.type,
+        adminId: activity.adminId ? activity.adminId.toString() : "NO ADMIN ID",
+        userId: activity.userId ? activity.userId.toString() : "NO USER ID",
+        details: activity.details,
+        timestamp: activity.timestamp,
+      });
+    });
 
     // Build query that handles both old activities (without adminId) and new activities (with adminId)
     const query: {
@@ -144,7 +166,8 @@ export async function GET(request: NextRequest) {
       ],
     };
 
-    console.log("Activities query:", JSON.stringify(query, null, 2));
+    console.log("=== ACTIVITIES QUERY DEBUG ===");
+    console.log("Query:", JSON.stringify(query, null, 2));
 
     // Find activities with proper population and multi-tenancy filter
     const activities = await Activity.find(query)
@@ -154,7 +177,17 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
+    console.log("=== FILTERED ACTIVITIES DEBUG ===");
     console.log("Found activities count:", activities.length);
+    activities.forEach((activity, index) => {
+      console.log(`Filtered Activity ${index + 1}:`, {
+        type: activity.type,
+        adminId: activity.adminId ? activity.adminId.toString() : "NO ADMIN ID",
+        userId: activity.userId ? activity.userId.toString() : "NO USER ID",
+        details: activity.details,
+        timestamp: activity.timestamp,
+      });
+    });
 
     // Collect status IDs for resolution
     const statusIds = new Set<string>();

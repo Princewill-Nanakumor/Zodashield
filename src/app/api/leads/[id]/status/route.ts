@@ -1,4 +1,3 @@
-// app/api/leads/[id]/status/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
@@ -7,56 +6,25 @@ import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
 
-// Status name cache with proper key formatting
-const statusNameCache = new Map<string, string>();
+interface SessionUser {
+  id: string;
+  role: "ADMIN" | "AGENT";
+  adminId?: string;
+  firstName?: string;
+  lastName?: string;
+}
 
-async function getStatusName(statusId: string): Promise<string> {
-  // Normalize the statusId to ensure consistent caching
-  const normalizedId = statusId.toString();
+interface Session {
+  user: SessionUser;
+}
 
-  // Check cache first
-  if (statusNameCache.has(normalizedId)) {
-    return statusNameCache.get(normalizedId)!;
+function getCorrectAdminId(session: Session): mongoose.Types.ObjectId {
+  if (session.user.role === "ADMIN") {
+    return new mongoose.Types.ObjectId(session.user.id);
+  } else if (session.user.role === "AGENT" && session.user.adminId) {
+    return new mongoose.Types.ObjectId(session.user.adminId);
   }
-
-  try {
-    // Ensure database connection is active
-    if (mongoose.connection.readyState !== 1) {
-      console.log("Database connection not ready, reconnecting...");
-      await connectMongoDB();
-    }
-
-    const db = mongoose.connection.db;
-    if (!db) {
-      console.error("Database connection not available");
-      return statusId;
-    }
-
-    const statusCollection = db.collection("status");
-
-    // Try to find by ObjectId first
-    let statusDoc = null;
-    if (mongoose.Types.ObjectId.isValid(statusId)) {
-      statusDoc = await statusCollection.findOne({
-        _id: new mongoose.Types.ObjectId(statusId),
-      });
-    }
-
-    // If not found by ObjectId, try by name (fallback)
-    if (!statusDoc) {
-      statusDoc = await statusCollection.findOne({
-        name: statusId,
-      });
-    }
-
-    const statusName = statusDoc?.name || statusId;
-    statusNameCache.set(normalizedId, statusName);
-    return statusName;
-  } catch (error) {
-    console.error("Error fetching status name:", error);
-    // Return the original statusId as fallback
-    return statusId;
-  }
+  throw new Error("Invalid user role or missing adminId for agent");
 }
 
 export async function PATCH(req: Request) {
@@ -68,7 +36,6 @@ export async function PATCH(req: Request) {
 
     // Ensure database connection is active
     if (mongoose.connection.readyState !== 1) {
-      console.log("Database connection not ready, reconnecting...");
       await connectMongoDB();
     }
 
@@ -96,10 +63,8 @@ export async function PATCH(req: Request) {
     };
 
     if (session.user.role === "ADMIN") {
-      // Admin can only update leads they created
       query.adminId = session.user.id;
     } else if (session.user.role === "AGENT" && session.user.adminId) {
-      // Agent can only update leads from their admin
       query.adminId = session.user.adminId;
     }
 
@@ -119,30 +84,18 @@ export async function PATCH(req: Request) {
       return NextResponse.json(currentLead);
     }
 
-    // Get status names for better activity logging with error handling
-    let oldStatusName = "Unknown";
-    let newStatusName = newStatus;
-
-    try {
-      [oldStatusName, newStatusName] = await Promise.all([
-        oldStatus ? getStatusName(oldStatus) : "Unknown",
-        getStatusName(newStatus),
-      ]);
-    } catch (error) {
-      console.error("Error getting status names:", error);
-      // Continue with fallback names
-      oldStatusName = oldStatus || "Unknown";
-      newStatusName = newStatus;
-    }
-
-    // Validate that the new status exists
+    // --- PATCH: Allow "new" as a special case ---
+    let statusExists = false;
     try {
       const db = mongoose.connection.db;
       if (db) {
         const statusCollection = db.collection("status");
-        let statusExists = false;
-
-        if (mongoose.Types.ObjectId.isValid(newStatus)) {
+        if (
+          typeof newStatus === "string" &&
+          newStatus.toLowerCase() === "new"
+        ) {
+          statusExists = true; // Always allow "new"
+        } else if (mongoose.Types.ObjectId.isValid(newStatus)) {
           const statusDoc = await statusCollection.findOne({
             _id: new mongoose.Types.ObjectId(newStatus),
           });
@@ -154,21 +107,22 @@ export async function PATCH(req: Request) {
           });
           statusExists = !!statusDoc;
         }
-
-        if (!statusExists) {
-          return NextResponse.json(
-            { error: "Invalid status ID or name" },
-            { status: 400 }
-          );
-        }
       }
     } catch (error) {
       console.error("Error validating status:", error);
       // Continue without validation if there's an error
+      statusExists = true;
+    }
+
+    if (!statusExists) {
+      return NextResponse.json(
+        { error: "Invalid status ID or name" },
+        { status: 400 }
+      );
     }
 
     const updatedLead = await Lead.findOneAndUpdate(
-      query, // Use the same query with multi-tenancy filter
+      query,
       {
         status: newStatus,
         updatedAt: new Date(),
@@ -180,44 +134,35 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    // Create activity log for status change using unified Activity model
+    // Create activity log for status change
     try {
+      const activityAdminId = getCorrectAdminId(session as Session);
+
       const activity = new Activity({
         type: "STATUS_CHANGE",
         userId: new mongoose.Types.ObjectId(session.user.id),
-        details: `Status changed from ${oldStatusName} to ${newStatusName}`,
+        details: `Status changed from ${oldStatus} to ${newStatus}`,
         leadId: new mongoose.Types.ObjectId(id),
-        adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy
+        adminId: activityAdminId,
         timestamp: new Date(),
         metadata: {
           oldStatusId: oldStatus,
           newStatusId: newStatus,
-          oldStatus: oldStatusName,
-          newStatus: newStatusName,
-          status: newStatusName,
+          oldStatus: oldStatus,
+          newStatus: newStatus,
+          status: newStatus,
         },
       });
 
       await activity.save();
-
-      console.log("Status updated successfully:", {
-        leadId: id,
-        oldStatus,
-        newStatus,
-        oldStatusName,
-        newStatusName,
-        activityId: activity._id,
-      });
     } catch (activityError) {
       console.error("Error creating activity log:", activityError);
-      // Don't fail the entire request if activity logging fails
     }
 
     return NextResponse.json(updatedLead);
   } catch (error) {
     console.error("API Error:", error);
 
-    // Check if it's a connection error
     if (error instanceof Error && error.message.includes("connection")) {
       return NextResponse.json(
         { error: "Database connection error. Please try again." },
