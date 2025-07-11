@@ -4,11 +4,36 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import Lead from "@/models/Lead";
+import mongoose from "mongoose";
 
-// Define query type for MongoDB filters
-interface LeadQuery {
-  adminId?: string;
-  assignedTo?: string;
+interface LeadDocument {
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  source?: string;
+  status: string;
+  adminId: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+  __v: number;
+}
+
+interface TransformedLead {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  source: string;
+  country: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export async function GET() {
@@ -21,22 +46,49 @@ export async function GET() {
 
     await connectMongoDB();
 
-    const query: LeadQuery = {};
+    const query: { adminId?: mongoose.Types.ObjectId } = {};
 
     if (session.user.role === "ADMIN") {
       // Admin sees all leads that belong to them
-      query.adminId = session.user.id;
+      query.adminId = new mongoose.Types.ObjectId(session.user.id);
     } else if (session.user.role === "AGENT") {
       // Agent sees only leads assigned to them from their admin
-      query.assignedTo = session.user.id;
       if (session.user.adminId) {
-        query.adminId = session.user.adminId;
+        query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
       }
     }
 
-    const leads = await Lead.find(query).sort({ createdAt: -1 });
+    const leads = await Lead.find(query)
+      .select(
+        "firstName lastName email phone country source status createdAt updatedAt"
+      )
+      .sort({ createdAt: -1 })
+      .lean<LeadDocument[]>();
 
-    return NextResponse.json(leads);
+    const transformedLeads: TransformedLead[] = leads.map(
+      (lead: LeadDocument) => ({
+        _id: lead._id.toString(),
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        fullName: `${lead.firstName} ${lead.lastName}`,
+        email: lead.email,
+        phone: lead.phone || "",
+        source: lead.source || "",
+        country: lead.country || "",
+        status: lead.status || "NEW",
+        createdAt: new Date(lead.createdAt).toISOString(),
+        updatedAt: new Date(lead.updatedAt).toISOString(),
+      })
+    );
+
+    console.log("🔍 GET /api/leads/user-leads called, returning:", {
+      count: transformedLeads.length,
+      firstLead: transformedLeads[0],
+      query: query,
+      sessionUser: session.user.id,
+    });
+
+    return NextResponse.json(transformedLeads);
   } catch (error) {
     console.error("Error fetching user leads:", error);
     return NextResponse.json(

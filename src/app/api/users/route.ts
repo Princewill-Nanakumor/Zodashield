@@ -160,6 +160,8 @@ export async function GET() {
         .sort({ firstName: 1, lastName: 1 })
         .toArray()) as UserDocument[];
 
+      // <--- INSERT THE ADMIN-INCLUSION LOGIC HERE
+
       return users.map((user: UserDocument) => ({
         id: user._id.toString(),
         name: `${user.firstName} ${user.lastName}`,

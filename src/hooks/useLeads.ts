@@ -1,3 +1,5 @@
+// /Users/safeconnection/Downloads/drivecrm/src/hooks/useLeads.ts
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
@@ -245,7 +247,6 @@ export const useLeads = () => {
         setLoadingLeads(false);
       }
     },
-    enabled: users.length > 0,
     retry: (failureCount, error) => {
       if (
         failureCount < 3 &&

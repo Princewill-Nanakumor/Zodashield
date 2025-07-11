@@ -106,6 +106,7 @@ async function getAssignedToUser(
 }
 
 export async function GET() {
+  console.log("�� GET /api/leads/all called");
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -131,12 +132,23 @@ export async function GET() {
       query.assignedTo = new ObjectId(session.user.id);
     }
 
+    console.log("�� Query for leads:", {
+      query,
+      sessionUser: session.user.id,
+      sessionRole: session.user.role,
+    });
+
     // Fetch leads with multi-tenancy filter
     const leads = await db
       .collection("leads")
       .find(query)
       .sort({ createdAt: -1 })
       .toArray();
+
+    console.log("🔍 Raw leads from DB:", {
+      count: leads.length,
+      firstLead: leads[0],
+    });
 
     // Collect unique user IDs for batch lookup
     const uniqueUserIds = new Set<string>();
@@ -212,6 +224,11 @@ export async function GET() {
         return transformedLead;
       })
     );
+
+    console.log("🔍 Transformed leads:", {
+      count: transformedLeads.length,
+      firstLead: transformedLeads[0],
+    });
 
     return NextResponse.json(transformedLeads);
   } catch (error) {

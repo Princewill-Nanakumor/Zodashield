@@ -26,7 +26,7 @@ interface LeadDocument extends MongoDocument {
 }
 
 interface TransformedLead {
-  id: string;
+  _id: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
       const transformedLeads: TransformedLead[] = leads.map(
         (lead: LeadDocument) => ({
-          id: lead._id.toString(),
+          _id: lead._id.toString(),
           firstName: lead.firstName,
           lastName: lead.lastName,
           fullName: `${lead.firstName} ${lead.lastName}`,
@@ -87,6 +87,12 @@ export async function GET(request: Request) {
           updatedAt: new Date(lead.updatedAt).toISOString(),
         })
       );
+      console.log("�� Returning leads:", {
+        count: transformedLeads.length,
+        firstLead: transformedLeads[0],
+        query: query,
+        sessionUser: session.user.id,
+      });
 
       return NextResponse.json({
         leads: transformedLeads,
