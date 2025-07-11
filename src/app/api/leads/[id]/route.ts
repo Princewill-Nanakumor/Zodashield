@@ -1,5 +1,4 @@
 // /Users/safeconnection/Downloads/drivecrm-main/src/app/api/leads/[id]/route.ts
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -60,12 +59,26 @@ export async function GET(
     const db = mongoose.connection.db;
     if (!db) throw new Error("Database connection not available");
 
-    const lead = await db
-      .collection("leads")
-      .findOne({ _id: new ObjectId(id) });
+    // Build query with multi-tenancy filter
+    const query: { _id: ObjectId; adminId?: ObjectId } = {
+      _id: new ObjectId(id),
+    };
+
+    if (session.user.role === "ADMIN") {
+      // Admin can only see leads they created
+      query.adminId = new ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent can only see leads from their admin
+      query.adminId = new ObjectId(session.user.adminId);
+    }
+
+    const lead = await db.collection("leads").findOne(query);
 
     if (!lead) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Lead not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     // Populate assignedTo with user details
@@ -126,12 +139,26 @@ export async function PUT(
     const db = mongoose.connection.db;
     if (!db) throw new Error("Database connection not available");
 
-    const currentLead = await db
-      .collection("leads")
-      .findOne({ _id: new ObjectId(id) });
+    // Build query with multi-tenancy filter
+    const query: { _id: ObjectId; adminId?: ObjectId } = {
+      _id: new ObjectId(id),
+    };
+
+    if (session.user.role === "ADMIN") {
+      // Admin can only update leads they created
+      query.adminId = new ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent can only update leads from their admin
+      query.adminId = new ObjectId(session.user.adminId);
+    }
+
+    const currentLead = await db.collection("leads").findOne(query);
 
     if (!currentLead) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Lead not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     // Prepare the update payload
@@ -161,13 +188,11 @@ export async function PUT(
         : null;
     }
 
-    const result = await db
-      .collection("leads")
-      .findOneAndUpdate(
-        { _id: new ObjectId(id) },
-        { $set: updatePayload },
-        { returnDocument: "after" }
-      );
+    const result = await db.collection("leads").findOneAndUpdate(
+      query, // Use the same query with multi-tenancy filter
+      { $set: updatePayload },
+      { returnDocument: "after" }
+    );
 
     if (!result || !result.value) {
       return NextResponse.json(

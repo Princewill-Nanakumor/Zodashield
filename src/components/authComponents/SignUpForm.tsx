@@ -116,15 +116,21 @@ export default function SignUpForm() {
       }
 
       setFormSuccess(
-        "Account created successfully! Please check your email to verify your account. You will be redirected to the sign-in page shortly."
+        "Account created successfully! Redirecting to dashboard..."
       );
+
+      // Reset the form
       reset();
-      setSelectedCountry(null);
-      setPhone("");
-      setTimeout(() => router.push("/signin"), 3000);
-    } catch (error) {
+
+      // Auto-login for new admin user
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
+    } catch (error: unknown) {
       setFormError(
-        error instanceof Error ? error.message : "An error occurred"
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred during sign up"
       );
     } finally {
       setLoading(false);
@@ -140,7 +146,7 @@ export default function SignUpForm() {
           Create your account
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 mt-2">
-          Start your journey with us today!
+          Start your journey with us today! Youll become an administrator.
         </p>
       </div>
 

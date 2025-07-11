@@ -36,8 +36,16 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.findByIdAndUpdate(
-      userId,
+    // Build query with multi-tenancy filter
+    const query: { _id: string; createdBy?: string } = {
+      _id: userId,
+    };
+
+    // Admin can only reset passwords for users they created
+    query.createdBy = session.user.id;
+
+    const user = await User.findOneAndUpdate(
+      query,
       {
         password: hashedPassword,
         updatedAt: new Date(),
@@ -46,7 +54,10 @@ export async function POST(request: Request) {
     );
 
     if (!user) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "User not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({

@@ -2,22 +2,17 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LeadsPageContent from "@/components/dashboardComponents/LeadsPageContent";
-import { useEffect } from "react";
 import { useSearchContext } from "@/context/SearchContext";
 
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
       retry: 1,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-      refetchOnMount: true,
-      gcTime: 10 * 60 * 1000,
     },
   },
 });
@@ -29,13 +24,14 @@ const AllLeadsPage: React.FC = () => {
   // Get search context from layout
   const { searchQuery, isLoading, setLayoutLoading } = useSearchContext();
 
-  // Add debug logging
+  // Handle navigation in useEffect instead of during render
   useEffect(() => {
-    console.log("AllLeadsPage: Received context values:", {
-      searchQuery,
-      isLoading,
-    });
-  }, [searchQuery, isLoading]);
+    if (status === "unauthenticated") {
+      router.push("/signin");
+    } else if (status === "authenticated" && session?.user?.role !== "ADMIN") {
+      router.push("/dashboard");
+    }
+  }, [status, session, router]);
 
   if (status === "loading") {
     return (
@@ -45,13 +41,11 @@ const AllLeadsPage: React.FC = () => {
     );
   }
 
-  if (status === "unauthenticated") {
-    router.push("/signin");
-    return null;
-  }
-
-  if (status === "authenticated" && session?.user?.role !== "ADMIN") {
-    router.push("/dashboard");
+  // Don't render anything if we're redirecting
+  if (
+    status === "unauthenticated" ||
+    (status === "authenticated" && session?.user?.role !== "ADMIN")
+  ) {
     return null;
   }
 

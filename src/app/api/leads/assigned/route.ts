@@ -22,10 +22,32 @@ export async function GET() {
 
     const userObjectId = new mongoose.Types.ObjectId(session.user.id);
 
-    const query =
-      session.user.role === "ADMIN"
-        ? { assignedTo: { $exists: true, $ne: null } }
-        : { assignedTo: userObjectId };
+    // Build query based on user role and multi-tenancy
+    let query: {
+      assignedTo?: mongoose.Types.ObjectId | { $exists: boolean; $ne: null };
+      adminId?: mongoose.Types.ObjectId;
+    } = {};
+
+    if (session.user.role === "ADMIN") {
+      // Admin sees all assigned leads that belong to them
+      query = {
+        assignedTo: { $exists: true, $ne: null },
+        adminId: userObjectId, // Multi-tenancy: only leads created by this admin
+      };
+    } else if (session.user.role === "AGENT") {
+      // Agent sees only leads assigned to them from their admin
+      query = {
+        assignedTo: userObjectId,
+        adminId: session.user.adminId
+          ? new mongoose.Types.ObjectId(session.user.adminId)
+          : undefined, // Multi-tenancy: only leads from their admin
+      };
+    }
+
+    // Remove adminId from query if it's undefined to avoid filtering issues
+    if (!query.adminId) {
+      delete query.adminId;
+    }
 
     const assignedLeads = await mongoose.connection.db
       .collection("leads")

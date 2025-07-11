@@ -90,10 +90,26 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
+    // Build query with multi-tenancy filter
+    const query: { _id: string; adminId?: string } = {
+      _id: id,
+    };
+
+    if (session.user.role === "ADMIN") {
+      // Admin can only update leads they created
+      query.adminId = session.user.id;
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent can only update leads from their admin
+      query.adminId = session.user.adminId;
+    }
+
     // Get the current lead to compare status
-    const currentLead = await Lead.findById(id);
+    const currentLead = await Lead.findOne(query);
     if (!currentLead) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Lead not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     const oldStatus = currentLead.status;
@@ -151,8 +167,8 @@ export async function PATCH(req: Request) {
       // Continue without validation if there's an error
     }
 
-    const updatedLead = await Lead.findByIdAndUpdate(
-      id,
+    const updatedLead = await Lead.findOneAndUpdate(
+      query, // Use the same query with multi-tenancy filter
       {
         status: newStatus,
         updatedAt: new Date(),
@@ -171,6 +187,7 @@ export async function PATCH(req: Request) {
         userId: new mongoose.Types.ObjectId(session.user.id),
         details: `Status changed from ${oldStatusName} to ${newStatusName}`,
         leadId: new mongoose.Types.ObjectId(id),
+        adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy
         timestamp: new Date(),
         metadata: {
           oldStatusId: oldStatus,

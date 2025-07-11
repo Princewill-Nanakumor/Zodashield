@@ -39,8 +39,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
+    // Build query with multi-tenancy filter
+    const query: {
+      _id: mongoose.Types.ObjectId;
+      adminId?: mongoose.Types.ObjectId;
+    } = {
+      _id: new mongoose.Types.ObjectId(leadId),
+    };
+
+    // Admin can only assign leads they created
+    query.adminId = new mongoose.Types.ObjectId(session.user.id);
+
     const lead = await db.collection("leads").findOneAndUpdate(
-      { _id: new mongoose.Types.ObjectId(leadId) },
+      query,
       {
         $set: {
           assignedTo: new mongoose.Types.ObjectId(userId),
@@ -52,7 +63,10 @@ export async function POST(request: Request) {
     );
 
     if (!lead) {
-      return NextResponse.json({ message: "Lead not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Lead not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({

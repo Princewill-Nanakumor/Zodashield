@@ -1,4 +1,5 @@
 // app/api/leads/assign/route.ts
+// app/api/leads/assign/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
@@ -8,6 +9,30 @@ import { authOptions } from "@/libs/auth";
 interface AssignLeadsRequest {
   leadIds: string[];
   userId: string;
+}
+
+interface LeadDocument {
+  _id: mongoose.Types.ObjectId;
+  assignedTo?: {
+    _id: mongoose.Types.ObjectId;
+    firstName: string;
+    lastName: string;
+  };
+  adminId: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface UserDocument {
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  role: string;
+  adminId?: mongoose.Types.ObjectId;
 }
 
 export async function POST(request: Request) {
@@ -37,21 +62,33 @@ export async function POST(request: Request) {
     const db = mongoose.connection.db;
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const leadObjectIds = leadIds.map((id) => new mongoose.Types.ObjectId(id));
+    const adminObjectId = new mongoose.Types.ObjectId(session.user.id);
 
-    // Get leads before update
-    const beforeLeads = await db
+    // Get leads before update with multi-tenancy filter
+    const beforeLeads = (await db
       .collection("leads")
-      .find({ _id: { $in: leadObjectIds } })
-      .toArray();
+      .find({
+        _id: { $in: leadObjectIds },
+        adminId: adminObjectId, // Only leads belonging to this admin
+      })
+      .toArray()) as LeadDocument[];
 
-    // Get user details
-    const [assignedToUser, assignedByUser] = await Promise.all([
-      db
-        .collection("users")
-        .findOne(
-          { _id: userObjectId },
-          { projection: { firstName: 1, lastName: 1 } }
-        ),
+    if (beforeLeads.length === 0) {
+      return NextResponse.json(
+        { message: "No valid leads found to assign" },
+        { status: 400 }
+      );
+    }
+
+    // Get user details with multi-tenancy check
+    const [assignedToUserResult, assignedByUserResult] = await Promise.all([
+      db.collection("users").findOne(
+        {
+          _id: userObjectId,
+          adminId: adminObjectId, // Only users created by this admin
+        },
+        { projection: { firstName: 1, lastName: 1, role: 1 } }
+      ),
       db
         .collection("users")
         .findOne(
@@ -60,12 +97,21 @@ export async function POST(request: Request) {
         ),
     ]);
 
+    // Type assertion after the Promise resolves
+    const assignedToUser = assignedToUserResult as UserDocument | null;
+    const assignedByUser = assignedByUserResult as UserDocument | null;
+
     if (!assignedToUser) {
-      throw new Error("Target user not found");
+      throw new Error("Target user not found or not authorized");
     }
 
     if (!assignedByUser) {
       throw new Error("Assigned by user not found");
+    }
+
+    // Verify the target user is an AGENT
+    if (assignedToUser.role !== "AGENT") {
+      throw new Error("Can only assign leads to AGENT users");
     }
 
     // Update leads and create activities
@@ -74,7 +120,7 @@ export async function POST(request: Request) {
       const isReassignment = !!oldAssignedTo;
 
       // Check if assignment is actually changing
-      if (oldAssignedTo && oldAssignedTo.toString() === userId) {
+      if (oldAssignedTo && oldAssignedTo._id.toString() === userId) {
         return lead; // No change needed
       }
 
@@ -86,7 +132,7 @@ export async function POST(request: Request) {
       };
 
       // Update lead
-      const updatedLead = await db.collection("leads").findOneAndUpdate(
+      const updatedLeadResult = await db.collection("leads").findOneAndUpdate(
         { _id: lead._id },
         {
           $set: {
@@ -103,9 +149,10 @@ export async function POST(request: Request) {
         type: "ASSIGNMENT",
         userId: new mongoose.Types.ObjectId(session.user.id),
         details: isReassignment
-          ? `Lead reassigned from ${oldAssignedTo ? "Previous User" : "Unknown"} to ${assignedToUser.firstName} ${assignedToUser.lastName}`
+          ? `Lead reassigned from ${oldAssignedTo ? `${oldAssignedTo.firstName} ${oldAssignedTo.lastName}` : "Previous User"} to ${assignedToUser.firstName} ${assignedToUser.lastName}`
           : `Lead assigned to ${assignedToUser.firstName} ${assignedToUser.lastName}`,
         leadId: lead._id,
+        adminId: adminObjectId, // Multi-tenancy
         timestamp: new Date(),
         metadata: {
           assignedTo: {
@@ -113,7 +160,13 @@ export async function POST(request: Request) {
             firstName: assignedToUser.firstName,
             lastName: assignedToUser.lastName,
           },
-          assignedFrom: oldAssignedTo ? { _id: oldAssignedTo } : null,
+          assignedFrom: oldAssignedTo
+            ? {
+                _id: oldAssignedTo._id,
+                firstName: oldAssignedTo.firstName,
+                lastName: oldAssignedTo.lastName,
+              }
+            : null,
           assignedBy: {
             _id: assignedByUser._id,
             firstName: assignedByUser.firstName,
@@ -124,7 +177,7 @@ export async function POST(request: Request) {
 
       await db.collection("activities").insertOne(activityData);
 
-      return updatedLead;
+      return updatedLeadResult;
     });
 
     const results = await Promise.all(updatePromises);

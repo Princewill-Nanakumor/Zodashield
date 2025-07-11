@@ -33,10 +33,12 @@ export async function POST(request: Request) {
     }
 
     const db = mongoose.connection.db;
+    const adminObjectId = new mongoose.Types.ObjectId(session.user.id);
 
+    // Get user with multi-tenancy filter
     const user = await db.collection("users").findOne({
       _id: new mongoose.Types.ObjectId(userId),
-      createdBy: new mongoose.Types.ObjectId(session.user.id),
+      createdBy: adminObjectId, // Only users created by this admin
       status: "ACTIVE",
     });
 
@@ -47,11 +49,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Update leads with multi-tenancy filter
     await db.collection("leads").updateMany(
       {
         _id: {
           $in: leadIds.map((id: string) => new mongoose.Types.ObjectId(id)),
         },
+        adminId: adminObjectId, // Only leads belonging to this admin
       },
       {
         $set: {
@@ -100,9 +104,25 @@ export async function GET(request: Request) {
 
     const db = mongoose.connection.db;
 
+    // Build query with multi-tenancy filter
+    const query: {
+      assignedTo: mongoose.Types.ObjectId;
+      adminId?: mongoose.Types.ObjectId;
+    } = {
+      assignedTo: new mongoose.Types.ObjectId(userId),
+    };
+
+    if (session.user.role === "ADMIN") {
+      // Admin sees only leads they created
+      query.adminId = new mongoose.Types.ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent sees only leads from their admin
+      query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
+    }
+
     const leads = await db
       .collection("leads")
-      .find({ assignedTo: new mongoose.Types.ObjectId(userId) })
+      .find(query)
       .project({
         _id: 1,
         firstName: 1,

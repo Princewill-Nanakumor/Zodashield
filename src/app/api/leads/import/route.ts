@@ -22,6 +22,7 @@ interface TransformedLead {
   source: string;
   status: string;
   createdBy: mongoose.Types.ObjectId;
+  adminId: mongoose.Types.ObjectId; // Multi-tenancy
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Transform leads to match your schema
+    // Transform leads to match your schema with multi-tenancy
     const transformedLeads: TransformedLead[] = leads.map(
       (lead: ImportedLead) => {
         const [firstName, ...rest] = (lead.name || "").split(" ");
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
           source: lead.source || "",
           status: "NEW",
           createdBy: new mongoose.Types.ObjectId(session.user.id),
+          adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy: admin owns the leads
           createdAt: new Date(),
           updatedAt: new Date(),
         };

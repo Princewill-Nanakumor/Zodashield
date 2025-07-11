@@ -5,6 +5,52 @@ import { connectMongoDB } from "@/libs/dbConfig";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
 
+interface LeadDocument {
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  value?: number;
+  source?: string;
+  status: string;
+  comments?: string;
+  company?: string;
+  assignedTo?: {
+    _id: mongoose.Types.ObjectId;
+    firstName: string;
+    lastName: string;
+  };
+  assignedAt?: Date;
+  adminId: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface TransformedLead {
+  id: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  value?: number;
+  source?: string;
+  status: string;
+  comments?: string;
+  company?: string;
+  assignedTo?: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  assignedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Keep your existing GET method
 export async function GET() {
   try {
@@ -21,15 +67,29 @@ export async function GET() {
       throw new Error("Database connection not available");
     }
 
-    const leads = await mongoose.connection.db
-      .collection("leads")
-      .find({
-        "assignedTo.id": session.user.id,
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
+    // Build query based on user role for multi-tenancy
+    const query: {
+      "assignedTo._id": string;
+      adminId?: mongoose.Types.ObjectId;
+    } = {
+      "assignedTo._id": session.user.id,
+    };
 
-    const transformedLeads = leads.map((lead) => ({
+    if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent sees only leads from their admin
+      query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
+    } else if (session.user.role === "ADMIN") {
+      // Admin sees only leads they created
+      query.adminId = new mongoose.Types.ObjectId(session.user.id);
+    }
+
+    const leads = (await mongoose.connection.db
+      .collection("leads")
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray()) as LeadDocument[];
+
+    const transformedLeads: TransformedLead[] = leads.map((lead) => ({
       id: lead._id.toString(),
       firstName: lead.firstName,
       lastName: lead.lastName,
@@ -42,7 +102,13 @@ export async function GET() {
       status: lead.status,
       comments: lead.comments,
       company: lead.company,
-      assignedTo: lead.assignedTo,
+      assignedTo: lead.assignedTo
+        ? {
+            _id: lead.assignedTo._id.toString(),
+            firstName: lead.assignedTo.firstName,
+            lastName: lead.assignedTo.lastName,
+          }
+        : undefined,
       assignedAt: lead.assignedAt,
       createdAt: lead.createdAt,
       updatedAt: lead.updatedAt,
@@ -83,11 +149,16 @@ export async function POST(request: Request) {
       throw new Error("Database connection not available");
     }
 
-    // Update all selected leads
+    const adminObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+    // Update all selected leads with multi-tenancy filter
     const updateResult = await mongoose.connection.db
       .collection("leads")
       .updateMany(
-        { _id: { $in: leadIds.map((id) => new mongoose.Types.ObjectId(id)) } },
+        {
+          _id: { $in: leadIds.map((id) => new mongoose.Types.ObjectId(id)) },
+          adminId: adminObjectId, // Only leads belonging to this admin
+        },
         {
           $set: {
             assignedTo: {

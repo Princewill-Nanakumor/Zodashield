@@ -26,13 +26,30 @@ export async function POST(request: Request) {
       throw new Error("Lead model not found");
     }
 
+    // Build query with multi-tenancy filter
+    const query: { _id: string; adminId?: string } = {
+      _id: id,
+    };
+
+    if (session.user.role === "ADMIN") {
+      // Admin can only unassign leads they created
+      query.adminId = session.user.id;
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent can only unassign leads from their admin
+      query.adminId = session.user.adminId;
+    }
+
     // Get the current lead to check if it's assigned
-    const currentLead = await Lead.findById(id).populate(
+    const currentLead = await Lead.findOne(query).populate(
       "assignedTo",
       "firstName lastName"
     );
+
     if (!currentLead) {
-      return NextResponse.json({ message: "Lead not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Lead not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     if (!currentLead.assignedTo) {
@@ -109,6 +126,7 @@ export async function POST(request: Request) {
         userId: new mongoose.Types.ObjectId(session.user.id),
         details: `Lead unassigned from ${assignedFromUser ? `${assignedFromUser.firstName} ${assignedFromUser.lastName}` : "Unknown"}`,
         leadId: new mongoose.Types.ObjectId(id),
+        adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy
         timestamp: new Date(),
         metadata: {
           assignedTo: null,

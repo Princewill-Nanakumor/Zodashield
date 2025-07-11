@@ -26,12 +26,23 @@ export async function GET(
       const db = mongoose.connection.db;
       if (!db) throw new Error("Database connection not available");
 
-      const user = await db
-        .collection("users")
-        .findOne({ _id: new ObjectId(userId) });
+      // Build query with multi-tenancy filter
+      const query: { _id: ObjectId; adminId?: ObjectId } = {
+        _id: new ObjectId(userId),
+      };
+
+      if (session.user.role === "ADMIN") {
+        // Admin can only see users they created
+        query.adminId = new ObjectId(session.user.id);
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        // Agent can only see users from their admin
+        query.adminId = new ObjectId(session.user.adminId);
+      }
+
+      const user = await db.collection("users").findOne(query);
 
       if (!user) {
-        throw new Error("User not found");
+        throw new Error("User not found or not authorized");
       }
 
       // Return only necessary user fields for lead assignment
@@ -74,18 +85,23 @@ export async function PATCH(
 
       switch (action) {
         case "update-status": {
-          const result = await db.collection("users").findOneAndUpdate(
-            {
-              _id: new ObjectId(userId),
-              createdBy: new ObjectId(session.user.id),
-            },
-            { $set: { status: data.status, updatedAt: new Date() } },
-            { returnDocument: "after" }
-          );
+          // Build query with multi-tenancy filter
+          const query: { _id: ObjectId; createdBy: ObjectId } = {
+            _id: new ObjectId(userId),
+            createdBy: new ObjectId(session.user.id), // Only users created by this admin
+          };
+
+          const result = await db
+            .collection("users")
+            .findOneAndUpdate(
+              query,
+              { $set: { status: data.status, updatedAt: new Date() } },
+              { returnDocument: "after" }
+            );
 
           // Check if result is null or if result.value is null
           if (!result || !result.value) {
-            throw new Error("User not found");
+            throw new Error("User not found or not authorized");
           }
 
           return {

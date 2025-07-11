@@ -50,7 +50,7 @@ const contactSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // This will automatically add createdAt and updatedAt fields
+    timestamps: true,
   }
 );
 
@@ -58,7 +58,6 @@ const contactSchema = new mongoose.Schema(
 contactSchema.index({ status: 1 });
 contactSchema.index({ createdAt: -1 });
 
-// Add any instance methods if needed
 contactSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.__v;
@@ -67,4 +66,5 @@ contactSchema.methods.toJSON = function () {
 
 const Contact =
   mongoose.models.Contact || mongoose.model("Contact", contactSchema);
+
 export default Contact;

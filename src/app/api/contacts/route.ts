@@ -82,6 +82,12 @@ interface ContactRequest {
   comments?: string;
 }
 
+// Define query type for MongoDB filters
+interface ContactQuery {
+  _id?: string;
+  adminId?: string;
+}
+
 const VALID_STATUSES = [
   "New",
   "Contacted",
@@ -513,11 +519,15 @@ export async function POST(request: Request) {
     }
 
     return executeDbOperation(async () => {
-      // Add user information to each contact
+      // Add user information and adminId to each contact for multi-tenancy
       const contactsWithUser = contacts.map((contact) => ({
         ...contact,
         createdBy: session.user.id,
         updatedBy: session.user.id,
+        adminId:
+          session.user.role === "ADMIN"
+            ? session.user.id
+            : session.user.adminId, // Use adminId for AGENT users
       }));
 
       const createdContacts = await Contact.create(contactsWithUser);
@@ -595,9 +605,21 @@ export async function GET() {
     }
 
     return executeDbOperation(async () => {
-      const contacts = await Contact.find({})
+      // Build query based on user role for multi-tenancy
+      const query: ContactQuery = {};
+
+      if (session.user.role === "ADMIN") {
+        // Admin sees only contacts they created
+        query.adminId = session.user.id;
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        // Agent sees contacts from their admin
+        query.adminId = session.user.adminId;
+      }
+
+      const contacts = await Contact.find(query)
         .sort({ createdAt: -1 })
         .populate("assignedTo", "firstName lastName email");
+
       return NextResponse.json(contacts, { status: 200 });
     }, "Error fetching contacts");
   } catch (error) {
@@ -619,8 +641,19 @@ export async function PUT(request: Request) {
     const { id, ...updateData } = await request.json();
 
     return executeDbOperation(async () => {
-      const updatedContact = await Contact.findByIdAndUpdate(
-        id,
+      // Build query based on user role for multi-tenancy
+      const query: ContactQuery = { _id: id };
+
+      if (session.user.role === "ADMIN") {
+        // Admin can only update contacts they created
+        query.adminId = session.user.id;
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        // Agent can only update contacts from their admin
+        query.adminId = session.user.adminId;
+      }
+
+      const updatedContact = await Contact.findOneAndUpdate(
+        query,
         {
           ...updateData,
           updatedAt: new Date(),
@@ -665,7 +698,18 @@ export async function DELETE(request: Request) {
     }
 
     return executeDbOperation(async () => {
-      const deletedContact = await Contact.findByIdAndDelete(id);
+      // Build query based on user role for multi-tenancy
+      const query: ContactQuery = { _id: id };
+
+      if (session.user.role === "ADMIN") {
+        // Admin can only delete contacts they created
+        query.adminId = session.user.id;
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        // Agent can only delete contacts from their admin
+        query.adminId = session.user.adminId;
+      }
+
+      const deletedContact = await Contact.findOneAndDelete(query);
 
       if (!deletedContact) {
         return NextResponse.json(

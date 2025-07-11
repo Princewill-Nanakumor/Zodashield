@@ -9,6 +9,30 @@ interface UnassignLeadsRequest {
   leadIds: string[];
 }
 
+interface LeadDocument {
+  _id: mongoose.Types.ObjectId;
+  assignedTo?:
+    | {
+        _id: mongoose.Types.ObjectId;
+        firstName: string;
+        lastName: string;
+      }
+    | mongoose.Types.ObjectId;
+  adminId: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface UserDocument {
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -35,25 +59,34 @@ export async function POST(request: Request) {
 
     const db = mongoose.connection.db;
     const leadObjectIds = leadIds.map((id) => new mongoose.Types.ObjectId(id));
+    const adminObjectId = new mongoose.Types.ObjectId(session.user.id);
 
-    // Get leads before update with assignedTo
-    const beforeLeads = await db
+    // Get leads before update with multi-tenancy filter
+    const beforeLeads = (await db
       .collection("leads")
       .find({
         _id: { $in: leadObjectIds },
         assignedTo: { $exists: true, $ne: null },
+        adminId: adminObjectId, // Multi-tenancy: only leads belonging to this admin
       })
-      .toArray();
+      .toArray()) as LeadDocument[];
+
+    if (beforeLeads.length === 0) {
+      return NextResponse.json(
+        { message: "No valid leads found to unassign" },
+        { status: 400 }
+      );
+    }
 
     // Get user doing the unassignment
-    const assignedByUser = await db
+    const assignedByUserResult = (await db
       .collection("users")
       .findOne(
         { _id: new mongoose.Types.ObjectId(session.user.id) },
         { projection: { firstName: 1, lastName: 1 } }
-      );
+      )) as UserDocument | null;
 
-    if (!assignedByUser) {
+    if (!assignedByUserResult) {
       throw new Error("User not found");
     }
 
@@ -62,19 +95,29 @@ export async function POST(request: Request) {
       const oldAssignedTo = lead.assignedTo;
 
       // Get the user being unassigned (handle both object and ObjectId formats)
-      let unassignedUser = null;
+      let unassignedUser: UserDocument | null = null;
       if (oldAssignedTo) {
-        const userId =
-          typeof oldAssignedTo === "object" && oldAssignedTo._id
-            ? oldAssignedTo._id
-            : oldAssignedTo;
+        let userId: mongoose.Types.ObjectId;
 
-        unassignedUser = await db
+        if (typeof oldAssignedTo === "object" && oldAssignedTo._id) {
+          // If assignedTo is an object with _id
+          userId = oldAssignedTo._id;
+        } else if (oldAssignedTo instanceof mongoose.Types.ObjectId) {
+          // If assignedTo is already an ObjectId
+          userId = oldAssignedTo;
+        } else {
+          // If assignedTo is a string, convert to ObjectId
+          userId = new mongoose.Types.ObjectId(oldAssignedTo.toString());
+        }
+
+        const unassignedUserResult = (await db
           .collection("users")
           .findOne(
-            { _id: new mongoose.Types.ObjectId(userId) },
+            { _id: userId },
             { projection: { firstName: 1, lastName: 1 } }
-          );
+          )) as UserDocument | null;
+
+        unassignedUser = unassignedUserResult;
       }
 
       // Update lead
@@ -89,12 +132,13 @@ export async function POST(request: Request) {
         { returnDocument: "after" }
       );
 
-      // Create activity
+      // Create activity with multi-tenancy
       const activityData = {
         type: "ASSIGNMENT", // Using ASSIGNMENT type for unassignment too
         userId: new mongoose.Types.ObjectId(session.user.id),
         details: `Lead unassigned from ${unassignedUser ? `${unassignedUser.firstName} ${unassignedUser.lastName}` : "Unknown User"}`,
         leadId: lead._id,
+        adminId: adminObjectId, // Multi-tenancy
         timestamp: new Date(),
         metadata: {
           assignedTo: null,
@@ -106,9 +150,9 @@ export async function POST(request: Request) {
               }
             : null,
           assignedBy: {
-            _id: assignedByUser._id,
-            firstName: assignedByUser.firstName,
-            lastName: assignedByUser.lastName,
+            _id: assignedByUserResult._id,
+            firstName: assignedByUserResult.firstName,
+            lastName: assignedByUserResult.lastName,
           },
         },
       };

@@ -6,7 +6,7 @@ interface CachedConnection {
 }
 
 declare global {
-  let mongooseCache: CachedConnection | undefined;
+  var mongooseCache: CachedConnection | undefined;
 }
 
 const globalWithCache = global as typeof globalThis & {
@@ -54,12 +54,6 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
       return mongoose;
     }
 
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
-      globalWithCache.mongooseCache.conn = null;
-      globalWithCache.mongooseCache.promise = null;
-    }
-
     if (globalWithCache.mongooseCache.promise) {
       return await globalWithCache.mongooseCache.promise;
     }
@@ -73,7 +67,7 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
         console.error("MongoDB connection error:", err);
         globalWithCache.mongooseCache.conn = null;
         globalWithCache.mongooseCache.promise = null;
-        mongoose.disconnect();
+        // Do NOT disconnect here!
       });
 
       mongoose.connection.on("disconnected", () => {
@@ -98,19 +92,7 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
       .catch(async (error) => {
         console.error("Initial connection error:", error);
         globalWithCache.mongooseCache.promise = null;
-        try {
-          console.log("Attempting to reconnect...");
-          const reconnection = await mongoose.connect(MONGODB_URI, {
-            ...options,
-            serverSelectionTimeoutMS: 5000,
-          });
-          console.log("Reconnection successful");
-          globalWithCache.mongooseCache.conn = reconnection;
-          return reconnection;
-        } catch (retryError) {
-          console.error("Reconnection failed:", retryError);
-          throw error;
-        }
+        throw error;
       });
 
     return await globalWithCache.mongooseCache.promise;

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import User from "@/models/User";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
 
 export async function PUT(request: NextRequest) {
   try {
@@ -20,8 +21,12 @@ export async function PUT(request: NextRequest) {
     const data = await request.json();
     await connectMongoDB();
 
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
+    // Only allow updating users created by this admin (multi-tenancy)
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(id),
+        adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
+      },
       { ...data, updatedAt: new Date() },
       { new: true }
     ).select("-password");
@@ -55,7 +60,11 @@ export async function DELETE(request: NextRequest) {
 
     await connectMongoDB();
 
-    const deletedUser = await User.findByIdAndDelete(id);
+    // Only allow deleting users created by this admin (multi-tenancy)
+    const deletedUser = await User.findOneAndDelete({
+      _id: new mongoose.Types.ObjectId(id),
+      adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
+    });
 
     if (!deletedUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });

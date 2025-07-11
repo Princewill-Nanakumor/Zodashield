@@ -1,10 +1,17 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/app/api/imports/[id]/route.ts
+// /Users/safeconnection/Downloads/drivecrm/src/app/api/imports/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import Import from "@/models/Import";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
+
+// Define query type for MongoDB filters
+interface ImportQuery {
+  _id: mongoose.Types.ObjectId;
+  adminId?: mongoose.Types.ObjectId;
+}
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -22,8 +29,19 @@ export async function PATCH(request: NextRequest) {
     const data = await request.json();
     await connectMongoDB();
 
-    const updatedImport = await Import.findByIdAndUpdate(
-      id,
+    // Build query with multi-tenancy filter
+    const query: ImportQuery = { _id: new mongoose.Types.ObjectId(id) };
+
+    if (session.user.role === "ADMIN") {
+      // Admin can only update imports they created
+      query.adminId = new mongoose.Types.ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent can only update imports from their admin
+      query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
+    }
+
+    const updatedImport = await Import.findOneAndUpdate(
+      query,
       { ...data, updatedAt: new Date() },
       { new: true }
     );

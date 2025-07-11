@@ -2,9 +2,16 @@
 import { NextResponse } from "next/server";
 import { connectMongoDB } from "@/libs/dbConfig";
 import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/libs/auth";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectMongoDB();
 
     // Check if database connection is available
@@ -14,14 +21,35 @@ export async function GET() {
 
     const db = mongoose.connection.db;
 
-    // Get all statuses
-    const statuses = await db.collection("statuses").find({}).toArray();
+    // Build query based on user role for multi-tenancy
+    const leadsQuery: { adminId?: mongoose.Types.ObjectId } = {};
+    const statusesQuery: { adminId?: mongoose.Types.ObjectId } = {};
 
-    // Get total leads count (all leads, regardless of status)
-    const allLeadsCount = await db.collection("leads").countDocuments();
+    if (session.user.role === "ADMIN") {
+      // Admin sees only their own data
+      const adminObjectId = new mongoose.Types.ObjectId(session.user.id);
+      leadsQuery.adminId = adminObjectId;
+      statusesQuery.adminId = adminObjectId;
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent sees data from their admin
+      const adminObjectId = new mongoose.Types.ObjectId(session.user.adminId);
+      leadsQuery.adminId = adminObjectId;
+      statusesQuery.adminId = adminObjectId;
+    }
+
+    // Get all statuses for this admin
+    const statuses = await db
+      .collection("statuses")
+      .find(statusesQuery)
+      .toArray();
+
+    // Get total leads count for this admin
+    const allLeadsCount = await db
+      .collection("leads")
+      .countDocuments(leadsQuery);
 
     // Check if status is stored as ObjectId or string
-    const sampleLead = await db.collection("leads").findOne({});
+    const sampleLead = await db.collection("leads").findOne(leadsQuery);
     const isObjectId =
       sampleLead &&
       sampleLead.status &&
@@ -36,10 +64,13 @@ export async function GET() {
     }[] = [];
 
     if (isObjectId) {
-      // If status is ObjectId, use $lookup to get status name
+      // If status is ObjectId, use $lookup to get status name with multi-tenancy
       const results = await db
         .collection("leads")
         .aggregate([
+          {
+            $match: leadsQuery, // Multi-tenancy filter
+          },
           {
             $lookup: {
               from: "statuses",
@@ -75,10 +106,11 @@ export async function GET() {
         };
       });
     } else {
-      // If status is string, do a case-insensitive count for each status
+      // If status is string, do a case-insensitive count for each status with multi-tenancy
       statusCounts = await Promise.all(
         statuses.map(async (status) => {
           const count = await db.collection("leads").countDocuments({
+            ...leadsQuery, // Multi-tenancy filter
             status: { $regex: new RegExp(`^${status.name}$`, "i") },
           });
           return {

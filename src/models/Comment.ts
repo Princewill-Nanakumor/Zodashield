@@ -1,9 +1,10 @@
-// models/Comment.ts
+// src/models/Comment.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IComment extends Document {
   leadId: mongoose.Types.ObjectId;
   content: string;
+  adminId: mongoose.Types.ObjectId; // Multi-tenancy field
   createdBy: {
     _id: string;
     firstName: string;
@@ -24,6 +25,11 @@ const CommentSchema = new Schema<IComment>(
     content: {
       type: String,
       required: true,
+    },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      index: true, // Add index for better query performance
     },
     createdBy: {
       _id: {
@@ -46,5 +52,10 @@ const CommentSchema = new Schema<IComment>(
   }
 );
 
-export default mongoose.models.Comment ||
-  mongoose.model<IComment>("Comment", CommentSchema);
+// Add compound index for multi-tenancy queries
+CommentSchema.index({ leadId: 1, adminId: 1 });
+
+const Comment =
+  mongoose.models.Comment || mongoose.model<IComment>("Comment", CommentSchema);
+
+export default Comment;

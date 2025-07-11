@@ -13,21 +13,71 @@ function extractLeadIdFromUrl(urlString: string): string {
   return parts[parts.length - 2];
 }
 
+// Define session user interface
+interface SessionUser {
+  id: string;
+  role: "ADMIN" | "AGENT";
+  adminId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+// Define session interface
+interface Session {
+  user: SessionUser;
+}
+
+// Utility function to determine correct adminId based on user role
+function getCorrectAdminId(session: Session): mongoose.Types.ObjectId {
+  if (session.user.role === "ADMIN") {
+    return new mongoose.Types.ObjectId(session.user.id);
+  } else if (session.user.role === "AGENT" && session.user.adminId) {
+    return new mongoose.Types.ObjectId(session.user.adminId);
+  }
+  throw new Error("Invalid user role or missing adminId for agent");
+}
+
 export async function GET(request: Request) {
   try {
     const id = extractLeadIdFromUrl(request.url);
-    const session = await getServerSession(authOptions);
-
+    const session = (await getServerSession(authOptions)) as Session | null;
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     await connectMongoDB();
     const leadObjectId = new mongoose.Types.ObjectId(id);
+    const adminId = getCorrectAdminId(session);
 
-    const comments = await Comment.find({ leadId: leadObjectId })
+    console.log("=== COMMENTS GET REQUEST ===");
+    console.log("Lead ID:", id);
+    console.log("User ID:", session.user.id);
+    console.log("User Role:", session.user.role);
+    console.log("Admin ID:", adminId.toString());
+    console.log("Session adminId:", session.user.adminId);
+
+    // Build query that handles both old comments (without adminId) and new comments (with adminId)
+    const query: {
+      leadId: mongoose.Types.ObjectId;
+      $or: Array<
+        { adminId?: mongoose.Types.ObjectId } | { adminId: { $exists: false } }
+      >;
+    } = {
+      leadId: leadObjectId,
+      $or: [
+        { adminId: adminId }, // New comments with adminId
+        { adminId: { $exists: false } }, // Old comments without adminId
+      ],
+    };
+
+    console.log("Query:", JSON.stringify(query, null, 2));
+
+    const comments = await Comment.find(query)
       .sort({ createdAt: -1 })
       .lean<IComment[]>();
+
+    console.log("Found comments count:", comments.length);
+    console.log("Comments:", JSON.stringify(comments, null, 2));
 
     return NextResponse.json(comments);
   } catch (error) {
@@ -46,7 +96,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const id = extractLeadIdFromUrl(request.url);
-    const session = await getServerSession(authOptions);
+    const session = (await getServerSession(authOptions)) as Session | null;
 
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -63,18 +113,55 @@ export async function POST(request: Request) {
 
     await connectMongoDB();
     const leadObjectId = new mongoose.Types.ObjectId(id);
+    const adminId = getCorrectAdminId(session);
+
+    console.log("=== COMMENTS POST REQUEST ===");
+    console.log("Lead ID:", id);
+    console.log("User ID:", session.user.id);
+    console.log("User Role:", session.user.role);
+    console.log("Admin ID:", adminId.toString());
+    console.log("Session adminId:", session.user.adminId);
+    console.log("Content:", content);
+
+    // Verify the lead exists and belongs to the user's admin
+    const Lead = mongoose.models.Lead;
+    if (Lead) {
+      const leadQuery: {
+        _id: mongoose.Types.ObjectId;
+        adminId: mongoose.Types.ObjectId;
+      } = {
+        _id: leadObjectId,
+        adminId: adminId,
+      };
+
+      console.log("Lead query:", JSON.stringify(leadQuery, null, 2));
+
+      const lead = await Lead.findOne(leadQuery);
+      if (!lead) {
+        console.log("Lead not found with query:", leadQuery);
+        return NextResponse.json(
+          { message: "Lead not found or not authorized" },
+          { status: 404 }
+        );
+      }
+      console.log("Lead found:", lead._id.toString());
+    }
 
     const comment = new Comment({
       leadId: leadObjectId,
       content: content.trim(),
+      adminId: adminId, // Use consistent adminId
       createdBy: {
         _id: session.user.id,
-        firstName: session.user.firstName,
-        lastName: session.user.lastName,
+        firstName: session.user.firstName || "",
+        lastName: session.user.lastName || "",
       },
     });
 
+    console.log("Saving comment with data:", JSON.stringify(comment, null, 2));
+
     const savedComment = await comment.save();
+    console.log("Comment saved successfully:", savedComment._id.toString());
 
     // Create activity log for the comment
     const activity = new Activity({
@@ -82,13 +169,19 @@ export async function POST(request: Request) {
       userId: new mongoose.Types.ObjectId(session.user.id),
       details: "Added a comment",
       leadId: leadObjectId,
+      adminId: adminId, // Use consistent adminId
       timestamp: new Date(),
       metadata: {
         commentContent: content.trim(),
       },
     });
 
+    console.log(
+      "Saving activity with data:",
+      JSON.stringify(activity, null, 2)
+    );
     await activity.save();
+    console.log("Activity saved successfully");
 
     return NextResponse.json(savedComment);
   } catch (error) {

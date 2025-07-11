@@ -1,105 +1,112 @@
-// src/models/User.ts
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  firstName: {
-    type: String,
-    required: true,
-  },
-  lastName: {
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  phoneNumber: {
-    type: String,
-  },
-  country: {
-    type: String,
-    required: true,
-  },
-  role: {
-    type: String,
-    enum: ["ADMIN", "SUBADMIN", "AGENT"],
-    default: "AGENT",
-  },
-  status: {
-    type: String,
-    enum: ["ACTIVE", "INACTIVE"],
-    default: "ACTIVE",
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-  permissions: [
-    {
+export interface IUser {
+  _id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  country: string;
+  role: "ADMIN" | "AGENT";
+  status: "ACTIVE" | "INACTIVE";
+  permissions: string[];
+  adminId?: mongoose.Types.ObjectId; // For multi-tenancy - AGENT users have adminId, ADMIN users don't
+  createdBy?: mongoose.Types.ObjectId; // For AGENT users, this is their admin
+  lastLogin?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  __v: number;
+}
+
+const userSchema = new Schema(
+  {
+    firstName: {
       type: String,
-      enum: [
-        "ASSIGN_LEADS",
-        "DELETE_COMMENTS",
-        "VIEW_PHONE_NUMBERS",
-        "VIEW_EMAILS",
-        "MANAGE_USERS",
-        "EDIT_LEAD_STATUS",
-      ],
+      required: true,
+      trim: true,
     },
-  ],
-  emailVerified: {
-    type: Boolean,
-    default: false,
-    required: true,
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    role: {
+      type: String,
+      enum: ["ADMIN", "AGENT"],
+      default: "AGENT",
+    },
+    status: {
+      type: String,
+      enum: ["ACTIVE", "INACTIVE"],
+      default: "ACTIVE",
+    },
+    permissions: {
+      type: [String],
+      default: [],
+    },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+    lastLogin: {
+      type: Date,
+    },
   },
-  verificationToken: {
-    type: String,
-    default: null,
-  },
-  verificationExpires: {
-    type: Date,
-    default: null,
-  },
-  // Password reset fields
-  resetPasswordToken: {
-    type: String,
-    default: null,
-  },
-  resetPasswordExpires: {
-    type: Date,
-    default: null,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-  lastLogin: {
-    type: Date,
-    default: null,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
+// Pre-save middleware to validate conditional required fields
 userSchema.pre("save", function (next) {
-  this.updatedAt = new Date();
+  if (this.role === "AGENT") {
+    if (!this.adminId) {
+      return next(new Error("adminId is required for AGENT users"));
+    }
+    if (!this.createdBy) {
+      return next(new Error("createdBy is required for AGENT users"));
+    }
+  }
   next();
 });
 
-userSchema.index({ createdBy: 1 });
+// Indexes for better performance and multi-tenancy
+// Compound unique index for email + adminId to ensure emails are unique per admin
+userSchema.index({ email: 1, adminId: 1 }, { unique: true, sparse: true });
+// For ADMIN users (no adminId), ensure email is unique globally
+userSchema.index(
+  { email: 1, role: 1 },
+  { unique: true, partialFilterExpression: { role: "ADMIN" } }
+);
+userSchema.index({ adminId: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ status: 1 });
-userSchema.index({ verificationToken: 1 });
-userSchema.index({ resetPasswordToken: 1 });
 
-const User = mongoose.models.User || mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
 
 export default User;

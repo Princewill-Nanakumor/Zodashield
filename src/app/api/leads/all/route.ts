@@ -1,4 +1,3 @@
-// app/api/leads/all/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -12,6 +11,12 @@ interface UserData {
   firstName: string;
   lastName: string;
   email: string;
+}
+
+// Define query type for MongoDB filters
+interface LeadQuery {
+  adminId?: ObjectId;
+  assignedTo?: ObjectId;
 }
 
 // Helper to safely convert ObjectId to string
@@ -115,10 +120,21 @@ export async function GET() {
       throw new Error("Database connection not available");
     }
 
-    // Fetch leads
+    // Build query based on user role
+    const query: LeadQuery = {};
+
+    if (session.user.role === "ADMIN") {
+      // Admin sees all leads that belong to them (adminId matches their ID)
+      query.adminId = new ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT") {
+      // Agent sees only leads assigned to them
+      query.assignedTo = new ObjectId(session.user.id);
+    }
+
+    // Fetch leads with multi-tenancy filter
     const leads = await db
       .collection("leads")
-      .find({})
+      .find(query)
       .sort({ createdAt: -1 })
       .toArray();
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import { ObjectId } from "mongodb";
-import { Status } from "@/models/Status";
+import Status from "@/models/Status";
 import { authOptions } from "@/libs/auth";
 
 function extractIdFromUrl(urlString: string): string {
@@ -34,8 +34,12 @@ export async function PUT(request: Request) {
 
     await connectMongoDB();
 
+    // Update status with adminId filter for multi-tenancy
     const updatedStatus = await Status.findOneAndUpdate(
-      { _id: new ObjectId(id) },
+      {
+        _id: new ObjectId(id),
+        adminId: new ObjectId(session.user.id), // Only update statuses owned by this admin
+      },
       { $set: { name, color } },
       { new: true }
     );
@@ -72,8 +76,10 @@ export async function DELETE(request: Request) {
 
     await connectMongoDB();
 
+    // Delete status with adminId filter for multi-tenancy
     const deletedStatus = await Status.findOneAndDelete({
       _id: new ObjectId(id),
+      adminId: new ObjectId(session.user.id), // Only delete statuses owned by this admin
     });
 
     if (!deletedStatus) {

@@ -1,3 +1,4 @@
+// middleware.ts
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
@@ -34,6 +35,7 @@ export default withAuth(
 
     // ✅ Redirect authenticated users away from auth pages
     if (isAuthPage && isAuth) {
+      // Both ADMIN and AGENT go to dashboard
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 

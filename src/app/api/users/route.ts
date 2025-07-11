@@ -18,6 +18,7 @@ interface UserDocument {
   role: string;
   status: string;
   permissions?: string[];
+  adminId?: mongoose.Types.ObjectId; // For multi-tenancy
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -27,11 +28,18 @@ interface LeadDocument {
   _id: mongoose.Types.ObjectId;
   assignedTo?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
+  adminId: mongoose.Types.ObjectId; // For multi-tenancy
   firstName: string;
   lastName: string;
   email: string;
   status: string;
   updatedAt: Date;
+}
+
+// Define query type for MongoDB filters
+interface UserQuery {
+  adminId?: mongoose.Types.ObjectId;
+  role?: { $ne: string };
 }
 
 export async function POST(request: Request) {
@@ -73,9 +81,10 @@ export async function POST(request: Request) {
         password: hashedPassword,
         phoneNumber,
         country,
-        role,
-        status,
-        permissions,
+        role: role || "AGENT", // Default to AGENT
+        status: status || "ACTIVE",
+        permissions: permissions || [],
+        adminId: new mongoose.Types.ObjectId(session.user.id), // Set adminId for multi-tenancy
         createdBy: new mongoose.Types.ObjectId(session.user.id),
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -123,11 +132,15 @@ export async function GET() {
       const db = mongoose.connection.db;
       if (!db) throw new Error("Database connection not available");
 
-      // For lead assignment, we need all users (not just those created by the current admin)
-      // But we'll filter by role to exclude admins
-      const query = {
-        role: { $ne: "ADMIN" },
-      };
+      const query: UserQuery = {};
+
+      if (session.user.role === "ADMIN") {
+        // Admin sees only users they created (AGENT users with their adminId)
+        query.adminId = new mongoose.Types.ObjectId(session.user.id);
+      } else if (session.user.role === "AGENT") {
+        // Agents don't see other users
+        return [];
+      }
 
       const users = (await db
         .collection("users")
@@ -197,7 +210,7 @@ export async function PUT(request: Request) {
       const updatedUser = (await db.collection("users").findOneAndUpdate(
         {
           _id: new mongoose.Types.ObjectId(id),
-          createdBy: new mongoose.Types.ObjectId(session.user.id),
+          adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
         },
         {
           $set: {
@@ -259,7 +272,7 @@ export async function DELETE(request: Request) {
       // Check if user exists and belongs to current admin
       const userToDelete = (await db.collection("users").findOne({
         _id: new mongoose.Types.ObjectId(id),
-        createdBy: new mongoose.Types.ObjectId(session.user.id),
+        adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
       })) as UserDocument | null;
 
       if (!userToDelete) {
@@ -271,12 +284,12 @@ export async function DELETE(request: Request) {
 
       try {
         await dbSession.withTransaction(async () => {
-          // 1. Get all leads assigned to this user
+          // 1. Get all leads assigned to this user (filtered by adminId)
           const assignedLeads = (await db
             .collection("leads")
             .find({
               assignedTo: new mongoose.Types.ObjectId(id),
-              createdBy: new mongoose.Types.ObjectId(session.user.id),
+              adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
             })
             .toArray()) as LeadDocument[];
 
@@ -286,7 +299,7 @@ export async function DELETE(request: Request) {
           const updateLeadsResult = await db.collection("leads").updateMany(
             {
               assignedTo: new mongoose.Types.ObjectId(id),
-              createdBy: new mongoose.Types.ObjectId(session.user.id),
+              adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
             },
             {
               $unset: {
@@ -336,7 +349,7 @@ export async function DELETE(request: Request) {
           // 4. Delete the user
           const deleteUserResult = await db.collection("users").deleteOne({
             _id: new mongoose.Types.ObjectId(id),
-            createdBy: new mongoose.Types.ObjectId(session.user.id),
+            adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
           });
 
           if (deleteUserResult.deletedCount === 0) {

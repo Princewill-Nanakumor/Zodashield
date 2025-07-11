@@ -32,7 +32,10 @@ export default function SignInForm() {
   });
 
   useEffect(() => {
-    if (session) router.push("/dashboard");
+    if (session) {
+      // Both ADMIN and AGENT go to dashboard, but see different content
+      router.push("/dashboard");
+    }
   }, [session, router]);
 
   const onSubmit: SubmitHandler<LoginInput> = async (data) => {
@@ -52,6 +55,7 @@ export default function SignInForm() {
         setFormError(result.error);
       } else {
         setFormSuccess("Signed in successfully! Redirecting...");
+        // Both roles go to dashboard, content will be different based on role
         router.push("/dashboard");
       }
     } catch (error: unknown) {
@@ -88,93 +92,83 @@ export default function SignInForm() {
         <div className="space-y-3 sm:space-y-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-              <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+              <Mail className="h-5 w-5 text-gray-400" />
             </div>
             <input
-              id="email"
-              type="email"
-              autoComplete="email"
               {...register("email")}
-              className="pl-10 sm:pl-10 appearance-none rounded-lg relative block w-full px-3 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              type="email"
               placeholder="Email address"
-              disabled={loading}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             />
           </div>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-              <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+              <Lock className="h-5 w-5 text-gray-400" />
             </div>
             <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
               {...register("password")}
-              className="pl-10 sm:pl-10 pr-10 appearance-none rounded-lg relative block w-full px-3 py-2.5 sm:py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
-              disabled={loading}
+              className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             />
             <button
               type="button"
-              tabIndex={-1}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
               {showPassword ? (
-                <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
+                <EyeOff className="h-5 w-5 text-gray-400" />
               ) : (
-                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Eye className="h-5 w-5 text-gray-400" />
               )}
             </button>
           </div>
         </div>
-        <div className="flex items-center">
-          <input
-            id="remember"
-            type="checkbox"
-            {...register("remember")}
-            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-            disabled={loading}
-          />
-          <label
-            htmlFor="remember"
-            className="ml-2 block text-sm text-gray-900 dark:text-gray-200"
-          >
-            Remember me
+        <div className="flex items-center justify-between">
+          <label className="flex items-center">
+            <input
+              {...register("remember")}
+              type="checkbox"
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+            />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+              Remember me
+            </span>
           </label>
-        </div>
-        <div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="group relative w-full flex justify-center py-2.5 sm:py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-          >
-            {loading ? (
-              <span className="flex items-center">
-                <Loader2 className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
-                Signing in...
-              </span>
-            ) : (
-              <span className="flex items-center">
-                Sign in
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-            )}
-          </button>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm space-y-2 sm:space-y-0">
           <Link
             href="/forgot-password"
-            className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
+            className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
           >
-            Forgot your password?
+            Forgot password?
           </Link>
-          <Link
-            href="/signup"
-            className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
-          >
-            Create an account
-          </Link>
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign in</span>
+              <ArrowRight className="h-5 w-5" />
+            </>
+          )}
+        </button>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Dont have an account?{" "}
+            <Link
+              href="/signup"
+              className="text-indigo-600 hover:text-indigo-500 font-semibold dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              Sign up
+            </Link>
+          </p>
         </div>
       </form>
     </div>

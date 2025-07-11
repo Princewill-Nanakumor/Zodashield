@@ -8,140 +8,160 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+interface UserData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  country: string;
+  role: "ADMIN" | "SUBADMIN" | "AGENT";
+  status: "ACTIVE" | "INACTIVE";
+  permissions: string[];
+  emailVerified: boolean;
+  verificationToken: string;
+  verificationTokenExpiry: Date;
+  createdBy?: string | null;
+  adminId?: string | null;
+}
+
 export async function POST(req: Request) {
   try {
     const { firstName, lastName, email, password, phoneNumber, country } =
       await req.json();
 
+    console.log("🔍 Signup request received:", {
+      firstName,
+      lastName,
+      email,
+      country,
+    });
+
     // Input validation
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !password ||
-      !phoneNumber ||
-      !country
-    ) {
+    if (!firstName || !lastName || !email || !password || !country) {
+      console.log("❌ Missing required fields");
       return NextResponse.json(
-        { message: "All fields are required" },
-        { status: 400 }
-      );
-    }
-
-    // Input sanitization
-    const sanitizedData = {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
-      phoneNumber: phoneNumber.trim(),
-      country: country.trim(),
-    };
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(sanitizedData.email)) {
-      return NextResponse.json(
-        { message: "Please enter a valid email address" },
+        { message: "All required fields must be provided" },
         { status: 400 }
       );
     }
 
     await connectMongoDB();
+    console.log("✅ Database connected");
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email: sanitizedData.email });
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log("❌ User already exists:", email);
       return NextResponse.json(
-        {
-          message:
-            "An account with this email already exists. Please sign in instead.",
-        },
+        { message: "User with this email already exists" },
         { status: 409 }
       );
     }
 
+    // Check if this is the first user (system owner)
+    const userCount = await User.countDocuments();
+    const isFirstUser = userCount === 0;
+
+    console.log("📊 User count in database:", userCount);
+    console.log("👑 Is first user:", isFirstUser);
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
+    console.log("🔐 Password hashed successfully");
 
-    // Check if this is the first user
-    const isFirstUser = (await User.countDocuments({})) === 0;
-
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    const newUser = await User.create({
-      ...sanitizedData,
+    // Create user with ADMIN role for ALL users who sign up
+    const userData: UserData = {
+      firstName,
+      lastName,
+      email,
       password: hashedPassword,
-      role: isFirstUser ? "ADMIN" : "AGENT",
-      permissions: isFirstUser
-        ? [
-            "ASSIGN_LEADS",
-            "DELETE_COMMENTS",
-            "VIEW_PHONE_NUMBERS",
-            "VIEW_EMAILS",
-            "MANAGE_USERS",
-            "EDIT_LEAD_STATUS",
-          ]
-        : [],
-      emailVerified: false,
-      verificationToken,
-      verificationExpires,
+      phoneNumber: phoneNumber || "",
+      country,
+      role: "ADMIN", // ALL users become ADMIN
       status: "ACTIVE",
+      permissions: [
+        "ASSIGN_LEADS",
+        "DELETE_COMMENTS",
+        "VIEW_PHONE_NUMBERS",
+        "VIEW_EMAILS",
+        "MANAGE_USERS",
+        "EDIT_LEAD_STATUS",
+      ],
+      emailVerified: false,
+      verificationToken: crypto.randomBytes(32).toString("hex"),
+      verificationTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    };
+
+    // Set adminId based on whether it's the first user
+    if (isFirstUser) {
+      console.log("👑 First user - no adminId set");
+    } else {
+      userData.createdBy = null; // This will be set by admin when creating users
+      console.log("📝 Setting createdBy to null for subsequent users");
+    }
+
+    const user = await User.create(userData);
+    console.log("✅ User created successfully:", {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      permissions: user.permissions,
     });
 
     // Send verification email
     try {
       await resend.emails.send({
-        from: "CRM <onboarding@resend.dev>",
-        to: sanitizedData.email,
+        from: "ZodaShield <noreply@zodashield.com>",
+        to: [email],
         subject: "Verify your email address",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Welcome to DriveCRM!</h2>
-            <p>Hi ${sanitizedData.firstName},</p>
-            <p>Thank you for creating your account. Please verify your email address by clicking the button below:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXTAUTH_URL}/verify-email?token=${verificationToken}" 
-                 style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                Verify Email Address
-              </a>
-            </div>
+            <h2 style="color: #4f46e5;">Welcome to ZodaShield!</h2>
+            <p>Hi ${firstName},</p>
+            <p>Thank you for signing up! Please verify your email address by clicking the button below:</p>
+            <a href="${process.env.NEXTAUTH_URL}/verify-email?token=${userData.verificationToken}" 
+               style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+              Verify Email
+            </a>
             <p>This link will expire in 24 hours.</p>
-            <p>If you didn't create this account, you can safely ignore this email.</p>
-            <p>Best regards,<br>The DriveCRM Team</p>
+            <p>If you didn't create this account, please ignore this email.</p>
           </div>
         `,
       });
+      console.log(" Verification email sent successfully");
     } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
+      console.error("❌ Failed to send verification email:", emailError);
+      // Don't fail the signup if email fails
     }
+
+    // Remove password from response - use eslint-disable for this line
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userWithoutPassword } = user.toObject();
+
+    console.log("🎉 Signup completed successfully. Returning response:", {
+      isFirstUser,
+      userRole: user.role,
+      userPermissions: user.permissions,
+    });
 
     return NextResponse.json(
       {
-        message:
-          "Account created successfully! Please check your email to verify your account.",
-        user: {
-          id: newUser._id,
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-        },
+        message: "User created successfully",
+        user: userWithoutPassword,
+        isFirstUser,
       },
       { status: 201 }
     );
   } catch (error: unknown) {
-    console.error("Error creating user:", error);
+    console.error("💥 Error creating user:", error);
 
     if (error instanceof Error) {
-      return NextResponse.json(
-        { message: "Unable to create account. Please try again." },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
     return NextResponse.json(
-      { message: "Unable to create account. Please try again." },
+      { message: "Internal server error" },
       { status: 500 }
     );
   }

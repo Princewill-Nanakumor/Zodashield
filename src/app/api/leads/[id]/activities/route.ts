@@ -55,6 +55,30 @@ async function resolveStatusNames(
   return statusNames;
 }
 
+// Define session user interface
+interface SessionUser {
+  id: string;
+  role: "ADMIN" | "AGENT";
+  adminId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+// Define session interface
+interface Session {
+  user: SessionUser;
+}
+
+// Utility function to determine correct adminId based on user role
+function getCorrectAdminId(session: Session): mongoose.Types.ObjectId {
+  if (session.user.role === "ADMIN") {
+    return new mongoose.Types.ObjectId(session.user.id);
+  } else if (session.user.role === "AGENT" && session.user.adminId) {
+    return new mongoose.Types.ObjectId(session.user.adminId);
+  }
+  throw new Error("Invalid user role or missing adminId for agent");
+}
+
 // Type for activity document from lean query
 interface ActivityDocument {
   _id: mongoose.Types.ObjectId;
@@ -63,6 +87,7 @@ interface ActivityDocument {
   details: string;
   timestamp: Date;
   updatedAt: Date;
+  adminId?: mongoose.Types.ObjectId; // Multi-tenancy
   userId?:
     | {
         _id: mongoose.Types.ObjectId;
@@ -81,7 +106,7 @@ interface ActivityDocument {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = (await getServerSession(authOptions)) as Session | null;
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -95,16 +120,41 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     await connectMongoDB();
+    const adminId = getCorrectAdminId(session);
 
-    // Find activities with proper population
-    const activities = await Activity.find({
+    console.log("=== ACTIVITIES GET REQUEST ===");
+    console.log("Lead ID:", leadId);
+    console.log("User ID:", session.user.id);
+    console.log("User Role:", session.user.role);
+    console.log("Admin ID:", adminId.toString());
+    console.log("Session adminId:", session.user.adminId);
+    console.log("Page:", page, "Limit:", limit, "Skip:", skip);
+
+    // Build query that handles both old activities (without adminId) and new activities (with adminId)
+    const query: {
+      leadId: mongoose.Types.ObjectId;
+      $or: Array<
+        { adminId?: mongoose.Types.ObjectId } | { adminId: { $exists: false } }
+      >;
+    } = {
       leadId: new mongoose.Types.ObjectId(leadId),
-    })
+      $or: [
+        { adminId: adminId }, // New activities with adminId
+        { adminId: { $exists: false } }, // Old activities without adminId
+      ],
+    };
+
+    console.log("Activities query:", JSON.stringify(query, null, 2));
+
+    // Find activities with proper population and multi-tenancy filter
+    const activities = await Activity.find(query)
       .populate("userId", "firstName lastName")
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
-      .lean(); // Remove type assertion, let TypeScript infer the type
+      .lean();
+
+    console.log("Found activities count:", activities.length);
 
     // Collect status IDs for resolution
     const statusIds = new Set<string>();
@@ -124,8 +174,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    console.log("Status IDs to resolve:", Array.from(statusIds));
+
     // Resolve status names
     const statusNames = await resolveStatusNames(statusIds);
+    console.log("Resolved status names:", statusNames);
 
     // Transform activities
     const transformedActivities = activities.map((activity: unknown) => {
@@ -186,6 +239,12 @@ export async function GET(request: NextRequest) {
         },
       };
     });
+
+    console.log("Transformed activities count:", transformedActivities.length);
+    console.log(
+      "First activity sample:",
+      JSON.stringify(transformedActivities[0], null, 2)
+    );
 
     return NextResponse.json(transformedActivities);
   } catch (error) {

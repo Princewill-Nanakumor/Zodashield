@@ -18,10 +18,50 @@ function extractParamsFromUrl(urlString: string): {
   return { id, commentId };
 }
 
+// Define session user interface
+interface SessionUser {
+  id: string;
+  role: "ADMIN" | "AGENT";
+  adminId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+// Define session interface
+interface Session {
+  user: SessionUser;
+}
+
+// Define comment document interface for lean queries
+interface CommentDocument {
+  _id: mongoose.Types.ObjectId;
+  leadId: mongoose.Types.ObjectId;
+  content: string;
+  adminId?: mongoose.Types.ObjectId; // Make adminId optional
+  createdBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Utility function to determine correct adminId based on user role
+function getCorrectAdminId(session: Session): mongoose.Types.ObjectId {
+  if (session.user.role === "ADMIN") {
+    return new mongoose.Types.ObjectId(session.user.id);
+  } else if (session.user.role === "AGENT" && session.user.adminId) {
+    return new mongoose.Types.ObjectId(session.user.adminId);
+  }
+  throw new Error("Invalid user role or missing adminId for agent");
+}
+
 export async function PUT(request: Request) {
   try {
     const { id, commentId } = extractParamsFromUrl(request.url);
-    const session = await getServerSession(authOptions);
+    const session = (await getServerSession(authOptions)) as Session | null;
 
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -36,19 +76,49 @@ export async function PUT(request: Request) {
     }
 
     await connectMongoDB();
+    const adminId = getCorrectAdminId(session);
+
+    console.log("=== COMMENT PUT REQUEST ===");
+    console.log("Lead ID:", id);
+    console.log("Comment ID:", commentId);
+    console.log("User ID:", session.user.id);
+    console.log("User Role:", session.user.role);
+    console.log("Admin ID:", adminId.toString());
+    console.log("Content:", content);
+
+    // Build query that handles both old comments (without adminId) and new comments (with adminId)
+    const query: {
+      _id: string;
+      leadId: string;
+      $or: Array<
+        { adminId?: mongoose.Types.ObjectId } | { adminId: { $exists: false } }
+      >;
+    } = {
+      _id: commentId,
+      leadId: id,
+      $or: [
+        { adminId: adminId }, // New comments with adminId
+        { adminId: { $exists: false } }, // Old comments without adminId
+      ],
+    };
+
+    console.log("Update query:", JSON.stringify(query, null, 2));
 
     const updated = await Comment.findOneAndUpdate(
-      { _id: commentId, leadId: id },
+      query,
       { content: content.trim() },
       { new: true }
-    ).lean();
+    ).lean<CommentDocument>();
 
     if (!updated) {
+      console.log("Comment not found with query:", query);
       return NextResponse.json(
-        { message: "Comment not found" },
+        { message: "Comment not found or not authorized" },
         { status: 404 }
       );
     }
+
+    console.log("Comment updated successfully:", updated._id.toString());
 
     // Create activity log for comment edit
     const activity = new Activity({
@@ -56,13 +126,19 @@ export async function PUT(request: Request) {
       userId: new mongoose.Types.ObjectId(session.user.id),
       details: "Edited a comment",
       leadId: new mongoose.Types.ObjectId(id),
+      adminId: adminId, // Use consistent adminId
       timestamp: new Date(),
       metadata: {
         commentContent: content.trim(),
       },
     });
 
+    console.log(
+      "Saving edit activity with data:",
+      JSON.stringify(activity, null, 2)
+    );
     await activity.save();
+    console.log("Edit activity saved successfully");
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -77,25 +153,52 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { id, commentId } = extractParamsFromUrl(request.url);
-    const session = await getServerSession(authOptions);
+    const session = (await getServerSession(authOptions)) as Session | null;
 
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     await connectMongoDB();
+    const adminId = getCorrectAdminId(session);
 
-    const deleted = await Comment.findOneAndDelete({
+    console.log("=== COMMENT DELETE REQUEST ===");
+    console.log("Lead ID:", id);
+    console.log("Comment ID:", commentId);
+    console.log("User ID:", session.user.id);
+    console.log("User Role:", session.user.role);
+    console.log("Admin ID:", adminId.toString());
+
+    // Build query that handles both old comments (without adminId) and new comments (with adminId)
+    const query: {
+      _id: string;
+      leadId: string;
+      $or: Array<
+        { adminId?: mongoose.Types.ObjectId } | { adminId: { $exists: false } }
+      >;
+    } = {
       _id: commentId,
       leadId: id,
-    });
+      $or: [
+        { adminId: adminId }, // New comments with adminId
+        { adminId: { $exists: false } }, // Old comments without adminId
+      ],
+    };
+
+    console.log("Delete query:", JSON.stringify(query, null, 2));
+
+    const deleted =
+      await Comment.findOneAndDelete(query).lean<CommentDocument>();
 
     if (!deleted) {
+      console.log("Comment not found with query:", query);
       return NextResponse.json(
-        { message: "Comment not found" },
+        { message: "Comment not found or not authorized" },
         { status: 404 }
       );
     }
+
+    console.log("Comment deleted successfully:", deleted._id.toString());
 
     // Create activity log for comment deletion
     const activity = new Activity({
@@ -103,10 +206,16 @@ export async function DELETE(request: Request) {
       userId: new mongoose.Types.ObjectId(session.user.id),
       details: "Deleted a comment",
       leadId: new mongoose.Types.ObjectId(id),
+      adminId: adminId, // Use consistent adminId
       timestamp: new Date(),
     });
 
+    console.log(
+      "Saving delete activity with data:",
+      JSON.stringify(activity, null, 2)
+    );
     await activity.save();
+    console.log("Delete activity saved successfully");
 
     return NextResponse.json({ success: true });
   } catch (error) {

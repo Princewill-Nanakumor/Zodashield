@@ -96,10 +96,17 @@ export default function DashboardPage() {
     }
   }, [toast, session?.user?.role]);
 
+  // Update the fetchLeadStats function in your DashboardPage.tsx
   const fetchLeadStats = useCallback(async () => {
     setIsLoadingLeadStats(true);
     try {
-      const res = await fetch("/api/leads/all");
+      // If user is admin, fetch all leads, otherwise fetch only assigned leads
+      const endpoint =
+        session?.user?.role === "ADMIN"
+          ? "/api/leads/all"
+          : "/api/leads/user-leads";
+
+      const res = await fetch(endpoint);
       if (!res.ok) throw new Error("Failed to fetch leads");
       const data = await res.json();
       const leads = Array.isArray(data) ? data : [];
@@ -121,7 +128,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoadingLeadStats(false);
     }
-  }, [toast]);
+  }, [toast, session?.user?.role]);
 
   useEffect(() => {
     if (status === "authenticated") {

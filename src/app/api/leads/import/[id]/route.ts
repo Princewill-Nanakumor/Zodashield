@@ -32,13 +32,33 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
-    // Delete lead by id
+    // Build query with multi-tenancy filter
+    const query: {
+      _id: mongoose.Types.ObjectId;
+      adminId?: mongoose.Types.ObjectId;
+    } = {
+      _id: new mongoose.Types.ObjectId(id),
+    };
+
+    // Add adminId filter for multi-tenancy
+    if (session.user.role === "ADMIN") {
+      // Admin can only delete leads they created
+      query.adminId = new mongoose.Types.ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent can only delete leads from their admin
+      query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
+    }
+
+    // Delete lead by id with multi-tenancy check
     const result = await mongoose.connection.db
       .collection("leads")
-      .deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+      .deleteOne(query);
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Lead not found or not authorized" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ message: "Lead deleted successfully" });

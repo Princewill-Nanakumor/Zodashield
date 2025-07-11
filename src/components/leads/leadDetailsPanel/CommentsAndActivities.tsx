@@ -1,5 +1,4 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/leads/leadDetailsPanel/CommentsAndActivities.tsx
-
+// src/components/leads/leadDetailsPanel/CommentsAndActivities.tsx
 "use client";
 
 import React, { FC, useState, useEffect, useCallback, useRef } from "react";
@@ -72,15 +71,34 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
     setIsLoading(true);
 
     try {
+      console.log("=== FETCHING COMMENTS ===");
+      console.log("Lead ID:", lead._id);
+      console.log("Fetch URL:", `/api/leads/${lead._id}/comments`);
+
       const commentsResponse = await fetch(`/api/leads/${lead._id}/comments`);
+      console.log("Response status:", commentsResponse.status);
+      console.log("Response ok:", commentsResponse.ok);
+
       if (commentsResponse.ok) {
         const commentsData = await commentsResponse.json();
+        console.log("Raw comments data:", commentsData);
+        console.log("Comments data type:", typeof commentsData);
+        console.log("Is array:", Array.isArray(commentsData));
+
         const transformedComments = commentsData.map(transformComment);
+        console.log("Transformed comments:", transformedComments);
         setComments(transformedComments);
       } else {
+        console.log(
+          "Comments response not ok, status:",
+          commentsResponse.status
+        );
+        const errorText = await commentsResponse.text();
+        console.log("Error response:", errorText);
         setComments([]);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error fetching comments:", error);
       toastRef.current({
         title: "Error",
         description: "Failed to fetch comments",
@@ -104,16 +122,30 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
     if (!commentContent.trim() || !lead?._id) return;
     setIsSaving(true);
     try {
+      console.log("=== ADDING COMMENT ===");
+      console.log("Lead ID:", lead._id);
+      console.log("Content:", commentContent);
+
       const response = await fetch(`/api/leads/${lead._id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: commentContent }),
       });
 
+      console.log("Add comment response status:", response.status);
+      console.log("Add comment response ok:", response.ok);
+
       if (response.ok) {
         const newComment = await response.json();
+        console.log("New comment response:", newComment);
         const transformedComment = transformComment(newComment);
-        setComments((prev) => [transformedComment, ...prev]);
+        console.log("Transformed new comment:", transformedComment);
+
+        setComments((prev) => {
+          const updated = [transformedComment, ...prev];
+          console.log("Updated comments array:", updated);
+          return updated;
+        });
         setCommentContent("");
         setActivitiesKey((prev) => prev + 1);
 
@@ -123,9 +155,12 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
           variant: "success",
         });
       } else {
-        throw new Error("Failed to add comment");
+        const errorText = await response.text();
+        console.log("Add comment error response:", errorText);
+        throw new Error(`Failed to add comment: ${errorText}`);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error adding comment:", error);
       toastRef.current({
         title: "Error",
         description: "Failed to add comment",
@@ -139,14 +174,24 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
   const handleCommentDeleted = useCallback(
     async (commentId: string) => {
       try {
+        console.log("=== DELETING COMMENT ===");
+        console.log("Comment ID:", commentId);
+        console.log("Lead ID:", lead._id);
+
         const response = await fetch(
           `/api/leads/${lead._id}/comments/${commentId}`,
           { method: "DELETE" }
         );
+
+        console.log("Delete comment response status:", response.status);
+        console.log("Delete comment response ok:", response.ok);
+
         if (response.ok) {
-          setComments((prev) =>
-            prev.filter((comment) => comment._id !== commentId)
-          );
+          setComments((prev) => {
+            const updated = prev.filter((comment) => comment._id !== commentId);
+            console.log("Comments after deletion:", updated);
+            return updated;
+          });
           setActivitiesKey((prev) => prev + 1);
 
           toastRef.current({
@@ -155,9 +200,12 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
             variant: "success",
           });
         } else {
-          throw new Error("Failed to delete comment");
+          const errorText = await response.text();
+          console.log("Delete comment error response:", errorText);
+          throw new Error(`Failed to delete comment: ${errorText}`);
         }
-      } catch {
+      } catch (error) {
+        console.error("Error deleting comment:", error);
         toastRef.current({
           title: "Error",
           description: "Failed to delete comment",
@@ -171,6 +219,11 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
   const handleCommentEdited = useCallback(
     async (updatedComment: Comment) => {
       try {
+        console.log("=== EDITING COMMENT ===");
+        console.log("Comment ID:", updatedComment._id);
+        console.log("Lead ID:", lead._id);
+        console.log("New content:", updatedComment.content);
+
         const response = await fetch(
           `/api/leads/${lead._id}/comments/${updatedComment._id}`,
           {
@@ -179,15 +232,23 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
             body: JSON.stringify({ content: updatedComment.content }),
           }
         );
+
+        console.log("Edit comment response status:", response.status);
+        console.log("Edit comment response ok:", response.ok);
+
         if (response.ok) {
           const savedComment = await response.json();
-          setComments((prev) =>
-            prev.map((comment) =>
-              comment._id === updatedComment._id
-                ? transformComment(savedComment)
-                : comment
-            )
-          );
+          console.log("Saved comment response:", savedComment);
+          const transformedComment = transformComment(savedComment);
+          console.log("Transformed saved comment:", transformedComment);
+
+          setComments((prev) => {
+            const updated = prev.map((comment) =>
+              comment._id === updatedComment._id ? transformedComment : comment
+            );
+            console.log("Comments after edit:", updated);
+            return updated;
+          });
           setActivitiesKey((prev) => prev + 1);
 
           toastRef.current({
@@ -196,9 +257,12 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
             variant: "success",
           });
         } else {
-          throw new Error("Failed to update comment");
+          const errorText = await response.text();
+          console.log("Edit comment error response:", errorText);
+          throw new Error(`Failed to update comment: ${errorText}`);
         }
-      } catch {
+      } catch (error) {
+        console.error("Error updating comment:", error);
         toastRef.current({
           title: "Error",
           description: "Failed to update comment",

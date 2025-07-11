@@ -15,7 +15,18 @@ export async function GET() {
 
     await connectMongoDB();
 
-    const roles = await Role.find().populate("permissions");
+    // Build query with multi-tenancy filter
+    const query: { adminId?: string } = {};
+
+    if (session.user.role === "ADMIN") {
+      // Admin sees only roles they created
+      query.adminId = session.user.id;
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent sees roles from their admin
+      query.adminId = session.user.adminId;
+    }
+
+    const roles = await Role.find(query).populate("permissions");
 
     return NextResponse.json(roles);
   } catch (error) {
@@ -43,6 +54,8 @@ export async function POST(request: Request) {
       name,
       description,
       permissions,
+      adminId: session.user.id, // Multi-tenancy: admin owns the role
+      createdBy: session.user.id,
     });
 
     return NextResponse.json(

@@ -1,9 +1,9 @@
-// /src/app/api/leads/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { executeDbOperation } from "@/libs/dbConfig";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
+import Lead from "@/models/Lead";
 
 interface MongoDocument {
   _id: mongoose.Types.ObjectId;
@@ -18,22 +18,11 @@ interface LeadDocument extends MongoDocument {
   country?: string;
   source?: string;
   status: string;
+  adminId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   __v: number;
-}
-
-interface ImportLead {
-  firstName: string;
-  lastName: string;
-  email: string;
-  country?: string;
-  phone?: string;
-  source?: string;
-  comments?: string;
-  status?: string;
-  importId?: string;
 }
 
 interface TransformedLead {
@@ -63,14 +52,16 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     return executeDbOperation(async () => {
-      // Get the Lead model from mongoose
-      const Lead = mongoose.models.Lead;
-      if (!Lead) {
-        throw new Error("Lead model not found");
+      const query: { adminId?: mongoose.Types.ObjectId } = {};
+
+      if (session.user.role === "ADMIN") {
+        query.adminId = new mongoose.Types.ObjectId(session.user.id);
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
       }
 
       const [leads, total] = await Promise.all([
-        Lead.find({})
+        Lead.find(query)
           .select(
             "firstName lastName email phone country source status createdAt updatedAt"
           )
@@ -78,32 +69,23 @@ export async function GET(request: Request) {
           .skip(skip)
           .limit(limit)
           .lean<LeadDocument[]>(),
-        Lead.countDocuments({}),
+        Lead.countDocuments(query),
       ]);
 
-      console.log("Raw leads from DB:", leads);
-
-      if (leads.length > 0) {
-        console.log("Sample lead:", leads[0]);
-      }
-
       const transformedLeads: TransformedLead[] = leads.map(
-        (lead: LeadDocument) => {
-          console.log("Processing lead with country:", lead.country);
-          return {
-            id: lead._id.toString(),
-            firstName: lead.firstName,
-            lastName: lead.lastName,
-            fullName: `${lead.firstName} ${lead.lastName}`,
-            email: lead.email,
-            phone: lead.phone || "",
-            source: lead.source || "",
-            country: lead.country || "",
-            status: lead.status || "NEW",
-            createdAt: new Date(lead.createdAt).toISOString(),
-            updatedAt: new Date(lead.updatedAt).toISOString(),
-          };
-        }
+        (lead: LeadDocument) => ({
+          id: lead._id.toString(),
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          fullName: `${lead.firstName} ${lead.lastName}`,
+          email: lead.email,
+          phone: lead.phone || "",
+          source: lead.source || "",
+          country: lead.country || "",
+          status: lead.status || "NEW",
+          createdAt: new Date(lead.createdAt).toISOString(),
+          updatedAt: new Date(lead.updatedAt).toISOString(),
+        })
       );
 
       return NextResponse.json({
@@ -143,51 +125,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get the Lead model from mongoose
-    const Lead = mongoose.models.Lead;
-    if (!Lead) {
-      throw new Error("Lead model not found");
-    }
-
     const leads = Array.isArray(requestData) ? requestData : [requestData];
     console.log("Received leads to import:", leads.length);
 
-    if (leads.length > 0) {
-      console.log("First lead to be saved:", leads[0]);
-    }
-
-    const operations = leads.map((lead: ImportLead) => ({
+    // Prepare bulk operations
+    const operations = leads.map((lead) => ({
       updateOne: {
-        filter: { email: lead.email },
+        filter: {
+          email: lead.email.toLowerCase(),
+          adminId: new mongoose.Types.ObjectId(session.user.id),
+        },
         update: {
-          $set: {
+          $setOnInsert: {
             firstName: lead.firstName,
             lastName: lead.lastName,
-            email: lead.email,
+            email: lead.email.toLowerCase(),
             phone: lead.phone || "",
             country: lead.country || "",
             source: lead.source || "-",
             comments: lead.comments || "No comments yet",
             status: lead.status || "NEW",
             importId: lead.importId,
+            adminId: new mongoose.Types.ObjectId(session.user.id),
             createdBy: new mongoose.Types.ObjectId(session.user.id),
-          },
-          $setOnInsert: {
             createdAt: new Date(),
+          },
+          $set: {
+            updatedAt: new Date(),
           },
         },
         upsert: true,
       },
     }));
 
-    const result = await Lead.bulkWrite(operations, { ordered: false });
-    const importId = leads[0]?.importId;
+    let inserted = 0;
+    let duplicates = 0;
+    let errors = 0;
 
-    console.log(
-      `Inserted ${result.upsertedCount} leads, ${
-        leads.length - result.upsertedCount
-      } duplicates found`
-    );
+    try {
+      const result = await Lead.bulkWrite(operations, { ordered: false });
+      inserted = result.upsertedCount;
+      duplicates = leads.length - inserted;
+    } catch (error) {
+      console.error("Bulk import error:", error);
+      errors = leads.length; // fallback, or parse error for more detail
+    }
+
+    const importId = leads[0]?.importId;
 
     if (importId && mongoose.connection && mongoose.connection.db) {
       try {
@@ -196,8 +180,8 @@ export async function POST(request: Request) {
           {
             $set: {
               status: "completed",
-              successCount: result.upsertedCount,
-              failureCount: leads.length - result.upsertedCount,
+              successCount: inserted,
+              failureCount: duplicates + errors,
               updatedAt: new Date(),
             },
           }
@@ -209,8 +193,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: "Leads processed",
-      inserted: result.upsertedCount,
-      duplicates: leads.length - result.upsertedCount,
+      inserted,
+      duplicates,
+      errors,
     });
   }, "Failed to process leads");
 }
@@ -225,14 +210,21 @@ export async function PUT(request: Request) {
     const { id, ...updateData } = await request.json();
 
     return executeDbOperation(async () => {
-      // Get the Lead model from mongoose
-      const Lead = mongoose.models.Lead;
-      if (!Lead) {
-        throw new Error("Lead model not found");
+      const query: {
+        _id: mongoose.Types.ObjectId;
+        adminId?: mongoose.Types.ObjectId;
+      } = {
+        _id: new mongoose.Types.ObjectId(id),
+      };
+
+      if (session.user.role === "ADMIN") {
+        query.adminId = new mongoose.Types.ObjectId(session.user.id);
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
       }
 
-      const updatedLead = await Lead.findByIdAndUpdate(
-        id,
+      const updatedLead = await Lead.findOneAndUpdate(
+        query,
         {
           ...updateData,
           updatedAt: new Date(),
@@ -241,7 +233,10 @@ export async function PUT(request: Request) {
       ).lean<LeadDocument>();
 
       if (!updatedLead) {
-        return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Lead not found or not authorized" },
+          { status: 404 }
+        );
       }
 
       return NextResponse.json(updatedLead);
@@ -273,16 +268,27 @@ export async function DELETE(request: Request) {
     }
 
     return executeDbOperation(async () => {
-      // Get the Lead model from mongoose
-      const Lead = mongoose.models.Lead;
-      if (!Lead) {
-        throw new Error("Lead model not found");
+      const query: {
+        _id: mongoose.Types.ObjectId;
+        adminId?: mongoose.Types.ObjectId;
+      } = {
+        _id: new mongoose.Types.ObjectId(id),
+      };
+
+      if (session.user.role === "ADMIN") {
+        query.adminId = new mongoose.Types.ObjectId(session.user.id);
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
       }
 
-      const deletedLead = await Lead.findByIdAndDelete(id).lean<LeadDocument>();
+      const deletedLead =
+        await Lead.findOneAndDelete(query).lean<LeadDocument>();
 
       if (!deletedLead) {
-        return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Lead not found or not authorized" },
+          { status: 404 }
+        );
       }
 
       return NextResponse.json({ message: "Lead deleted successfully" });

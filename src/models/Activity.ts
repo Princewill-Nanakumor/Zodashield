@@ -1,4 +1,3 @@
-// src/models/Activity.ts
 import mongoose from "mongoose";
 
 export type ActivityType =
@@ -17,14 +16,12 @@ export interface IActivity {
   details: string;
   timestamp: Date;
   leadId?: mongoose.Types.ObjectId;
+  adminId?: mongoose.Types.ObjectId; // Add multi-tenancy field
   metadata: {
-    // Contact/Lead related
     contactId?: string;
     email?: string;
     count?: number;
     source?: string;
-
-    // Status changes
     oldValue?: string;
     newValue?: string;
     status?: string;
@@ -32,8 +29,6 @@ export interface IActivity {
     newStatus?: string;
     oldStatusId?: string;
     newStatusId?: string;
-
-    // Assignment related
     assignedTo?: {
       id: string;
       firstName: string;
@@ -49,12 +44,8 @@ export interface IActivity {
       firstName: string;
       lastName: string;
     };
-
-    // Comment related
     commentContent?: string;
     oldCommentContent?: string;
-
-    // General changes tracking
     changes?: Array<{
       field: string;
       oldValue: string | null;
@@ -99,6 +90,11 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
       ref: "Lead",
       required: false,
     },
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false, // Make it optional for backward compatibility
+      index: true,
+    },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       required: true,
@@ -110,14 +106,15 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
   }
 );
 
-// Indexes for better performance
 activitySchema.index({ leadId: 1, timestamp: -1 });
 activitySchema.index({ userId: 1 });
 activitySchema.index({ type: 1 });
 activitySchema.index({ "metadata.oldStatusId": 1 });
 activitySchema.index({ "metadata.newStatusId": 1 });
+// Add multi-tenancy indexes
+activitySchema.index({ leadId: 1, adminId: 1 });
+activitySchema.index({ adminId: 1, timestamp: -1 });
 
-// Validation middleware
 activitySchema.pre("save", function (this: IActivityDocument, next) {
   if (!this.metadata || typeof this.metadata !== "object") {
     next(new Error("Invalid metadata"));

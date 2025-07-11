@@ -12,10 +12,11 @@ declare module "next-auth" {
     email: string;
     firstName: string;
     lastName: string;
-    role: string;
+    role: "ADMIN" | "SUBADMIN" | "AGENT";
     permissions: string[];
     status: string;
     emailVerified: boolean;
+    adminId?: string; // For multi-tenancy - AGENT users have adminId
   }
 
   interface Session {
@@ -25,10 +26,11 @@ declare module "next-auth" {
       firstName: string;
       lastName: string;
       name: string;
-      role: string;
+      role: "ADMIN" | "SUBADMIN" | "AGENT";
       permissions: string[];
       status: string;
       emailVerified: boolean;
+      adminId?: string; // For multi-tenancy - AGENT users have adminId
     };
   }
 }
@@ -37,12 +39,13 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
-    role: string;
+    role: "ADMIN" | "SUBADMIN" | "AGENT";
     permissions: string[];
     status: string;
     firstName: string;
     lastName: string;
     emailVerified: boolean;
+    adminId?: string; // For multi-tenancy - AGENT users have adminId
   }
 }
 
@@ -97,10 +100,11 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role,
+            role: user.role as "ADMIN" | "SUBADMIN" | "AGENT",
             permissions: user.permissions,
             status: user.status,
-            emailVerified: Boolean(user.emailVerified), // Explicitly convert to boolean
+            emailVerified: Boolean(user.emailVerified),
+            adminId: user.adminId?.toString(), // Include adminId for multi-tenancy
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -126,7 +130,8 @@ export const authOptions: NextAuthOptions = {
         token.status = user.status;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
-        token.emailVerified = Boolean(user.emailVerified); // Explicitly convert to boolean
+        token.emailVerified = Boolean(user.emailVerified);
+        token.adminId = user.adminId; // Include adminId in JWT
       }
       return token;
     },
@@ -140,6 +145,7 @@ export const authOptions: NextAuthOptions = {
         session.user.lastName = token.lastName;
         session.user.name = `${token.firstName} ${token.lastName}`;
         session.user.emailVerified = Boolean(token.emailVerified);
+        session.user.adminId = token.adminId; // Include adminId in session
       }
       return session;
     },

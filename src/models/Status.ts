@@ -1,33 +1,37 @@
-// src/models/Status.ts
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 export interface IStatus {
+  _id: mongoose.Types.ObjectId;
   name: string;
   color: string;
+  adminId: mongoose.Types.ObjectId; // For multi-tenancy
+  createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  __v: number;
 }
 
-// Remove _id from IStatus since Document already provides it
-export interface IStatusDocument extends IStatus, mongoose.Document {}
-
-const StatusSchema = new mongoose.Schema<IStatusDocument>(
+const statusSchema = new Schema(
   {
     name: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     color: {
       type: String,
       required: true,
-      validate: {
-        validator: function (v: string) {
-          return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(v);
-        },
-        message: "Color must be a valid hex color (e.g., #FF0000 or #F00)",
-      },
+      trim: true,
+    },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
   },
   {
@@ -35,6 +39,11 @@ const StatusSchema = new mongoose.Schema<IStatusDocument>(
   }
 );
 
-export const Status =
-  mongoose.models.Status ||
-  mongoose.model<IStatusDocument>("Status", StatusSchema);
+// Indexes for better performance
+statusSchema.index({ adminId: 1 });
+statusSchema.index({ name: 1, adminId: 1 }, { unique: true });
+
+const Status =
+  mongoose.models.Status || mongoose.model<IStatus>("Status", statusSchema);
+
+export default Status;

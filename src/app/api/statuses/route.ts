@@ -1,9 +1,14 @@
-// src/app/api/statuses/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import { Status } from "@/models/Status";
+import Status from "@/models/Status";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
+
+// Define query type for MongoDB filters
+interface StatusQuery {
+  adminId?: mongoose.Types.ObjectId;
+}
 
 // Helper to retry DB operation if connection fails
 async function withDbRetry<T>(
@@ -33,8 +38,19 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Filter statuses by adminId for multi-tenancy
+    const query: StatusQuery = {};
+
+    if (session.user.role === "ADMIN") {
+      // Admin sees only statuses they created
+      query.adminId = new mongoose.Types.ObjectId(session.user.id);
+    } else if (session.user.role === "AGENT" && session.user.adminId) {
+      // Agent sees statuses from their admin
+      query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
+    }
+
     const statuses = await withDbRetry(() =>
-      Status.find({}).sort({ createdAt: 1 })
+      Status.find(query).sort({ createdAt: 1 })
     );
 
     // Set cache headers
@@ -63,6 +79,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Only ADMIN users can create statuses
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only administrators can create statuses" },
+        { status: 403 }
+      );
+    }
+
     const { name, color } = await req.json();
     if (!name || !color) {
       return NextResponse.json(
@@ -71,7 +95,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newStatus = await withDbRetry(() => Status.create({ name, color }));
+    const newStatus = await withDbRetry(() =>
+      Status.create({
+        name,
+        color,
+        adminId: new mongoose.Types.ObjectId(session.user.id),
+        createdBy: new mongoose.Types.ObjectId(session.user.id),
+      })
+    );
+
     return NextResponse.json(newStatus, { status: 201 });
   } catch (error) {
     console.error("Error creating status:", error);

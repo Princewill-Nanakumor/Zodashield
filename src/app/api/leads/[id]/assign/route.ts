@@ -32,34 +32,58 @@ export async function POST(request: Request) {
         throw new Error("Lead model not found");
       }
 
+      // Build query with multi-tenancy filter
+      const query: { _id: string; adminId?: string } = {
+        _id: id,
+      };
+
+      if (session.user.role === "ADMIN") {
+        // Admin can only assign leads they created
+        query.adminId = session.user.id;
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        // Agent can only assign leads from their admin
+        query.adminId = session.user.adminId;
+      }
+
       // Get the current lead with populated assignedTo
-      const currentLead = await Lead.findById(id)
+      const currentLead = await Lead.findOne(query)
         .populate("assignedTo", "firstName lastName")
         .session(dbSession);
 
       if (!currentLead) {
-        throw new Error("Lead not found");
+        throw new Error("Lead not found or not authorized");
       }
 
       const oldAssignedTo = currentLead.assignedTo;
       const isReassignment = !!oldAssignedTo;
 
-      // Get user details for activity logging
+      // Get user details for activity logging with multi-tenancy check
       const User = mongoose.model("User");
+      const userQuery: { _id: string; adminId?: string } = {
+        _id: userId,
+      };
+
+      // Only allow assigning to users created by the same admin
+      if (session.user.role === "ADMIN") {
+        userQuery.adminId = session.user.id;
+      } else if (session.user.role === "AGENT" && session.user.adminId) {
+        userQuery.adminId = session.user.adminId;
+      }
+
       const [assignedToUser, assignedByUser] = await Promise.all([
-        User.findById(userId).select("firstName lastName").session(dbSession),
+        User.findOne(userQuery).select("firstName lastName").session(dbSession),
         User.findById(session.user.id)
           .select("firstName lastName")
           .session(dbSession),
       ]);
 
       if (!assignedToUser) {
-        throw new Error("Target user not found");
+        throw new Error("Target user not found or not authorized");
       }
 
       // Update the lead
-      const lead = await Lead.findByIdAndUpdate(
-        id,
+      const lead = await Lead.findOneAndUpdate(
+        query, // Use the same query with multi-tenancy filter
         {
           assignedTo: userId,
           updatedAt: new Date(),
@@ -81,6 +105,7 @@ export async function POST(request: Request) {
             ? `Lead reassigned from ${oldAssignedTo ? `${oldAssignedTo.firstName} ${oldAssignedTo.lastName}` : "Unknown"} to ${assignedToUser.firstName} ${assignedToUser.lastName}`
             : `Lead assigned to ${assignedToUser.firstName} ${assignedToUser.lastName}`,
           leadId: new mongoose.Types.ObjectId(id),
+          adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy
           timestamp: new Date(),
           metadata: {
             assignedTo: {
