@@ -115,16 +115,14 @@ export default function SignUpForm() {
         throw new Error(resData.message || "Something went wrong");
       }
 
-      setFormSuccess(
-        "Account created successfully! Redirecting to dashboard..."
-      );
+      setFormSuccess("Account created successfully! Redirecting to login...");
 
       // Reset the form
       reset();
 
       // Auto-login for new admin user
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/login");
       }, 2000);
     } catch (error: unknown) {
       setFormError(
