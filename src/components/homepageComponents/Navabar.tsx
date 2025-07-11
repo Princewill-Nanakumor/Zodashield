@@ -31,14 +31,14 @@ export default function Navbar() {
         <div className="flex items-center space-x-4 h-10">
           {status === "loading" ? (
             <>
-              <Skeleton className="h-full w-20" />
+              <Skeleton className="h-full w-20 hidden md:block" />
               <Skeleton className="h-full w-24" />
             </>
           ) : session ? (
             <>
               <Link
                 href="/dashboard"
-                className="px-4 py-2 text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-100 font-medium"
+                className="px-4 py-2 text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-100 font-medium hidden md:block"
               >
                 Dashboard
               </Link>
