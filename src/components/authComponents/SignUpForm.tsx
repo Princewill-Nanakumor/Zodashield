@@ -433,7 +433,7 @@ function ClientSideSelect({
     return (
       <input
         type="text"
-        className="pl-10 sm:pl-12 h-10 sm:h-12 w-full px-3 rounded-lg border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+        className="h-10 sm:h-12 w-full px-3 rounded-lg border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base text-gray-900 dark:text-white bg-white dark:bg-gray-700"
         placeholder="Loading countries..."
         disabled
       />
@@ -462,12 +462,6 @@ function ClientSideSelect({
           }}
           value={countryOptions.find((opt) => opt.label === field.value)}
           classNamePrefix="react-select"
-          className="react-select-container"
-          // Mobile-specific props to prevent layout shifts
-          menuPosition="fixed"
-          menuPlacement="auto"
-          closeMenuOnScroll={true}
-          blurInputOnSelect={true}
         />
       )}
     />

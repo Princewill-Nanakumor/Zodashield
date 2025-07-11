@@ -1,5 +1,3 @@
-// src/components/authComponents/SelectedCountry.ts
-
 import Select, {
   StylesConfig,
   OptionProps,
@@ -21,51 +19,101 @@ export interface SelectOption {
 
 export type { StylesConfig, OptionProps };
 
-// Helper to detect dark mode
-const isDark = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia &&
-  window.matchMedia("(prefers-color-scheme: dark)").matches;
+// Helper to detect dark mode - reliable for Next.js
+const isDark = () => {
+  if (typeof window === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
+};
 
 export const customStyles: StylesConfig<SelectOption, false> = {
+  container: (provided) => ({
+    ...provided,
+    width: "100%",
+    minWidth: 0,
+  }),
   control: (provided, state) => {
     const dark = isDark();
     return {
       ...provided,
-      appearance: "none",
-      borderRadius: "0.5rem",
-      borderWidth: "1px",
+      minHeight: "40px",
+      height: "40px",
+      borderRadius: "0.75rem",
+      borderWidth: state.isFocused ? "2px" : "1px",
       borderStyle: "solid",
       borderColor: state.isFocused
-        ? "transparent"
-        : dark
-          ? "#374151" // dark:border-gray-600
-          : "#D1D5DB", // border-gray-300
-      backgroundColor: dark ? "#374151" : "white", // dark:bg-gray-700
-      color: dark ? "#F3F4F6" : "#111827", // dark:text-gray-100
-      paddingLeft: "0.75rem",
-      paddingRight: "0.75rem",
-      paddingTop: "0.5rem",
-      paddingBottom: "0.5rem",
-      fontSize: "0.875rem",
-      boxShadow: state.isFocused
         ? dark
-          ? "0 0 0 2px #818CF8"
-          : "0 0 0 2px #6366F1"
-        : "none",
+          ? "#818CF8"
+          : "#6366F1"
+        : dark
+          ? "#4B5563"
+          : "#D1D5DB",
+      backgroundColor: dark ? "#374151" : "#fff",
+      color: dark ? "#F3F4F6" : "#111827",
+      fontSize: "1rem",
+      fontFamily: inter.style.fontFamily,
+      boxShadow: "none",
       outline: "none",
-      minHeight: "auto",
       width: "100%",
       cursor: "pointer",
-      fontFamily: inter.style.fontFamily,
+      transition: "all 0.2s ease",
+      [`@media (min-width: 768px)`]: {
+        height: "47px", // for medium and larger screens
+      },
       "&:hover": {
         borderColor: state.isFocused
-          ? "transparent"
+          ? dark
+            ? "#818CF8"
+            : "#6366F1"
           : dark
-            ? "#374151"
+            ? "#4B5563"
             : "#D1D5DB",
       },
-      transition: "box-shadow 0.2s ease",
+    };
+  },
+
+  valueContainer: (provided) => ({
+    ...provided,
+    height: "40px",
+    padding: "0 0.75rem",
+    display: "flex",
+    alignItems: "center",
+    minWidth: 0,
+  }),
+  singleValue: (provided) => {
+    const dark = isDark();
+    return {
+      ...provided,
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      fontSize: "1rem",
+      fontFamily: inter.style.fontFamily,
+      color: dark ? "#F3F4F6" : "#111827",
+      marginLeft: 0,
+      minWidth: 0,
+      maxWidth: "100%",
+    };
+  },
+  input: (provided) => ({
+    ...provided,
+    margin: 0,
+    padding: 0,
+    fontFamily: inter.style.fontFamily,
+    color: "inherit",
+    minWidth: 0,
+  }),
+  placeholder: (provided) => {
+    const dark = isDark();
+    return {
+      ...provided,
+      color: dark ? "#9CA3AF" : "#6B7280",
+      fontFamily: inter.style.fontFamily,
+      marginLeft: 0,
+      minWidth: 0,
+      fontSize: "0.875rem",
+      [`@media (min-width: 768px)`]: {
+        fontSize: "1rem",
+      },
     };
   },
   option: (provided, state) => {
@@ -75,100 +123,71 @@ export const customStyles: StylesConfig<SelectOption, false> = {
       display: "flex",
       alignItems: "center",
       padding: "8px 12px",
-      fontSize: "0.875rem",
+      fontSize: "1rem",
       fontFamily: inter.style.fontFamily,
       backgroundColor: state.isSelected
         ? dark
-          ? "#312E81" // dark:bg-indigo-900
-          : "#EEF2FF" // bg-blue-50
+          ? "#312E81"
+          : "#EEF2FF"
         : state.isFocused
           ? dark
-            ? "#1F2937" // dark:bg-gray-800
-            : "#F3F4F6" // bg-gray-50
-          : dark
             ? "#374151"
-            : "white",
+            : "#F3F4F6"
+          : dark
+            ? "#1F2937"
+            : "#fff",
       color: dark ? "#F3F4F6" : "#111827",
       cursor: state.isDisabled ? "not-allowed" : "pointer",
       opacity: state.isDisabled ? 0.5 : 1,
-      "&:hover": {
-        backgroundColor: dark ? "#1F2937" : "#F3F4F6",
+      "&:active": {
+        backgroundColor: dark ? "#312E81" : "#EEF2FF",
       },
     };
   },
-  singleValue: (provided) => {
-    const dark = isDark();
-    return {
-      ...provided,
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      fontSize: "0.875rem",
-      marginLeft: "0",
-      fontFamily: inter.style.fontFamily,
-      color: dark ? "#F3F4F6" : "#111827",
-    };
-  },
-  input: (provided) => {
-    const dark = isDark();
-    return {
-      ...provided,
-      marginLeft: "0.5rem",
-      padding: 0,
-      fontFamily: inter.style.fontFamily,
-      color: dark ? "#F3F4F6" : "#111827",
-    };
-  },
-  placeholder: (provided) => {
-    const dark = isDark();
-    return {
-      ...provided,
-      marginLeft: "0.5rem",
-      color: dark ? "#9CA3AF" : "#6B7280", // dark:text-gray-400
-      fontFamily: inter.style.fontFamily,
-    };
-  },
-  dropdownIndicator: (provided) => ({
-    ...provided,
-    padding: "0 4px",
-  }),
-  indicatorSeparator: () => ({
-    display: "none",
-  }),
-  valueContainer: (provided) => ({
-    ...provided,
-    overflow: "hidden",
-    padding: 0,
-    paddingLeft: 0,
-    display: "flex",
-    alignItems: "center",
-  }),
   menu: (provided) => {
     const dark = isDark();
     return {
       ...provided,
       fontFamily: inter.style.fontFamily,
-      backgroundColor: dark ? "#374151" : "white",
+      backgroundColor: dark ? "#1F2937" : "#fff",
       color: dark ? "#F3F4F6" : "#111827",
-      // Fix for mobile layout shift
-      position: "fixed" as const,
-      top: "auto",
-      left: "auto",
-      right: "auto",
-      bottom: "auto",
-      width: "100%",
-      maxWidth: "100vw",
+      borderRadius: "0.75rem",
+      border: `1px solid ${dark ? "#374151" : "#E5E7EB"}`,
+      boxShadow: dark
+        ? "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)"
+        : "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      marginTop: "4px",
       zIndex: 9999,
-      // Ensure menu doesn't cause horizontal scroll
-      maxHeight: "200px",
-      overflow: "auto",
+      minWidth: 0,
     };
   },
   menuList: (provided) => ({
     ...provided,
-    // Prevent horizontal scroll
+    padding: "4px",
     maxHeight: "200px",
-    overflow: "auto",
+    minWidth: 0,
+    "::-webkit-scrollbar": {
+      width: "6px",
+    },
+    "::-webkit-scrollbar-track": {
+      background: isDark() ? "#374151" : "#F3F4F6",
+      borderRadius: "3px",
+    },
+    "::-webkit-scrollbar-thumb": {
+      background: isDark() ? "#6366F1" : "#9CA3AF",
+      borderRadius: "3px",
+    },
+  }),
+  dropdownIndicator: (provided) => ({
+    ...provided,
+    padding: "0 8px",
+    color: "inherit",
+    "&:hover": {
+      color: "inherit",
+    },
+  }),
+  indicatorSeparator: () => ({
+    display: "none",
   }),
 };
 
@@ -185,20 +204,21 @@ export const CustomOption = ({
       isDisabled
         ? "opacity-50 cursor-not-allowed"
         : isSelected
-          ? "bg-blue-50 dark:bg-indigo-900"
+          ? "bg-indigo-50 dark:bg-indigo-900"
           : isFocused
-            ? "bg-gray-50 dark:bg-gray-800"
-            : "bg-white dark:bg-gray-700"
-    } hover:bg-gray-100 dark:hover:bg-gray-800`}
+            ? "bg-gray-50 dark:bg-gray-700"
+            : "bg-white dark:bg-gray-800"
+    } hover:bg-gray-100 dark:hover:bg-gray-700`}
   >
     <Image
       src={`https://flagcdn.com/24x18/${data.flag}.png`}
       alt={data.label}
       width={24}
       height={18}
-      className="w-6 h-4 object-cover"
+      className="w-6 h-4 object-cover flex-shrink-0"
+      loading="lazy"
     />
-    <span className="flex-1">{data.label}</span>
+    <span className="flex-1 truncate">{data.label}</span>
     <span className="text-gray-500 dark:text-gray-400 text-sm">
       {data.phoneCode}
     </span>
@@ -213,8 +233,9 @@ export const CustomSingleValue = ({ data }: { data: SelectOption }) => (
       width={24}
       height={18}
       className="w-6 h-4 object-cover flex-shrink-0"
+      loading="lazy"
     />
-    <span className={`truncate flex-1 ${inter.className}`}>{data.label}</span>
+    <span className={`truncate ${inter.className}`}>{data.label}</span>
   </div>
 );
 
