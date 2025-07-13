@@ -1,9 +1,8 @@
-// src/libs/auth.ts
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { connectMongoDB } from "./dbConfig";
-import User from "@/models/User";
+import mongoose from "mongoose";
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -12,11 +11,10 @@ declare module "next-auth" {
     email: string;
     firstName: string;
     lastName: string;
-    role: "ADMIN" | "SUBADMIN" | "AGENT";
+    role: string;
     permissions: string[];
     status: string;
-    emailVerified: boolean;
-    adminId?: string; // For multi-tenancy - AGENT users have adminId
+    adminId?: string;
   }
 
   interface Session {
@@ -25,12 +23,10 @@ declare module "next-auth" {
       email: string;
       firstName: string;
       lastName: string;
-      name: string;
-      role: "ADMIN" | "SUBADMIN" | "AGENT";
+      role: string;
       permissions: string[];
       status: string;
-      emailVerified: boolean;
-      adminId?: string; // For multi-tenancy - AGENT users have adminId
+      adminId?: string;
     };
   }
 }
@@ -39,13 +35,12 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
-    role: "ADMIN" | "SUBADMIN" | "AGENT";
+    role: string;
     permissions: string[];
     status: string;
     firstName: string;
     lastName: string;
-    emailVerified: boolean;
-    adminId?: string; // For multi-tenancy - AGENT users have adminId
+    adminId?: string;
   }
 }
 
@@ -59,52 +54,94 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log("❌ Missing credentials");
           throw new Error("Please enter an email and password");
         }
 
         try {
           await connectMongoDB();
 
-          const user = await User.findOne({
+          console.log("🔍 Looking for user with email:", credentials.email);
+
+          // Use direct MongoDB collection access like the debug endpoints
+          const db = mongoose.connection.db;
+          if (!db) {
+            throw new Error("Database connection not available");
+          }
+
+          // Try to find user with exact email first
+          let user = await db.collection("users").findOne({
             email: credentials.email,
           });
 
+          // If not found, try with lowercase
           if (!user) {
-            console.log("❌ User not found or no password");
+            user = await db.collection("users").findOne({
+              email: credentials.email.toLowerCase(),
+            });
+          }
+
+          // If still not found, try with uppercase
+          if (!user) {
+            user = await db.collection("users").findOne({
+              email: credentials.email.toUpperCase(),
+            });
+          }
+
+          if (!user) {
+            console.log("❌ User not found");
             throw new Error("Invalid email or password");
           }
 
+          console.log("✅ User found:", {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            hasPassword: !!user.password,
+          });
+
           // Check if user is active
           if (user.status === "INACTIVE") {
+            console.log("❌ User is inactive");
             throw new Error(
-              "Your account has been deactivated. Please contact support."
+              "Account is inactive. Please contact administrator."
             );
           }
 
+          // Check if user has password
+          if (!user.password) {
+            console.log("❌ User has no password");
+            throw new Error("Invalid email or password");
+          }
+
+          // Verify password
           const passwordMatch = await bcrypt.compare(
             credentials.password,
             user.password
           );
 
           if (!passwordMatch) {
-            throw new Error("Incorrect password");
+            console.log("❌ Password mismatch");
+            throw new Error("Invalid email or password");
           }
 
+          console.log("✅ Password verified successfully");
+
           // Update last login time
-          await User.findByIdAndUpdate(user._id, {
-            lastLogin: new Date(),
-          });
+          await db
+            .collection("users")
+            .updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
 
           return {
             id: user._id.toString(),
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role as "ADMIN" | "SUBADMIN" | "AGENT",
-            permissions: user.permissions,
+            role: user.role,
+            permissions: user.permissions || [],
             status: user.status,
-            emailVerified: Boolean(user.emailVerified),
-            adminId: user.adminId?.toString(), // Include adminId for multi-tenancy
+            adminId: user.adminId?.toString(),
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -120,6 +157,9 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/signin",
     error: "/signin?error=true",
+    // Don't protect these pages
+    newUser: "/signup",
+    verifyRequest: "/forgot-password",
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -130,8 +170,7 @@ export const authOptions: NextAuthOptions = {
         token.status = user.status;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
-        token.emailVerified = Boolean(user.emailVerified);
-        token.adminId = user.adminId; // Include adminId in JWT
+        token.adminId = user.adminId;
       }
       return token;
     },
@@ -143,9 +182,7 @@ export const authOptions: NextAuthOptions = {
         session.user.status = token.status;
         session.user.firstName = token.firstName;
         session.user.lastName = token.lastName;
-        session.user.name = `${token.firstName} ${token.lastName}`;
-        session.user.emailVerified = Boolean(token.emailVerified);
-        session.user.adminId = token.adminId; // Include adminId in session
+        session.user.adminId = token.adminId;
       }
       return session;
     },

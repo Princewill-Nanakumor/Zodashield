@@ -82,7 +82,7 @@ export function UserFormModal({
     } else {
       setFormData(defaultFormData);
     }
-  }, [initialData, isOpen]); // Add isOpen to dependency array to reset on re-open
+  }, [initialData, isOpen]);
 
   const handlePermissionChange = (permission: string) => {
     setFormData((prev) => ({
@@ -279,7 +279,7 @@ export function UserFormModal({
               type="button"
               variant="outline"
               onClick={() => {
-                setError(null); // Clear error when closing
+                setError(null);
                 onClose();
               }}
               disabled={isLoading}
