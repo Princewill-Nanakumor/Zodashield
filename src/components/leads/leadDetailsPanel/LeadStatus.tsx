@@ -93,27 +93,58 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
 
   const handleStatusChange = async (newStatusId: string) => {
     if (!lead._id) return;
+
+    // Debug: Log the lead ID and status
+    console.log("�� LEAD STATUS UPDATE DEBUG:", {
+      leadId: lead._id,
+      leadName: `${lead.firstName} ${lead.lastName}`,
+      leadEmail: lead.email,
+      currentStatus: currentStatus,
+      newStatus: newStatusId,
+      fullLeadObject: lead,
+    });
+    // Don't update if status is the same
+    if (currentStatus === newStatusId) return;
+
     setIsUpdating(true);
+
     try {
       const response = await fetch(`/api/leads/${lead._id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatusId }),
       });
-      if (!response.ok) throw new Error("Failed to update status");
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error Response:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText,
+          url: response.url,
+        });
+        throw new Error(
+          `Failed to update status: ${response.status} - ${errorText}`
+        );
+      }
+
       const updatedLead = await response.json();
       setCurrentStatus(updatedLead.status);
       updateLeadOptimistically(lead._id, updatedLead);
       await queryClient.invalidateQueries({ queryKey: ["leads"] });
+
       toast({
         title: "Status updated",
         description: `Lead status changed successfully.`,
         variant: "success",
       });
-    } catch {
+    } catch (error) {
+      console.error("Status update error:", error);
+
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description:
+          error instanceof Error ? error.message : "Failed to update status",
         variant: "destructive",
       });
     } finally {

@@ -1,3 +1,5 @@
+// /Users/safeconnection/Downloads/drivecrm/src/app/api/leads/all/route.ts
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
