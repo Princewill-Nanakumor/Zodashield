@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import { UserFormModal } from "@/components/dashboardComponents/UserFormModal";
@@ -51,11 +51,62 @@ export default function UsersManagement({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserForPassword, setSelectedUserForPassword] =
     useState<User | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleRefreshUsers = () => {
-    // This will be called by the UserDataManager when data is refreshed
-    setUsers(users); // Trigger re-render
-  };
+  // Create a callback to trigger data refresh
+  const triggerRefresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  // Handle successful user creation
+  const handleUserCreated = useCallback(
+    (user: User) => {
+      // Call the parent callback if provided
+      if (onUserCreated) {
+        onUserCreated(user);
+      }
+
+      // Trigger data refresh
+      triggerRefresh();
+
+      // Close the modal
+      setShowModal(false);
+      setSelectedUser(null);
+    },
+    [onUserCreated, triggerRefresh]
+  );
+
+  // Handle successful user update
+  const handleUserUpdated = useCallback(
+    (user: User) => {
+      // Call the parent callback if provided
+      if (onUserUpdated) {
+        onUserUpdated(user);
+      }
+
+      // Trigger data refresh
+      triggerRefresh();
+
+      // Close the modal
+      setShowModal(false);
+      setSelectedUser(null);
+    },
+    [onUserUpdated, triggerRefresh]
+  );
+
+  // Handle successful user deletion
+  const handleUserDeleted = useCallback(
+    (userId: string) => {
+      // Call the parent callback if provided
+      if (onUserDeleted) {
+        onUserDeleted(userId);
+      }
+
+      // Trigger data refresh
+      triggerRefresh();
+    },
+    [onUserDeleted, triggerRefresh]
+  );
 
   if (status === "loading") {
     return (
@@ -67,12 +118,16 @@ export default function UsersManagement({
 
   return (
     <AuthGuard>
-      <UserDataManager onUsersLoaded={setUsers} onLoadingChange={setLoading}>
+      <UserDataManager
+        onUsersLoaded={setUsers}
+        onLoadingChange={setLoading}
+        refreshTrigger={refreshTrigger}
+      >
         <UserCRUDOperations
-          onUserCreated={onUserCreated}
-          onUserUpdated={onUserUpdated}
-          onUserDeleted={onUserDeleted}
-          onRefreshUsers={handleRefreshUsers}
+          onUserCreated={handleUserCreated}
+          onUserUpdated={handleUserUpdated}
+          onUserDeleted={handleUserDeleted}
+          onRefreshUsers={triggerRefresh}
         >
           {({
             handleCreateUser,
@@ -128,11 +183,25 @@ export default function UsersManagement({
                   setShowModal(false);
                   setSelectedUser(null);
                 }}
-                onSubmit={
-                  selectedUser
-                    ? (userData) => handleUpdateUser(userData, selectedUser.id)
-                    : handleCreateUser
-                }
+                onSubmit={async (userData) => {
+                  try {
+                    if (selectedUser) {
+                      // Update existing user
+                      const updatedUser = await handleUpdateUser(
+                        userData,
+                        selectedUser.id
+                      );
+                      handleUserUpdated(updatedUser);
+                    } else {
+                      // Create new user
+                      const newUser = await handleCreateUser(userData);
+                      handleUserCreated(newUser);
+                    }
+                  } catch (error) {
+                    // Error handling is done in the modal component
+                    console.error("Error in form submission:", error);
+                  }
+                }}
                 initialData={
                   selectedUser
                     ? {

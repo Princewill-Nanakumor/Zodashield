@@ -38,8 +38,8 @@ interface UserCRUDOperationsProps {
   onUserDeleted?: (userId: string) => void;
   onRefreshUsers: () => void;
   children: (operations: {
-    handleCreateUser: (userData: UserFormData) => Promise<void>;
-    handleUpdateUser: (userData: UserFormData, userId: string) => Promise<void>;
+    handleCreateUser: (userData: UserFormData) => Promise<User>;
+    handleUpdateUser: (userData: UserFormData, userId: string) => Promise<User>;
     handleDeleteUser: (userId: string) => Promise<void>;
     handleResetPassword: (userId: string, password: string) => Promise<void>;
   }) => React.ReactNode;
@@ -57,7 +57,7 @@ export function UserCRUDOperations({
   const queryClient = useQueryClient();
 
   const handleCreateUser = useCallback(
-    async (userData: UserFormData) => {
+    async (userData: UserFormData): Promise<User> => {
       if (!session?.user?.id) {
         throw new Error("User session not found. Please log in again.");
       }
@@ -100,17 +100,20 @@ export function UserCRUDOperations({
       toast({
         title: "Success",
         description: "User created successfully",
+        variant: "success",
       });
 
       await queryClient.invalidateQueries({ queryKey: ["users"] });
       await onRefreshUsers();
       onUserCreated?.(data.user);
+
+      return data.user;
     },
     [session?.user?.id, queryClient, onRefreshUsers, onUserCreated, toast]
   );
 
   const handleUpdateUser = useCallback(
-    async (userData: UserFormData, userId: string) => {
+    async (userData: UserFormData, userId: string): Promise<User> => {
       try {
         const response = await fetch(`/api/users`, {
           method: "PUT",
@@ -152,10 +155,10 @@ export function UserCRUDOperations({
           variant: "success",
         });
 
-        if (onUserUpdated) {
-          const updatedUser = await response.json();
-          onUserUpdated(updatedUser);
-        }
+        const updatedUser = errorData; // The response data contains the updated user
+        onUserUpdated?.(updatedUser);
+
+        return updatedUser; // Return the updated user
       } catch (error) {
         console.error("Error updating user:", error);
         toast({
@@ -171,7 +174,7 @@ export function UserCRUDOperations({
   );
 
   const handleDeleteUser = useCallback(
-    async (userId: string) => {
+    async (userId: string): Promise<void> => {
       if (
         !confirm(
           "Are you sure you want to PERMANENTLY delete this user? This action cannot be undone and will unassign all leads from this user."
@@ -211,13 +214,14 @@ export function UserCRUDOperations({
             error instanceof Error ? error.message : "Failed to delete user",
           variant: "destructive",
         });
+        throw error;
       }
     },
     [toast, queryClient, onRefreshUsers, onUserDeleted]
   );
 
   const handleResetPassword = useCallback(
-    async (userId: string, password: string) => {
+    async (userId: string, password: string): Promise<void> => {
       try {
         const response = await fetch(`/api/users/${userId}/reset-password`, {
           method: "POST",
@@ -246,6 +250,7 @@ export function UserCRUDOperations({
             error instanceof Error ? error.message : "Failed to reset password",
           variant: "destructive",
         });
+        throw error;
       }
     },
     [toast]

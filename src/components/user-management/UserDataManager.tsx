@@ -23,12 +23,14 @@ interface User {
 interface UserDataManagerProps {
   onUsersLoaded: (users: User[]) => void;
   onLoadingChange: (loading: boolean) => void;
+  refreshTrigger?: number;
   children: React.ReactNode;
 }
 
 export function UserDataManager({
   onUsersLoaded,
   onLoadingChange,
+  refreshTrigger = 0,
   children,
 }: UserDataManagerProps) {
   const { data: session } = useSession();
@@ -80,6 +82,13 @@ export function UserDataManager({
       fetchUsers();
     }
   }, [fetchUsers, session]);
+
+  // Refetch users when refreshTrigger changes (for manual refresh)
+  useEffect(() => {
+    if (session?.user?.role === "ADMIN" && refreshTrigger > 0) {
+      fetchUsers();
+    }
+  }, [refreshTrigger, fetchUsers, session]);
 
   // Refetch users when window regains focus (to recover from timeouts)
   useEffect(() => {

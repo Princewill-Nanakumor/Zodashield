@@ -124,12 +124,10 @@ export function UserFormModal({
     setGeneralError(null);
 
     try {
-      console.log("Modal: Calling onSubmit...");
       await onSubmit(formData);
-      console.log("Modal: onSubmit completed successfully");
+
       onClose();
     } catch (error: unknown) {
-      console.log("Modal catch block reached with error:", error);
       if (error instanceof Error) {
         // Check if this is an email conflict error
         if (error.message.toLowerCase().includes("email")) {
