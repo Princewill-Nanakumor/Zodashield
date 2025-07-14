@@ -11,9 +11,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowUpDown } from "lucide-react";
-import { Lead, Status } from "@/types/leads";
+import { Lead } from "@/types/leads";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
+
+// Define the actual status format from API
+interface Status {
+  _id: string;
+  name: string;
+  color: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 function LoadingRow() {
   return (
@@ -77,13 +86,46 @@ function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
         if (a._id === "NEW") return -1;
         if (b._id === "NEW") return 1;
         return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt || "").getTime() -
+          new Date(a.createdAt || "").getTime()
         );
       });
 
       setStatuses(data);
     } catch (error) {
       console.error("Error fetching statuses:", error);
+      // Set default statuses on error
+      const defaultStatuses = [
+        {
+          _id: "NEW",
+          name: "New",
+          color: "#3B82F6",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          _id: "CONTACTED",
+          name: "Contacted",
+          color: "#10B981",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          _id: "QUALIFIED",
+          name: "Qualified",
+          color: "#F59E0B",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          _id: "CONVERTED",
+          name: "Converted",
+          color: "#EF4444",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      setStatuses(defaultStatuses);
       toast({
         title: "Error",
         description: "Failed to load statuses",
@@ -99,7 +141,7 @@ function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
   }, [fetchStatuses]);
 
   useEffect(() => {
-    if (statuses.length > 0) {
+    if (statuses && statuses.length > 0) {
       let status = statuses.find((s) => s._id === lead.status);
       if (!status && lead.status !== "NEW") {
         status = statuses.find((s) => s._id === "NEW") || {
@@ -130,11 +172,21 @@ function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
   };
 
   const renderStatus = () => {
+    // Use isLoading state instead of checking statuses length
     if (isLoading) {
       return (
         <Badge variant="outline" className="flex items-center gap-1.5">
           <Loader2 className="h-3 w-3 animate-spin" />
           Loading...
+        </Badge>
+      );
+    }
+
+    // Add null check for statuses as fallback
+    if (!statuses || statuses.length === 0) {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1.5">
+          <span>No Status</span>
         </Badge>
       );
     }
@@ -300,7 +352,7 @@ export function UserLeadTable({
         ) : (
           paginatedLeads.map((lead: Lead) => (
             <UserLeadRow
-              key={lead._id}
+              key={`${lead._id}-${lead.status}`} // Force re-render when status changes
               lead={lead}
               onLeadClick={onLeadClick}
               selectedLead={selectedLead}

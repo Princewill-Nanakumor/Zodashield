@@ -94,15 +94,6 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const handleStatusChange = async (newStatusId: string) => {
     if (!lead._id) return;
 
-    // Debug: Log the lead ID and status
-    console.log("�� LEAD STATUS UPDATE DEBUG:", {
-      leadId: lead._id,
-      leadName: `${lead.firstName} ${lead.lastName}`,
-      leadEmail: lead.email,
-      currentStatus: currentStatus,
-      newStatus: newStatusId,
-      fullLeadObject: lead,
-    });
     // Don't update if status is the same
     if (currentStatus === newStatusId) return;
 
@@ -131,7 +122,10 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
       const updatedLead = await response.json();
       setCurrentStatus(updatedLead.status);
       updateLeadOptimistically(lead._id, updatedLead);
+
+      // Invalidate both leads and statuses queries
       await queryClient.invalidateQueries({ queryKey: ["leads"] });
+      await queryClient.invalidateQueries({ queryKey: ["statuses"] });
 
       toast({
         title: "Status updated",

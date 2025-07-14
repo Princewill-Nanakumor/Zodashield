@@ -36,8 +36,16 @@ export default function UserLeadsContent() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [pageIndex, setPageIndex] = useState(0);
   const [filterByCountry, setFilterByCountry] = useState<string>("all");
-  const [sortField, setSortField] = useState<SortField>("createdAt");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
+  // Get sort parameters from URL or use defaults
+  const [sortField, setSortField] = useState<SortField>(() => {
+    const urlSortField = searchParams.get("sortField") as SortField;
+    return urlSortField || "name";
+  });
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    const urlSortOrder = searchParams.get("sortOrder") as SortOrder;
+    return urlSortOrder || "asc";
+  });
 
   // Set data ready state when initial load completes
   useEffect(() => {
@@ -73,14 +81,26 @@ export default function UserLeadsContent() {
 
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
-      setLeads((prevLeads) =>
-        prevLeads.map((lead) =>
+      console.log(" LEAD UPDATED:", {
+        leadId: updatedLead._id,
+        newStatus: updatedLead.status,
+      });
+
+      // Update the leads array with the updated lead
+      setLeads((prevLeads) => {
+        const updatedLeads = prevLeads.map((lead) =>
           lead._id === updatedLead._id ? updatedLead : lead
-        )
-      );
+        );
+        console.log("📊 Updated leads array:", updatedLeads.length, "leads");
+        return updatedLeads;
+      });
+
+      // Update selected lead if it's the same one
       if (selectedLead?._id === updatedLead._id) {
+        console.log("🎯 Updating selected lead");
         setSelectedLead(updatedLead);
       }
+
       return true;
     },
     [selectedLead?._id]
