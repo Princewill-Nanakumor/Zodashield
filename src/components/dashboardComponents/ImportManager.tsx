@@ -73,13 +73,25 @@ export const ImportManager = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    console.log("🔄 File upload triggered:", file);
+
+    if (!file) {
+      console.log("❌ No file selected");
+      return;
+    }
+
+    console.log(" File details:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
 
     setError(null);
     setSuccessMessage(null);
     setIsLoading(true);
 
     const handleSuccess = async (processedLeads: ProcessedLead[]) => {
+      console.log("✅ Processing successful, leads:", processedLeads.length);
       try {
         const importResponse = await fetch("/api/imports", {
           method: "POST",
@@ -121,9 +133,16 @@ export const ImportManager = () => {
         }
 
         const result = await leadsResponse.json();
-        setSuccessMessage(
-          `Successfully imported ${result.inserted} leads (${result.duplicates} duplicates skipped)`
-        );
+        const successMsg = `Successfully imported ${result.inserted} leads (${result.duplicates} duplicates skipped)`;
+
+        setSuccessMessage(successMsg);
+
+        // Show success toast
+        toast({
+          title: "Import Success",
+          description: successMsg,
+          variant: "success",
+        });
 
         // Wait for the backend to update the import record before fetching history
         await waitForImportUpdate(importData.data._id);
@@ -133,11 +152,8 @@ export const ImportManager = () => {
           err instanceof Error
             ? err.message
             : "An error occurred during import";
-        toast({
-          title: "Import Error",
-          description: message,
-          variant: "destructive",
-        });
+
+        // Don't show toast for errors - let the modal handle it
         setError(message);
       } finally {
         setIsLoading(false);
@@ -147,38 +163,44 @@ export const ImportManager = () => {
       }
     };
 
+    console.log("🔄 About to call processFile");
+
     await processFile(
       file,
       handleSuccess,
       (missing: string[]) => {
+        console.log("❌ Missing fields:", missing);
         setMissingFields(missing);
+        setError(null); // Clear any previous error
         setShowModal(true);
       },
       (error: unknown) => {
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "type" in error &&
-          (error as { type?: string }).type === "NO_VALID_LEADS"
-        ) {
-          const msg =
-            (error as { message?: string }).message ||
-            "No valid leads found in file.";
-          setError(msg);
-          setShowModal(true);
+        console.log("❌ Process file error:", error);
+
+        // Parse the error message
+        let errorMessage = "An error occurred";
+
+        if (typeof error === "string") {
+          errorMessage = error;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
         } else if (
           typeof error === "object" &&
           error !== null &&
           "message" in error
         ) {
-          setError(
-            (error as { message?: string }).message || "An error occurred"
-          );
-        } else {
-          setError("An error occurred");
+          errorMessage = (error as { message: string }).message;
         }
+
+        console.log("📝 Setting error message:", errorMessage);
+
+        // Set the error and show modal - NO TOAST
+        setError(errorMessage);
+        setMissingFields([]); // Clear missing fields
+        setShowModal(true);
       },
       () => {
+        console.log("🏁 Process file completed");
         setIsLoading(false);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";

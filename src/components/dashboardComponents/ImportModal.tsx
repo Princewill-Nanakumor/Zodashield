@@ -36,7 +36,7 @@ export function ImportModal({
             <AlertTriangle className="w-5 h-5" />
           </div>
           <h3 className="text-xl font-semibold text-gray-800">
-            Invalid Sheet Format
+            {errorMessage ? "Import Error" : "Invalid Sheet Format"}
           </h3>
         </div>
 
@@ -110,7 +110,9 @@ export function ImportModal({
 
         <div className="flex items-center justify-between mt-6 border-t pt-4">
           <p className="text-sm text-gray-600">
-            Please update your sheet and try again.
+            {errorMessage
+              ? "Please check your file format and try again."
+              : "Please update your sheet and try again."}
           </p>
           <button
             onClick={() => {

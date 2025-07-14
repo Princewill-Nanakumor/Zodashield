@@ -59,8 +59,11 @@ export async function POST(request: Request) {
   };
 
   try {
+    console.log("🔄 POST /api/imports - Starting request processing");
     requestData = await request.json();
-  } catch {
+    console.log("📄 Request data received:", requestData);
+  } catch (error) {
+    console.error("❌ Failed to parse request body:", error);
     return NextResponse.json(
       { error: "Invalid request body" },
       { status: 400 }
@@ -68,50 +71,88 @@ export async function POST(request: Request) {
   }
 
   return executeDbOperation(async () => {
+    console.log("🔄 Starting database operation");
+
     const session = await getServerSession(authOptions);
+    console.log("�� Session info:", {
+      userId: session?.user?.id,
+      userRole: session?.user?.role,
+      adminId: session?.user?.adminId,
+      isAuthenticated: !!session,
+    });
+
     if (!session?.user?.id) {
+      console.error("❌ Unauthorized - No session or user ID");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if database connection is available
     if (!mongoose.connection.db) {
+      console.error("❌ Database connection not available");
       throw new Error("Database connection not available");
     }
 
-    console.log("Creating import with data:", {
-      ...requestData,
-      uploadedBy: session.user.id,
+    console.log("✅ Database connection available");
+
+    const importData = {
+      fileName: requestData.fileName,
+      recordCount: requestData.recordCount,
+      status: requestData.status || "new",
+      successCount: requestData.successCount || 0,
+      failureCount: requestData.failureCount || 0,
+      timestamp: requestData.timestamp || Date.now(),
+      uploadedBy: new mongoose.Types.ObjectId(session.user.id),
+      adminId:
+        session.user.role === "ADMIN"
+          ? new mongoose.Types.ObjectId(session.user.id)
+          : new mongoose.Types.ObjectId(session.user.adminId!),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    console.log("📝 Creating import record with data:", {
+      ...importData,
+      uploadedBy: importData.uploadedBy.toString(),
+      adminId: importData.adminId.toString(),
     });
 
-    const importRecord = await mongoose.connection.db
-      .collection("imports")
-      .insertOne({
-        fileName: requestData.fileName,
-        recordCount: requestData.recordCount,
-        status: requestData.status || "new",
-        successCount: requestData.successCount || 0,
-        failureCount: requestData.failureCount || 0,
-        timestamp: requestData.timestamp || Date.now(),
-        uploadedBy: new mongoose.Types.ObjectId(session.user.id),
-        adminId:
-          session.user.role === "ADMIN"
-            ? new mongoose.Types.ObjectId(session.user.id)
-            : new mongoose.Types.ObjectId(session.user.adminId!), // Multi-tenancy
-        createdAt: new Date(),
-        updatedAt: new Date(),
+    try {
+      const importRecord = await mongoose.connection.db
+        .collection("imports")
+        .insertOne(importData);
+
+      console.log(
+        "✅ Import record created with ID:",
+        importRecord.insertedId.toString()
+      );
+
+      const createdImport = await mongoose.connection.db
+        .collection("imports")
+        .findOne({ _id: importRecord.insertedId });
+
+      console.log("📄 Created import record:", {
+        _id: createdImport!._id.toString(),
+        fileName: createdImport!.fileName,
+        recordCount: createdImport!.recordCount,
+        status: createdImport!.status,
+        uploadedBy: createdImport!.uploadedBy.toString(),
+        adminId: createdImport!.adminId.toString(),
       });
 
-    const createdImport = await mongoose.connection.db
-      .collection("imports")
-      .findOne({ _id: importRecord.insertedId });
+      const response = {
+        data: {
+          _id: createdImport!._id.toString(),
+          ...createdImport,
+        },
+        message: "Import record created successfully",
+      };
 
-    return NextResponse.json({
-      data: {
-        _id: createdImport!._id.toString(),
-        ...createdImport,
-      },
-      message: "Import record created successfully",
-    });
+      console.log("✅ Returning success response:", response);
+      return NextResponse.json(response);
+    } catch (dbError) {
+      console.error("❌ Database error during import creation:", dbError);
+      throw dbError;
+    }
   }, "Failed to create import");
 }
 

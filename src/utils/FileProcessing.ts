@@ -35,18 +35,35 @@ export async function processFile(
   onFinally: () => void
 ) {
   try {
+    console.log("�� Processing file:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+
     let processedLeads: ProcessedLead[];
 
     if (file.type === "text/plain" || file.type === "text/csv") {
+      console.log("�� Processing as text/CSV file");
       const text = await file.text();
+      console.log("📄 File content (first 500 chars):", text.substring(0, 500));
+
       try {
         processedLeads = await processTextData(text);
+        console.log(
+          "✅ Text processing successful, leads count:",
+          processedLeads.length
+        );
       } catch (error: unknown) {
+        console.error("❌ Text processing error:", error);
+
         if (isMissingHeadersError(error)) {
+          console.log("❌ Missing headers error:", error.missingFields);
           onValidationError(error.missingFields);
           return;
         }
         if (isValidationError(error)) {
+          console.log("❌ Validation error:", error.missingFields);
           onValidationError(error.missingFields);
           return;
         }
@@ -59,14 +76,23 @@ export async function processFile(
         throw new Error("An unexpected error occurred");
       }
     } else {
+      console.log("📊 Processing as Excel file");
       try {
         processedLeads = await processExcelFile(file);
+        console.log(
+          "✅ Excel processing successful, leads count:",
+          processedLeads.length
+        );
       } catch (error: unknown) {
+        console.error("❌ Excel processing error:", error);
+
         if (isMissingHeadersError(error)) {
+          console.log("❌ Missing headers error:", error.missingFields);
           onValidationError(error.missingFields);
           return;
         }
         if (isValidationError(error)) {
+          console.log("❌ Validation error:", error.missingFields);
           onValidationError(error.missingFields);
           return;
         }
@@ -80,6 +106,7 @@ export async function processFile(
       }
     }
 
+    console.log("✅ Final processed leads:", processedLeads.slice(0, 2));
     await onSuccess(processedLeads);
   } catch (error) {
     let message = "An unexpected error occurred";

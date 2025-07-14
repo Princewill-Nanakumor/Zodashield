@@ -21,7 +21,6 @@ export const FileUploadSection = ({
   activeTab,
   fileInputRef,
   isLoading,
-  error,
   successMessage,
   handleFileUpload,
   importHistory,
@@ -30,18 +29,7 @@ export const FileUploadSection = ({
   const [showRequiredFields, setShowRequiredFields] = useState(false);
   const { toast } = useToast();
 
-  // Show error toast
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Import Error",
-        description: error,
-        variant: "destructive",
-      });
-    }
-  }, [error, toast]);
-
-  // Show success toast
+  // Show success toast only (no error toast)
   useEffect(() => {
     if (successMessage) {
       toast({
