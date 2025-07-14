@@ -53,11 +53,19 @@ export function UserTableDisplay({
     if (isNaN(date.getTime())) {
       return "Invalid Date";
     }
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return (
+      date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }) +
+      " " +
+      date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    );
   };
 
   const filteredUsers = filterActiveOnly

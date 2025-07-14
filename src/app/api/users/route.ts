@@ -22,6 +22,7 @@ interface UserDocument {
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  lastLogin?: Date;
 }
 
 interface LeadDocument {
@@ -164,28 +165,14 @@ export async function GET() {
             phoneNumber: 1,
             country: 1,
             permissions: 1,
+            createdAt: 1,
+            lastLogin: 1,
           },
         })
         .sort({ firstName: 1, lastName: 1 })
         .toArray()) as UserDocument[];
 
-      // Include the admin user in the results
-      const adminUser = await db.collection("users").findOne({
-        _id: new mongoose.Types.ObjectId(session.user.id),
-      });
-
-      // Check if admin is not already in the results
-      const adminExists =
-        adminUser &&
-        users.some((user) => user._id.toString() === adminUser._id.toString());
-
-      // Create final array with admin included if needed
-      const allUsers =
-        adminUser && !adminExists
-          ? [...users, adminUser as UserDocument]
-          : users;
-
-      return allUsers.map((user: UserDocument) => ({
+      return users.map((user: UserDocument) => ({
         id: user._id.toString(),
         name: `${user.firstName} ${user.lastName}`,
         firstName: user.firstName,
@@ -196,6 +183,8 @@ export async function GET() {
         role: user.role,
         status: user.status,
         permissions: user.permissions,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
       }));
     });
 
