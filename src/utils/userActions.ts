@@ -38,9 +38,25 @@ export function useUserActions(
         body: JSON.stringify(userData),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create user");
+        let errorMessage = "Something went wrong while creating the user.";
+
+        if (response.status === 409) {
+          errorMessage =
+            "This email address is already in use. Please use a different email.";
+        } else if (response.status === 400) {
+          errorMessage =
+            data.message ||
+            "Invalid user data. Please check your inputs and try again.";
+        } else if (response.status === 401) {
+          errorMessage = "You are not authorized to create users.";
+        } else {
+          errorMessage = data.message || errorMessage;
+        }
+
+        throw new Error(errorMessage);
       }
 
       await fetchUsers();

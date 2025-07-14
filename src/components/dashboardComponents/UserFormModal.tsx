@@ -1,102 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-interface UserFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password?: string;
-  phoneNumber: string;
-  country: string;
-  role: string;
-  status: string;
-  permissions: string[];
-}
-
-interface ValidationError {
-  field: string;
-  message: string;
-}
-
-const validateUserForm = (data: UserFormData): ValidationError[] => {
-  const errors: ValidationError[] = [];
-
-  // First name validation
-  if (!data.firstName || data.firstName.trim() === "") {
-    errors.push({ field: "firstName", message: "First name is required" });
-  } else if (data.firstName.length < 2) {
-    errors.push({
-      field: "firstName",
-      message: "First name must be at least 2 characters",
-    });
-  }
-
-  // Last name validation
-  if (!data.lastName || data.lastName.trim() === "") {
-    errors.push({ field: "lastName", message: "Last name is required" });
-  } else if (data.lastName.length < 2) {
-    errors.push({
-      field: "lastName",
-      message: "Last name must be at least 2 characters",
-    });
-  }
-
-  // Email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!data.email || data.email.trim() === "") {
-    errors.push({ field: "email", message: "Email is required" });
-  } else if (!emailRegex.test(data.email)) {
-    errors.push({ field: "email", message: "Invalid email address" });
-  }
-
-  // Password validation (only for create mode)
-  if (data.password !== undefined && data.password !== "") {
-    if (data.password.length < 8) {
-      errors.push({
-        field: "password",
-        message: "Password must be at least 8 characters",
-      });
-    } else if (!/[A-Z]/.test(data.password)) {
-      errors.push({
-        field: "password",
-        message: "Password must contain at least one uppercase letter",
-      });
-    } else if (!/[0-9]/.test(data.password)) {
-      errors.push({
-        field: "password",
-        message: "Password must contain at least one number",
-      });
-    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(data.password)) {
-      errors.push({
-        field: "password",
-        message: "Password must contain at least one special character",
-      });
-    }
-  }
-
-  // Phone number validation
-  if (!data.phoneNumber || data.phoneNumber.trim() === "") {
-    errors.push({ field: "phoneNumber", message: "Phone number is required" });
-  }
-
-  // Country validation
-  if (!data.country || data.country.trim() === "") {
-    errors.push({ field: "country", message: "Country is required" });
-  }
-
-  // Role validation
-  if (!data.role || data.role.trim() === "") {
-    errors.push({ field: "role", message: "Role is required" });
-  }
-
-  // Status validation
-  if (!data.status || data.status.trim() === "") {
-    errors.push({ field: "status", message: "Status is required" });
-  }
-
-  return errors;
-};
+import { COUNTRIES } from "./UserFormConstants";
+import { UserFormData, UserFormSchema } from "@/schemas/UserFormSchema";
+import { z } from "zod";
+import { User, Mail, Lock, Phone, Globe, Eye, EyeOff, X } from "lucide-react";
+import { UserRoleStatusPermissions } from "./RoleStatusPermissions";
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -106,50 +15,6 @@ interface UserFormModalProps {
   mode: "create" | "edit";
 }
 
-const ROLES = [
-  { value: "ADMIN", label: "Administrator" },
-  { value: "SUBADMIN", label: "Sub Administrator" },
-  { value: "AGENT", label: "Agent" },
-];
-
-const PERMISSIONS = [
-  { value: "ASSIGN_LEADS", label: "Assign Leads" },
-  { value: "DELETE_COMMENTS", label: "Delete Comments" },
-  { value: "VIEW_PHONE_NUMBERS", label: "View Phone Numbers" },
-  { value: "VIEW_EMAILS", label: "View Emails" },
-  { value: "MANAGE_USERS", label: "Manage Users" },
-  { value: "EDIT_LEAD_STATUS", label: "Edit Lead Status" },
-];
-
-const COUNTRIES = [
-  { value: "us", label: "United States" },
-  { value: "ca", label: "Canada" },
-  { value: "uk", label: "United Kingdom" },
-  { value: "au", label: "Australia" },
-  { value: "de", label: "Germany" },
-  { value: "fr", label: "France" },
-  { value: "es", label: "Spain" },
-  { value: "it", label: "Italy" },
-  { value: "jp", label: "Japan" },
-  { value: "cn", label: "China" },
-  { value: "in", label: "India" },
-  { value: "br", label: "Brazil" },
-  { value: "mx", label: "Mexico" },
-  { value: "ar", label: "Argentina" },
-  { value: "cl", label: "Chile" },
-  { value: "co", label: "Colombia" },
-  { value: "pe", label: "Peru" },
-  { value: "ve", label: "Venezuela" },
-  { value: "ec", label: "Ecuador" },
-  { value: "bo", label: "Bolivia" },
-  { value: "py", label: "Paraguay" },
-  { value: "uy", label: "Uruguay" },
-  { value: "gy", label: "Guyana" },
-  { value: "sr", label: "Suriname" },
-  { value: "gf", label: "French Guiana" },
-  { value: "fk", label: "Falkland Islands" },
-];
-
 export function UserFormModal({
   isOpen,
   onClose,
@@ -158,7 +23,6 @@ export function UserFormModal({
   mode,
 }: UserFormModalProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
     firstName: "",
     lastName: "",
@@ -171,6 +35,8 @@ export function UserFormModal({
     permissions: [],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Reset form when modal opens/closes or initialData changes
   useEffect(() => {
@@ -191,6 +57,7 @@ export function UserFormModal({
         });
       }
       setErrors({});
+      setGeneralError(null);
     }
   }, [isOpen, initialData]);
 
@@ -209,6 +76,10 @@ export function UserFormModal({
         [field]: "",
       }));
     }
+    // Clear general error when user starts typing
+    if (generalError) {
+      setGeneralError(null);
+    }
   };
 
   const handlePermissionChange = (permission: string, checked: boolean) => {
@@ -219,15 +90,22 @@ export function UserFormModal({
   };
 
   const validateForm = (): boolean => {
-    const validationErrors = validateUserForm(formData);
-    const errorMap: Record<string, string> = {};
-
-    validationErrors.forEach((error) => {
-      errorMap[error.field] = error.message;
-    });
-
-    setErrors(errorMap);
-    return validationErrors.length === 0;
+    try {
+      UserFormSchema.parse(formData);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errorMap: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path) {
+            errorMap[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(errorMap);
+      }
+      return false;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -237,12 +115,34 @@ export function UserFormModal({
       return;
     }
 
+    // Prevent double submission
+    if (isLoading) {
+      return;
+    }
+
     setIsLoading(true);
+    setGeneralError(null);
+
     try {
+      console.log("Modal: Calling onSubmit...");
       await onSubmit(formData);
+      console.log("Modal: onSubmit completed successfully");
       onClose();
-    } catch (error) {
-      console.error("Error submitting form:", error);
+    } catch (error: unknown) {
+      console.log("Modal catch block reached with error:", error);
+      if (error instanceof Error) {
+        // Check if this is an email conflict error
+        if (error.message.toLowerCase().includes("email")) {
+          setErrors({
+            ...errors,
+            email: error.message,
+          });
+        } else {
+          setGeneralError(error.message);
+        }
+      } else {
+        setGeneralError("An unexpected error occurred");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -253,20 +153,44 @@ export function UserFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {mode === "create" ? "Add New User" : "Edit User"}
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100 text-2xl font-bold transition-colors"
             >
-              ×
+              <X className="h-6 w-6" />
             </button>
           </div>
+
+          {/* General Error Display */}
+          {generalError && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <div className="flex items-center">
+                <svg
+                  className="h-4 w-4 text-red-500 dark:text-red-400 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {generalError}
+                </p>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name Fields */}
@@ -274,11 +198,12 @@ export function UserFormModal({
               <div className="space-y-2">
                 <label
                   htmlFor="firstName"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
                 >
                   First Name
                 </label>
                 <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     id="firstName"
                     type="text"
@@ -286,16 +211,16 @@ export function UserFormModal({
                     onChange={(e) =>
                       handleInputChange("firstName", e.target.value)
                     }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
                       getFieldError("firstName")
-                        ? "border-red-500"
-                        : "border-gray-300"
+                        ? "border-red-500 dark:border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
                     }`}
                     placeholder="First Name"
                   />
                 </div>
                 {getFieldError("firstName") && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-red-500 dark:text-red-400">
                     {getFieldError("firstName")}
                   </p>
                 )}
@@ -304,11 +229,12 @@ export function UserFormModal({
               <div className="space-y-2">
                 <label
                   htmlFor="lastName"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
                 >
                   Last Name
                 </label>
                 <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     id="lastName"
                     type="text"
@@ -316,16 +242,16 @@ export function UserFormModal({
                     onChange={(e) =>
                       handleInputChange("lastName", e.target.value)
                     }
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
                       getFieldError("lastName")
-                        ? "border-red-500"
-                        : "border-gray-300"
+                        ? "border-red-500 dark:border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
                     }`}
                     placeholder="Last Name"
                   />
                 </div>
                 {getFieldError("lastName") && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-red-500 dark:text-red-400">
                     {getFieldError("lastName")}
                   </p>
                 )}
@@ -336,22 +262,29 @@ export function UserFormModal({
             <div className="space-y-2">
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
               >
                 Email
               </label>
-              <input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  getFieldError("email") ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Email Address"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
+                    getFieldError("email")
+                      ? "border-red-500 dark:border-red-400"
+                      : "border-gray-300 dark:border-gray-600"
+                  }`}
+                  placeholder="Email Address"
+                />
+              </div>
               {getFieldError("email") && (
-                <p className="text-xs text-red-500">{getFieldError("email")}</p>
+                <p className="text-xs text-red-500 dark:text-red-400">
+                  {getFieldError("email")}
+                </p>
               )}
             </div>
 
@@ -360,11 +293,12 @@ export function UserFormModal({
               <div className="space-y-2">
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
                 >
                   Password
                 </label>
                 <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -372,27 +306,31 @@ export function UserFormModal({
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    className={`w-full pl-10 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
                       getFieldError("password")
-                        ? "border-red-500"
-                        : "border-gray-300"
+                        ? "border-red-500 dark:border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
                     }`}
                     placeholder="Password"
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
                 {getFieldError("password") && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-red-500 dark:text-red-400">
                     {getFieldError("password")}
                   </p>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Minimum 8 characters required
                 </p>
               </div>
@@ -403,26 +341,29 @@ export function UserFormModal({
               <div className="space-y-2">
                 <label
                   htmlFor="phoneNumber"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
                 >
                   Phone Number
                 </label>
-                <input
-                  id="phoneNumber"
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) =>
-                    handleInputChange("phoneNumber", e.target.value)
-                  }
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    getFieldError("phoneNumber")
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                  placeholder="Phone Number"
-                />
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) =>
+                      handleInputChange("phoneNumber", e.target.value)
+                    }
+                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
+                      getFieldError("phoneNumber")
+                        ? "border-red-500 dark:border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                    placeholder="Phone Number"
+                  />
+                </div>
                 {getFieldError("phoneNumber") && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-red-500 dark:text-red-400">
                     {getFieldError("phoneNumber")}
                   </p>
                 )}
@@ -431,146 +372,66 @@ export function UserFormModal({
               <div className="space-y-2">
                 <label
                   htmlFor="country"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
                 >
                   Country
                 </label>
-                <select
-                  id="country"
-                  value={formData.country}
-                  onChange={(e) => handleInputChange("country", e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    getFieldError("country")
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Select country</option>
-                  {COUNTRIES.map((country) => (
-                    <option key={country.value} value={country.value}>
-                      {country.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <select
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) =>
+                      handleInputChange("country", e.target.value)
+                    }
+                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                      getFieldError("country")
+                        ? "border-red-500 dark:border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                  >
+                    <option value="">Select country</option>
+                    {COUNTRIES.map((country) => (
+                      <option key={country.value} value={country.value}>
+                        {country.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 {getFieldError("country") && (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-red-500 dark:text-red-400">
                     {getFieldError("country")}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Role and Status Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label
-                  htmlFor="role"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Role
-                </label>
-                <select
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => handleInputChange("role", e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    getFieldError("role") ? "border-red-500" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Select role</option>
-                  {ROLES.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  ))}
-                </select>
-                {getFieldError("role") && (
-                  <p className="text-xs text-red-500">
-                    {getFieldError("role")}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Status
-                </label>
-                <select
-                  id="status"
-                  value={formData.status}
-                  onChange={(e) => handleInputChange("status", e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    getFieldError("status")
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Select status</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-                {getFieldError("status") && (
-                  <p className="text-xs text-red-500">
-                    {getFieldError("status")}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Permissions */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Permissions
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {PERMISSIONS.map((permission) => (
-                  <div
-                    key={permission.value}
-                    className="flex items-center space-x-2"
-                  >
-                    <input
-                      type="checkbox"
-                      id={permission.value}
-                      checked={formData.permissions.includes(permission.value)}
-                      onChange={(e) =>
-                        handlePermissionChange(
-                          permission.value,
-                          e.target.checked
-                        )
-                      }
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor={permission.value}
-                      className="text-sm text-gray-700"
-                    >
-                      {permission.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Role, Status, and Permissions Component */}
+            <UserRoleStatusPermissions
+              formData={formData}
+              errors={errors}
+              onRoleChange={(value) => handleInputChange("role", value)}
+              onStatusChange={(value) => handleInputChange("status", value)}
+              onPermissionChange={handlePermissionChange}
+              disabled={isLoading}
+            />
 
             {/* Submit Buttons */}
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                disabled={isLoading}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
               >
                 {isLoading
-                  ? "Processing..."
+                  ? "Creating..."
                   : mode === "create"
                     ? "Create User"
                     : "Save Changes"}

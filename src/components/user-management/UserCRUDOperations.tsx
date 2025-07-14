@@ -59,83 +59,54 @@ export function UserCRUDOperations({
   const handleCreateUser = useCallback(
     async (userData: UserFormData) => {
       if (!session?.user?.id) {
-        toast({
-          title: "Authentication Error",
-          description: "User session not found. Please log in again.",
-          variant: "destructive",
-        });
-        return;
+        throw new Error("User session not found. Please log in again.");
       }
 
-      try {
-        const response = await fetch("/api/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            ...userData,
-            createdBy: session.user.id,
-            status: "ACTIVE",
-          }),
-        });
+      console.log("Making API call to create user...");
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          ...userData,
+          createdBy: session.user.id,
+          status: "ACTIVE",
+        }),
+      });
 
-        const data = await response.json();
+      const data = await response.json();
+      console.log("API response:", response.status, data);
 
-        if (!response.ok) {
-          let errorMessage = "Something went wrong while creating the user.";
+      if (!response.ok) {
+        let errorMessage = "Something went wrong while creating the user.";
 
-          if (response.status === 409) {
-            errorMessage =
-              data.error ||
-              "This email address is already in use. Please use a different email.";
-          } else if (response.status === 400) {
-            errorMessage =
-              data.error ||
-              "Invalid user data. Please check your inputs and try again.";
-          } else if (response.status === 401) {
-            errorMessage = "You are not authorized to create users.";
-          } else {
-            errorMessage = data.error || errorMessage;
-          }
-
-          throw new Error(errorMessage);
+        if (response.status === 409) {
+          errorMessage =
+            data.message || "This email address is already in use.";
+        } else if (response.status === 400) {
+          errorMessage = data.message || "Invalid user data.";
+        } else if (response.status === 401) {
+          errorMessage = "You are not authorized to create users.";
+        } else {
+          errorMessage = data.message || errorMessage;
         }
 
-        // Invalidate and refetch users query
-        await queryClient.invalidateQueries({ queryKey: ["users"] });
-
-        onRefreshUsers();
-        toast({
-          title: "Success!",
-          description: "User account has been created successfully.",
-          variant: "success",
-        });
-
-        if (onUserCreated) {
-          onUserCreated(data);
-        }
-      } catch (error: unknown) {
-        console.error("Error creating user:", error);
-
-        let userFriendlyMessage =
-          "Failed to create user account. Please try again.";
-
-        if (error instanceof Error) {
-          userFriendlyMessage = error.message;
-        }
-
-        toast({
-          title: "Couldn't create user",
-          description: userFriendlyMessage,
-          variant: "destructive",
-        });
-
-        throw error;
+        throw new Error(errorMessage);
       }
+
+      // Only show success toast here
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["users"] });
+      await onRefreshUsers();
+      onUserCreated?.(data.user);
     },
-    [session?.user?.id, toast, queryClient, onRefreshUsers, onUserCreated]
+    [session?.user?.id, queryClient, onRefreshUsers, onUserCreated, toast]
   );
 
   const handleUpdateUser = useCallback(

@@ -62,15 +62,24 @@ export async function POST(request: Request) {
       permissions,
     } = await request.json();
 
+    // Check for existing user BEFORE using executeDbOperation
+    const existingUser = await withDatabase(async () => {
+      const db = mongoose.connection.db;
+      if (!db) throw new Error("Database connection not available");
+      return await db.collection("users").findOne({ email });
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { message: "User with this email already exists" },
+        { status: 409 }
+      );
+    }
+
+    // Now proceed with user creation
     const result = await executeDbOperation(async () => {
       const db = mongoose.connection.db;
       if (!db) throw new Error("Database connection not available");
-
-      const existingUser = await db.collection("users").findOne({ email });
-
-      if (existingUser) {
-        throw new Error("User with this email already exists");
-      }
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -81,10 +90,10 @@ export async function POST(request: Request) {
         password: hashedPassword,
         phoneNumber,
         country,
-        role: role || "AGENT", // Default to AGENT
+        role: role || "AGENT",
         status: status || "ACTIVE",
         permissions: permissions || [],
-        adminId: new mongoose.Types.ObjectId(session.user.id), // Set adminId for multi-tenancy
+        adminId: new mongoose.Types.ObjectId(session.user.id),
         createdBy: new mongoose.Types.ObjectId(session.user.id),
         createdAt: new Date(),
         updatedAt: new Date(),
