@@ -34,41 +34,6 @@ interface AssignedToObject {
   lastName: string;
 }
 
-// Enhanced formatLead function with better assignedTo handling
-const formatLead = (apiLead: ApiLead, users: User[]): Lead => {
-  let assignedToObject:
-    | Pick<User, "id" | "firstName" | "lastName">
-    | undefined = undefined;
-
-  if (typeof apiLead.assignedTo === "object" && apiLead.assignedTo !== null) {
-    // API returns object with _id or id, convert to id for frontend
-    const assignedTo = apiLead.assignedTo as AssignedToObject;
-    assignedToObject = {
-      id: assignedTo._id || assignedTo.id || "",
-      firstName: assignedTo.firstName,
-      lastName: assignedTo.lastName,
-    };
-  } else if (typeof apiLead.assignedTo === "string") {
-    const user = users.find((u) => u.id === apiLead.assignedTo);
-    if (user) {
-      assignedToObject = {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      };
-    }
-  }
-
-  return {
-    ...apiLead,
-    _id: apiLead._id || apiLead.id || "",
-    id: apiLead.id || apiLead._id,
-    name: apiLead.name || `${apiLead.firstName} ${apiLead.lastName}`.trim(),
-    status: apiLead.status || "NEW",
-    assignedTo: assignedToObject,
-  } as Lead;
-};
-
 // Helper function to handle API calls with session refresh
 const apiCallWithSessionRefresh = async (
   url: string,
@@ -249,6 +214,7 @@ export const useLeads = () => {
     queryFn: async (): Promise<Lead[]> => {
       setLoadingLeads(true);
       try {
+        console.log("🔄 Fetching leads from /api/leads/all...");
         const response = await apiCallWithSessionRefresh("/api/leads/all", {
           cache: "no-store",
           signal: AbortSignal.timeout(15000),
@@ -263,13 +229,44 @@ export const useLeads = () => {
         }
 
         const data: ApiLead[] = await response.json();
-        console.log("Raw API leads data:", data.slice(0, 2));
+        console.log("�� Raw API leads data:", {
+          count: data.length,
+          sample: data.slice(0, 2),
+        });
 
-        const formattedLeads = data.map((apiLead) =>
-          formatLead(apiLead, users)
-        );
+        // Format leads without depending on users
+        const formattedLeads = data.map((apiLead) => {
+          let assignedToObject:
+            | Pick<User, "id" | "firstName" | "lastName">
+            | undefined = undefined;
 
-        console.log("Formatted leads:", formattedLeads.slice(0, 2));
+          if (
+            typeof apiLead.assignedTo === "object" &&
+            apiLead.assignedTo !== null
+          ) {
+            const assignedTo = apiLead.assignedTo as AssignedToObject;
+            assignedToObject = {
+              id: assignedTo._id || assignedTo.id || "",
+              firstName: assignedTo.firstName,
+              lastName: assignedTo.lastName,
+            };
+          }
+
+          return {
+            ...apiLead,
+            _id: apiLead._id || apiLead.id || "",
+            id: apiLead.id || apiLead._id,
+            name:
+              apiLead.name || `${apiLead.firstName} ${apiLead.lastName}`.trim(),
+            status: apiLead.status || "NEW",
+            assignedTo: assignedToObject,
+          } as Lead;
+        });
+
+        console.log("�� Formatted leads:", {
+          count: formattedLeads.length,
+          sample: formattedLeads.slice(0, 2),
+        });
 
         setLeads(formattedLeads);
         return formattedLeads;
@@ -303,7 +300,8 @@ export const useLeads = () => {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 2 * 60 * 1000,
-    enabled: status === "authenticated" && users.length > 0,
+    // Remove the users dependency - this was causing the issue!
+    enabled: status === "authenticated",
   });
 
   // Assignment mutation with optimistic updates and session refresh
