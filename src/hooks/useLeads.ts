@@ -384,7 +384,7 @@ export const useLeads = () => {
     },
     onSuccess: (data, variables) => {
       console.log("Assignment successful:", data);
-
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
       const { leadIds, userId } = variables;
       const assignedUser = users.find((u) => u.id === userId);
       const leadCount = leadIds.length;
@@ -498,6 +498,7 @@ export const useLeads = () => {
     },
     onSuccess: (data, variables, context) => {
       console.log("Unassignment successful:", data);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
 
       const { leadIds } = variables;
       const leadCount = leadIds.length;

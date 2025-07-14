@@ -122,10 +122,8 @@ export function UserFormModal({
 
     setIsLoading(true);
     setGeneralError(null);
-
     try {
       await onSubmit(formData);
-
       onClose();
     } catch (error: unknown) {
       if (error instanceof Error) {
