@@ -26,17 +26,20 @@ export const processExcelFile = async (file: File): Promise<LeadRequest[]> => {
       throw new Error("No data found in file");
     }
 
-    // Validate required headers
-    const { missingFields } = validateHeaders(headers);
+    // Enhanced validation with detailed error messages
+    const { missingFields, foundHeaders, errorMessage } =
+      validateHeaders(headers);
     if (missingFields.length > 0) {
       throw {
         type: "MISSING_HEADERS",
         missingFields: missingFields,
+        foundHeaders: foundHeaders,
+        errorMessage: errorMessage,
         message: "Missing required headers",
       };
     }
 
-    // Find headers directly (case-insensitive)
+    // Use enhanced header matching
     const nameHeader = findMatchingHeader(headers, "name");
     const firstNameHeader = findMatchingHeader(headers, "first name");
     const lastNameHeader = findMatchingHeader(headers, "last name");
@@ -107,7 +110,8 @@ export const processExcelFile = async (file: File): Promise<LeadRequest[]> => {
     if (validLeads.length === 0) {
       throw {
         type: "NO_VALID_LEADS",
-        message: "No valid leads found in file",
+        message:
+          "No valid leads found in file. Please ensure your file contains valid email addresses and names.",
       };
     }
 
@@ -120,24 +124,32 @@ export const processExcelFile = async (file: File): Promise<LeadRequest[]> => {
 
 export const processTextData = async (text: string): Promise<LeadRequest[]> => {
   try {
-    const lines = text.split("\n");
+    // Split by both newlines and tabs to handle various formats
+    const lines = text.split(/[\n\r]+/).filter((line) => line.trim());
     if (lines.length < 2) {
-      throw new Error("File must contain headers and at least one data row");
+      throw new Error("Data must contain headers and at least one data row");
     }
 
-    const headers = lines[0].split("\t").map((h) => h.trim());
+    // Try to detect the delimiter (tab or comma)
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes("\t") ? "\t" : ",";
 
-    // Validate headers
-    const { missingFields } = validateHeaders(headers);
+    const headers = firstLine.split(delimiter).map((h) => h.trim());
+
+    // Enhanced validation with detailed error messages
+    const { missingFields, foundHeaders, errorMessage } =
+      validateHeaders(headers);
     if (missingFields.length > 0) {
       throw {
         type: "MISSING_HEADERS",
         missingFields: missingFields,
+        foundHeaders: foundHeaders,
+        errorMessage: errorMessage,
         message: "Missing required headers",
       };
     }
 
-    // Find headers directly
+    // Use enhanced header matching
     const nameHeader = findMatchingHeader(headers, "name");
     const firstNameHeader = findMatchingHeader(headers, "first name");
     const lastNameHeader = findMatchingHeader(headers, "last name");
@@ -157,7 +169,7 @@ export const processTextData = async (text: string): Promise<LeadRequest[]> => {
     for (const line of lines.slice(1)) {
       if (!line.trim()) continue;
 
-      const values = line.split("\t").map((v) => v.trim());
+      const values = line.split(delimiter).map((v) => v.trim());
 
       // Use "Name" or "Full Name" if available, else combine "First Name" + "Last Name"
       let fullName = "";
@@ -215,7 +227,8 @@ export const processTextData = async (text: string): Promise<LeadRequest[]> => {
     if (validLeads.length === 0) {
       throw {
         type: "NO_VALID_LEADS",
-        message: "No valid leads found in file",
+        message:
+          "No valid leads found in data. Please ensure your data contains valid email addresses and names.",
       };
     }
     return validLeads;
