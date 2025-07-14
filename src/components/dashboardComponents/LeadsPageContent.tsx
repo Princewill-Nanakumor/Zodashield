@@ -41,7 +41,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   isLoading = false,
   setLayoutLoading,
 }) => {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const isOnline = useNetworkStatus();
 
@@ -73,6 +73,39 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     filterByCountry: initialCountry,
     searchQuery: searchQuery,
   });
+
+  // Session refresh logic - ADD THIS SECTION
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (
+        document.visibilityState === "visible" &&
+        status === "authenticated"
+      ) {
+        try {
+          const response = await fetch("/api/users", {
+            credentials: "include",
+          });
+
+          if (response.status === 401) {
+            console.log("Session expired, refreshing...");
+            await update(); // Refresh the session
+          }
+        } catch (error) {
+          console.error("Session check failed:", error);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    if (status === "authenticated") {
+      handleVisibilityChange();
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [status, update]);
 
   // Sync searchQuery prop with local state
   useEffect(() => {

@@ -160,9 +160,23 @@ export async function GET() {
         .sort({ firstName: 1, lastName: 1 })
         .toArray()) as UserDocument[];
 
-      // <--- INSERT THE ADMIN-INCLUSION LOGIC HERE
+      // Include the admin user in the results
+      const adminUser = await db.collection("users").findOne({
+        _id: new mongoose.Types.ObjectId(session.user.id),
+      });
 
-      return users.map((user: UserDocument) => ({
+      // Check if admin is not already in the results
+      const adminExists =
+        adminUser &&
+        users.some((user) => user._id.toString() === adminUser._id.toString());
+
+      // Create final array with admin included if needed
+      const allUsers =
+        adminUser && !adminExists
+          ? [...users, adminUser as UserDocument]
+          : users;
+
+      return allUsers.map((user: UserDocument) => ({
         id: user._id.toString(),
         name: `${user.firstName} ${user.lastName}`,
         firstName: user.firstName,

@@ -17,7 +17,7 @@ export const UserLeadsHeader: React.FC<UserLeadsHeaderProps> = ({
 }) => {
   if (shouldShowLoading) {
     return (
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between ">
         <div>
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse mb-2"></div>
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64 animate-pulse"></div>
@@ -32,7 +32,7 @@ export const UserLeadsHeader: React.FC<UserLeadsHeaderProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between ">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
           <Users className="h-6 w-6 text-blue-600" />

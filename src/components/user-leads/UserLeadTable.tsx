@@ -257,11 +257,11 @@ export function UserLeadTable({
     field: SortField;
     children: React.ReactNode;
   }) => (
-    <TableHead>
+    <TableHead className="text-gray-900 dark:text-white">
       <Button
         variant="ghost"
         onClick={() => onSort(field)}
-        className="h-8 flex items-center gap-1"
+        className="h-8 flex items-center gap-1 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200"
       >
         {children}
         <ArrowUpDown
@@ -279,15 +279,17 @@ export function UserLeadTable({
 
   return (
     <Table>
-      <TableHeader className="bg-gray-100 dark:bg-gray-900">
+      <TableHeader className="bg-gray-100 dark:bg-gray-700">
         <TableRow>
           <SortableHeader field="name">Name</SortableHeader>
-          <TableHead>Email</TableHead>
-          <TableHead>Phone</TableHead>
+          <TableHead className="text-gray-900 dark:text-white">Email</TableHead>
+          <TableHead className="text-gray-900 dark:text-white">Phone</TableHead>
           <SortableHeader field="country">Country</SortableHeader>
           <SortableHeader field="status">Status</SortableHeader>
           <SortableHeader field="source">Source</SortableHeader>
-          <TableHead>Assigned To</TableHead>
+          <TableHead className="text-gray-900 dark:text-white">
+            Assigned To
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

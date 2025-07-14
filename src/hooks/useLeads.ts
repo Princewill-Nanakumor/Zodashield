@@ -1,10 +1,9 @@
-// /Users/safeconnection/Downloads/drivecrm/src/hooks/useLeads.ts
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
 import { useLeadsStore } from "@/stores/leadsStore";
 import { useToast } from "@/components/ui/use-toast";
+import { useSession } from "next-auth/react";
 
 interface ApiLead {
   _id?: string;
@@ -70,9 +69,51 @@ const formatLead = (apiLead: ApiLead, users: User[]): Lead => {
   } as Lead;
 };
 
+// Helper function to handle API calls with session refresh
+const apiCallWithSessionRefresh = async (
+  url: string,
+  options: RequestInit = {}
+) => {
+  try {
+    // First attempt
+    const response = await fetch(url, {
+      ...options,
+      credentials: "include", // Always include cookies
+    });
+
+    // If unauthorized, try to refresh session
+    if (response.status === 401) {
+      console.log("Session expired, attempting refresh...");
+
+      // Try to refresh the session
+      const refreshResponse = await fetch("/api/auth/session", {
+        credentials: "include",
+      });
+
+      if (refreshResponse.ok) {
+        // Retry the original request
+        return await fetch(url, {
+          ...options,
+          credentials: "include",
+        });
+      } else {
+        // Refresh failed, redirect to login
+        window.location.href = "/signin";
+        throw new Error("Session refresh failed");
+      }
+    }
+
+    return response;
+  } catch (error) {
+    console.error("API call failed:", error);
+    throw error;
+  }
+};
+
 export const useLeads = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { status } = useSession();
   const {
     setLeads,
     setLoadingLeads,
@@ -82,7 +123,7 @@ export const useLeads = () => {
     setLoadingStatuses,
   } = useLeadsStore();
 
-  // Fetch statuses with retry logic
+  // Fetch statuses with retry logic and session refresh
   const { data: statuses = [] } = useQuery({
     queryKey: ["statuses"],
     queryFn: async (): Promise<
@@ -90,7 +131,7 @@ export const useLeads = () => {
     > => {
       setLoadingStatuses(true);
       try {
-        const response = await fetch("/api/statuses", {
+        const response = await apiCallWithSessionRefresh("/api/statuses", {
           cache: "no-store",
           signal: AbortSignal.timeout(10000),
         });
@@ -136,15 +177,16 @@ export const useLeads = () => {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 10 * 60 * 1000,
+    enabled: status === "authenticated",
   });
 
-  // Fetch users with retry logic
+  // Fetch users with retry logic and session refresh
   const { data: users = [] } = useQuery({
     queryKey: ["users"],
     queryFn: async (): Promise<User[]> => {
       setLoadingUsers(true);
       try {
-        const response = await fetch("/api/users", {
+        const response = await apiCallWithSessionRefresh("/api/users", {
           cache: "no-store",
           signal: AbortSignal.timeout(10000),
         });
@@ -198,15 +240,16 @@ export const useLeads = () => {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000,
+    enabled: status === "authenticated",
   });
 
-  // Fetch leads with retry logic
+  // Fetch leads with retry logic and session refresh
   const { data: leads = [], isLoading: isLoadingLeads } = useQuery({
     queryKey: ["leads"],
     queryFn: async (): Promise<Lead[]> => {
       setLoadingLeads(true);
       try {
-        const response = await fetch("/api/leads/all", {
+        const response = await apiCallWithSessionRefresh("/api/leads/all", {
           cache: "no-store",
           signal: AbortSignal.timeout(15000),
         });
@@ -260,9 +303,10 @@ export const useLeads = () => {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 2 * 60 * 1000,
+    enabled: status === "authenticated" && users.length > 0,
   });
 
-  // Assignment mutation with optimistic updates
+  // Assignment mutation with optimistic updates and session refresh
   const assignLeadsMutation = useMutation({
     mutationFn: async ({
       leadIds,
@@ -271,7 +315,7 @@ export const useLeads = () => {
       leadIds: string[];
       userId: string;
     }) => {
-      const response = await fetch("/api/leads/assign", {
+      const response = await apiCallWithSessionRefresh("/api/leads/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds, userId }),
@@ -361,7 +405,7 @@ export const useLeads = () => {
 
   const unassignLeadsMutation = useMutation({
     mutationFn: async ({ leadIds }: { leadIds: string[] }) => {
-      const response = await fetch("/api/leads/unassign", {
+      const response = await apiCallWithSessionRefresh("/api/leads/unassign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds }),

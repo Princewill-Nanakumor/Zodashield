@@ -60,50 +60,67 @@ export function PasswordResetModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+        <DialogHeader className="pb-4">
           <DialogTitle>Reset Password</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">User Email</Label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium">
+              User Email
+            </Label>
             <Input
               id="email"
               value={userEmail}
               disabled
-              className="bg-gray-100"
+              className="bg-gray-100 dark:bg-gray-700"
             />
           </div>
-          <div>
-            <Label htmlFor="password">New Password</Label>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-medium">
+              New Password
+            </Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter new password"
+              className="transition-colors focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div>
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-sm font-medium">
+              Confirm Password
+            </Label>
             <Input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
+              className="transition-colors focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <div className="flex justify-end space-x-2">
+
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="px-4 py-2"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="px-4 py-2">
               {isLoading ? "Resetting..." : "Reset Password"}
             </Button>
           </div>
