@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import Activity from "@/models/Activity";
-// Import User model to ensure Mongoose can populate userId (required for production)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import User from "@/models/User";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
@@ -131,6 +129,15 @@ export async function GET(request: NextRequest) {
 
     await connectMongoDB();
     const adminId = getCorrectAdminId(session);
+
+    // Ensure User model is registered by checking if it exists
+    // This forces the User model to be loaded and registered with Mongoose
+    if (!mongoose.models.User) {
+      console.log("User model not found, ensuring it's registered");
+      // This will trigger the User model registration by accessing the model
+      const userModel = User;
+      console.log("User model registered:", !!userModel);
+    }
 
     // Build query that handles both old activities (without adminId) and new activities (with adminId)
     const query: {

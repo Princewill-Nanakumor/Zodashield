@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
-import Activity from "@/models/Activity"; // Add this import
+import Activity from "@/models/Activity";
 
 interface SessionUser {
   id: string;

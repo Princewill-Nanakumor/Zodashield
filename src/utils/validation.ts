@@ -139,7 +139,7 @@ export function validateHeaders(headers: string[]): ValidationHeaders {
   return {
     missingFields,
     foundHeaders,
-    suggestions: [...new Set(suggestions)], // Remove duplicates
+    suggestions: [...new Set(suggestions)],
     errorMessage,
   };
 }

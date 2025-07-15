@@ -97,6 +97,9 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     // Don't update if status is the same
     if (currentStatus === newStatusId) return;
 
+    // Optimistically update the UI
+    const previousStatus = currentStatus;
+    setCurrentStatus(newStatusId);
     setIsUpdating(true);
 
     try {
@@ -108,12 +111,6 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("API Error Response:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText,
-          url: response.url,
-        });
         throw new Error(
           `Failed to update status: ${response.status} - ${errorText}`
         );
@@ -133,7 +130,8 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
         variant: "success",
       });
     } catch (error) {
-      console.error("Status update error:", error);
+      // Revert the status if the update failed
+      setCurrentStatus(previousStatus);
 
       toast({
         title: "Error",
