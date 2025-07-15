@@ -48,8 +48,29 @@ function isConnectionUsable(): boolean {
   );
 }
 
+// NEW: Function to ensure models are registered
+function ensureModelsRegistered() {
+  // Import and register all models here
+  // This ensures they're available before any queries
+  try {
+    // Import User model (this triggers registration)
+    import("@/models/User");
+    // Import Activity model (this triggers registration)
+    import("@/models/Activity");
+    // Import any other models you need
+    import("@/models/Lead");
+
+    console.log("Models registered successfully");
+  } catch (error) {
+    console.error("Error registering models:", error);
+  }
+}
+
 export const connectMongoDB = async (): Promise<typeof mongoose> => {
   try {
+    // NEW: Ensure models are registered BEFORE connecting
+    ensureModelsRegistered();
+
     if (isConnectionUsable()) {
       return mongoose;
     }
@@ -67,7 +88,6 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
         console.error("MongoDB connection error:", err);
         globalWithCache.mongooseCache.conn = null;
         globalWithCache.mongooseCache.promise = null;
-        // Do NOT disconnect here!
       });
 
       mongoose.connection.on("disconnected", () => {
