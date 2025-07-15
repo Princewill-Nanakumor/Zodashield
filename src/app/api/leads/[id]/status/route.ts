@@ -1,9 +1,26 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession, Session as NextAuthSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
+import Lead from "@/models/Lead";
+import Activity from "@/models/Activity";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
-import Activity from "@/models/Activity";
+
+// Define the type for a Lean Lead document
+interface LeadDoc {
+  _id: mongoose.Types.ObjectId | string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  source?: string;
+  status: string;
+  assignedTo?: Record<string, unknown> | null;
+  comments?: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface SessionUser {
   id: string;
@@ -13,33 +30,55 @@ interface SessionUser {
   lastName?: string;
 }
 
-interface Session {
+interface StrictSession {
   user: SessionUser;
 }
 
-function getCorrectAdminId(session: Session): mongoose.Types.ObjectId {
-  if (session.user.role === "ADMIN") {
-    return new mongoose.Types.ObjectId(session.user.id);
-  } else if (session.user.role === "AGENT" && session.user.adminId) {
-    return new mongoose.Types.ObjectId(session.user.adminId);
+// Accept both NextAuth's Session and our strict session
+type SessionLike = NextAuthSession | StrictSession;
+
+function getCorrectAdminId(session: SessionLike): mongoose.Types.ObjectId {
+  // Accept both NextAuth's Session and our strict session
+  const user =
+    (session as StrictSession).user ?? (session as NextAuthSession).user;
+  if (!user) throw new Error("Session user missing");
+  if (user.role === "ADMIN") {
+    return new mongoose.Types.ObjectId(user.id);
+  } else if (user.role === "AGENT" && user.adminId) {
+    return new mongoose.Types.ObjectId(user.adminId);
   }
   throw new Error("Invalid user role or missing adminId for agent");
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Ensure database connection is active
-    if (mongoose.connection.readyState !== 1) {
-      await connectMongoDB();
+    await connectMongoDB();
+
+    // Validate request body
+    let requestBody;
+    try {
+      const bodyText = await req.text();
+      if (!bodyText) {
+        return NextResponse.json(
+          { error: "Request body is required" },
+          { status: 400 }
+        );
+      }
+      requestBody = JSON.parse(bodyText);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
     }
 
-    const { status: newStatus } = await req.json();
-
+    const { status: newStatus } = requestBody;
     if (!newStatus) {
       return NextResponse.json(
         { error: "Status is required" },
@@ -47,81 +86,58 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // Extract the ID directly from the URL
+    // Extract lead ID from URL
     const segments = req.url.split("/");
     const id = segments[segments.length - 2];
 
-    console.log("Status update request:", {
-      url: req.url,
-      segments: segments,
-      extractedId: id,
-      newStatus: newStatus,
-      sessionUser: session.user.id,
-      sessionRole: session.user.role,
-    });
-
-    // Validate lead ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error("Database connection not available");
-    }
-
-    // Build query with multi-tenancy filter
+    // Build query for multi-tenancy
+    const user =
+      (session as StrictSession).user ?? (session as NextAuthSession).user;
     const query: {
       _id: mongoose.Types.ObjectId;
       adminId?: mongoose.Types.ObjectId;
     } = {
       _id: new mongoose.Types.ObjectId(id),
     };
-
-    if (session.user.role === "ADMIN") {
-      query.adminId = new mongoose.Types.ObjectId(session.user.id);
-    } else if (session.user.role === "AGENT" && session.user.adminId) {
-      query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
+    if (user.role === "ADMIN") {
+      query.adminId = new mongoose.Types.ObjectId(user.id);
+    } else if (user.role === "AGENT" && user.adminId) {
+      query.adminId = new mongoose.Types.ObjectId(user.adminId);
     }
 
-    console.log("Database query:", query);
-
-    // Get the current lead to compare status
-    const currentLead = await db.collection("leads").findOne(query);
-
+    // Find the current lead
+    const currentLead = (await Lead.findOne(query).lean()) as LeadDoc | null;
     if (!currentLead) {
       return NextResponse.json(
         { error: "Lead not found or not authorized" },
         { status: 404 }
       );
     }
-
     const oldStatus = currentLead.status;
 
-    // --- PATCH: Allow "new" as a special case ---
+    // Validate new status (allow "new" or valid ObjectId in status collection)
     let statusExists = false;
-    try {
-      const statusCollection = db.collection("status");
-      if (typeof newStatus === "string" && newStatus.toLowerCase() === "new") {
-        statusExists = true; // Always allow "new"
-      } else if (mongoose.Types.ObjectId.isValid(newStatus)) {
-        const statusDoc = await statusCollection.findOne({
-          _id: new mongoose.Types.ObjectId(newStatus),
-        });
-        statusExists = !!statusDoc;
-      } else {
-        // Try by name
-        const statusDoc = await statusCollection.findOne({
-          name: newStatus,
-        });
-        statusExists = !!statusDoc;
-      }
-    } catch (error) {
-      console.error("Error validating status:", error);
-      // Continue without validation if there's an error
-      statusExists = true;
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error("Database connection not available");
     }
-
+    if (typeof newStatus === "string" && newStatus.toLowerCase() === "new") {
+      statusExists = true;
+    } else if (mongoose.Types.ObjectId.isValid(newStatus)) {
+      const statusDoc = await db
+        .collection("status")
+        .findOne({ _id: new mongoose.Types.ObjectId(newStatus) });
+      statusExists = !!statusDoc;
+    } else {
+      const statusDoc = await db
+        .collection("status")
+        .findOne({ name: newStatus });
+      statusExists = !!statusDoc;
+    }
     if (!statusExists) {
       return NextResponse.json(
         { error: "Invalid status ID or name" },
@@ -129,75 +145,49 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // Use updateOne instead of findOneAndUpdate for better reliability
-    const updateResult = await db.collection("leads").updateOne(query, {
-      $set: {
-        status: newStatus,
-        updatedAt: new Date(),
-      },
-    });
-
-    console.log("Update result:", {
-      matchedCount: updateResult.matchedCount,
-      modifiedCount: updateResult.modifiedCount,
-      upsertedCount: updateResult.upsertedCount,
-    });
-
-    if (updateResult.matchedCount === 0) {
-      return NextResponse.json(
-        { error: "Lead not found or not authorized" },
-        { status: 404 }
-      );
+    // Only update if status is different
+    if (oldStatus === newStatus) {
+      return NextResponse.json({
+        ...currentLead,
+        _id: currentLead._id.toString(),
+        status: oldStatus,
+      });
     }
 
-    if (updateResult.modifiedCount === 0) {
-      // Status was already the same, but we'll return success
-      console.log("Status was already the same, no modification needed");
-    }
-
-    // Get the updated lead
-    const updatedLead = await db.collection("leads").findOne(query);
-
+    // Update the lead status
+    const updatedLead = (await Lead.findOneAndUpdate(
+      query,
+      { status: newStatus, updatedAt: new Date() },
+      { new: true, lean: true }
+    )) as LeadDoc | null;
     if (!updatedLead) {
       return NextResponse.json(
-        { error: "Failed to retrieve updated lead" },
+        { error: "Failed to update lead" },
         { status: 500 }
       );
     }
 
-    console.log("Successfully updated lead:", {
-      id: updatedLead._id,
-      newStatus: updatedLead.status,
+    // Log activity (non-blocking)
+    Activity.create({
+      type: "STATUS_CHANGE",
+      userId: new mongoose.Types.ObjectId(user.id),
+      details: `Status changed from ${oldStatus} to ${newStatus}`,
+      leadId: updatedLead._id,
+      adminId: getCorrectAdminId(session),
+      timestamp: new Date(),
+      metadata: {
+        oldStatusId: oldStatus,
+        newStatusId: newStatus,
+        oldStatus: oldStatus,
+        newStatus: newStatus,
+        status: newStatus,
+      },
+    }).catch((err: unknown) => {
+      console.error("Error creating activity log:", err);
     });
 
-    // Create activity log for status change using Activity model
-    try {
-      const activityAdminId = getCorrectAdminId(session as Session);
-
-      const activity = new Activity({
-        type: "STATUS_CHANGE",
-        userId: new mongoose.Types.ObjectId(session.user.id),
-        details: `Status changed from ${oldStatus} to ${newStatus}`,
-        leadId: new mongoose.Types.ObjectId(id),
-        adminId: activityAdminId,
-        timestamp: new Date(),
-        metadata: {
-          oldStatusId: oldStatus,
-          newStatusId: newStatus,
-          oldStatus: oldStatus,
-          newStatus: newStatus,
-          status: newStatus,
-        },
-      });
-
-      await activity.save();
-      console.log("Activity created successfully:", activity._id);
-    } catch (activityError) {
-      console.error("Error creating activity log:", activityError);
-    }
-
-    // Return the updated lead with proper formatting
-    const formattedLead = {
+    // Return the updated lead
+    return NextResponse.json({
       _id: updatedLead._id.toString(),
       firstName: updatedLead.firstName,
       lastName: updatedLead.lastName,
@@ -206,23 +196,13 @@ export async function PATCH(req: Request) {
       country: updatedLead.country,
       source: updatedLead.source,
       status: updatedLead.status,
-      assignedTo: updatedLead.assignedTo,
-      comments: updatedLead.comments,
+      assignedTo: updatedLead.assignedTo ?? null,
+      comments: updatedLead.comments ?? null,
       createdAt: updatedLead.createdAt,
       updatedAt: updatedLead.updatedAt,
-    };
-
-    return NextResponse.json(formattedLead);
+    });
   } catch (error) {
     console.error("API Error:", error);
-
-    if (error instanceof Error && error.message.includes("connection")) {
-      return NextResponse.json(
-        { error: "Database connection error. Please try again." },
-        { status: 503 }
-      );
-    }
-
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

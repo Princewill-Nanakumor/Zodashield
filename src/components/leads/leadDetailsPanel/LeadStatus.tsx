@@ -103,11 +103,18 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     setIsUpdating(true);
 
     try {
+      // Abort controller for request cancellation
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch(`/api/leads/${lead._id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatusId }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -120,9 +127,11 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
       setCurrentStatus(updatedLead.status);
       updateLeadOptimistically(lead._id, updatedLead);
 
-      // Invalidate both leads and statuses queries
-      await queryClient.invalidateQueries({ queryKey: ["leads"] });
-      await queryClient.invalidateQueries({ queryKey: ["statuses"] });
+      // Optimize: Invalidate queries in parallel
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["leads"] }),
+        queryClient.invalidateQueries({ queryKey: ["statuses"] }),
+      ]);
 
       toast({
         title: "Status updated",
@@ -133,10 +142,12 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
       // Revert the status if the update failed
       setCurrentStatus(previousStatus);
 
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update status";
+
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update status",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, UserCircle, Loader2 } from "lucide-react";
+import { Search, UserCircle } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { DashboardSearchBar } from "./DashboardSearchBar";
 import ThemeToggle from "./ThemeToggle";
@@ -65,12 +65,6 @@ export default function DashboardNavbar({
       {/* Left: Logo/Title */}
       <div className="flex items-center space-x-3">
         <h1 className="text-2xl font-bold text-white tracking-tight">Leads</h1>
-        {isLoading && (
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-4 w-4 animate-spin text-white" />
-            <span className="text-sm text-white/80">Loading...</span>
-          </div>
-        )}
       </div>
 
       {/* Center: Search Bar */}
