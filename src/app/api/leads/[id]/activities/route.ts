@@ -111,8 +111,28 @@ interface ActivityDocument {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("=== ACTIVITIES API ROUTE STARTED ===");
+    console.log("Request URL:", request.url);
+    console.log(
+      "Request headers:",
+      Object.fromEntries(request.headers.entries())
+    );
+
     const session = (await getServerSession(authOptions)) as Session | null;
+
+    console.log("=== SESSION DEBUG ===");
+    console.log("Session exists:", !!session);
+    if (session) {
+      console.log("User ID:", session.user.id);
+      console.log("User Role:", session.user.role);
+      console.log("Session adminId:", session.user.adminId);
+      console.log("Full session object:", JSON.stringify(session, null, 2));
+    } else {
+      console.log("No session found - user not authenticated");
+    }
+
     if (!session) {
+      console.log("=== UNAUTHORIZED - NO SESSION ===");
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
@@ -124,31 +144,53 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
 
+    console.log("=== REQUEST PARAMETERS ===");
+    console.log("Lead ID:", leadId);
+    console.log("Page:", page, "Limit:", limit, "Skip:", skip);
+    console.log("Path parts:", pathParts);
+
     await connectMongoDB();
+
+    console.log("=== DATABASE CONNECTION ===");
+    console.log("Database name:", mongoose.connection.db?.databaseName);
+    console.log("Connection ready state:", mongoose.connection.readyState);
+    console.log(
+      "MongoDB URI (first 30 chars):",
+      process.env.MONGODB_URI?.substring(0, 30) + "..."
+    );
+
     const adminId = getCorrectAdminId(session);
 
-    console.log("=== ACTIVITIES GET REQUEST DEBUG ===");
-    console.log("Lead ID:", leadId);
+    console.log("=== ADMIN ID CALCULATION ===");
     console.log("User ID:", session.user.id);
     console.log("User Role:", session.user.role);
     console.log("Session adminId:", session.user.adminId);
     console.log("Calculated Admin ID:", adminId.toString());
-    console.log("Page:", page, "Limit:", limit, "Skip:", skip);
+    console.log("Admin ID type:", typeof adminId);
+    console.log(
+      "Admin ID is ObjectId:",
+      adminId instanceof mongoose.Types.ObjectId
+    );
 
     // First, let's check what activities exist for this lead without any filters
+    console.log("=== FETCHING ALL ACTIVITIES (NO FILTERS) ===");
     const allActivitiesForLead = await Activity.find({
       leadId: new mongoose.Types.ObjectId(leadId),
     }).lean();
 
-    console.log("=== ALL ACTIVITIES FOR LEAD (NO FILTERS) ===");
-    console.log("Total activities found:", allActivitiesForLead.length);
+    console.log(
+      "Total activities found (no filters):",
+      allActivitiesForLead.length
+    );
     allActivitiesForLead.forEach((activity, index) => {
       console.log(`Activity ${index + 1}:`, {
+        _id: activity._id?.toString(),
         type: activity.type,
         adminId: activity.adminId ? activity.adminId.toString() : "NO ADMIN ID",
         userId: activity.userId ? activity.userId.toString() : "NO USER ID",
         details: activity.details,
         timestamp: activity.timestamp,
+        leadId: activity.leadId?.toString(),
       });
     });
 
@@ -166,10 +208,13 @@ export async function GET(request: NextRequest) {
       ],
     };
 
-    console.log("=== ACTIVITIES QUERY DEBUG ===");
-    console.log("Query:", JSON.stringify(query, null, 2));
+    console.log("=== FILTERED QUERY DEBUG ===");
+    console.log("Query object:", JSON.stringify(query, null, 2));
+    console.log("Query adminId to match:", adminId.toString());
+    console.log("Query leadId to match:", leadId);
 
     // Find activities with proper population and multi-tenancy filter
+    console.log("=== EXECUTING FILTERED QUERY ===");
     const activities = await Activity.find(query)
       .populate("userId", "firstName lastName")
       .sort({ timestamp: -1 })
@@ -177,15 +222,17 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
-    console.log("=== FILTERED ACTIVITIES DEBUG ===");
+    console.log("=== FILTERED ACTIVITIES RESULTS ===");
     console.log("Found activities count:", activities.length);
     activities.forEach((activity, index) => {
       console.log(`Filtered Activity ${index + 1}:`, {
+        _id: activity._id?.toString(),
         type: activity.type,
         adminId: activity.adminId ? activity.adminId.toString() : "NO ADMIN ID",
         userId: activity.userId ? activity.userId.toString() : "NO USER ID",
         details: activity.details,
         timestamp: activity.timestamp,
+        leadId: activity.leadId?.toString(),
       });
     });
 
@@ -214,6 +261,7 @@ export async function GET(request: NextRequest) {
     console.log("Resolved status names:", statusNames);
 
     // Transform activities
+    console.log("=== TRANSFORMING ACTIVITIES ===");
     const transformedActivities = activities.map((activity: unknown) => {
       const act = activity as ActivityDocument;
 
@@ -273,15 +321,35 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    console.log("=== FINAL RESULTS ===");
     console.log("Transformed activities count:", transformedActivities.length);
-    console.log(
-      "First activity sample:",
-      JSON.stringify(transformedActivities[0], null, 2)
-    );
+    if (transformedActivities.length > 0) {
+      console.log(
+        "First activity sample:",
+        JSON.stringify(transformedActivities[0], null, 2)
+      );
+    } else {
+      console.log("No activities to transform");
+    }
+
+    console.log("=== API RESPONSE ===");
+    console.log("Returning activities count:", transformedActivities.length);
+    console.log("Response status: 200 OK");
 
     return NextResponse.json(transformedActivities);
-  } catch (error) {
-    console.error("Error fetching activities:", error);
+  } catch (error: unknown) {
+    console.error("=== ERROR IN ACTIVITIES API ===");
+
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    } else {
+      console.error("Unknown error type:", typeof error);
+      console.error("Error value:", error);
+    }
+
+    console.error("Full error object:", error);
+
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
