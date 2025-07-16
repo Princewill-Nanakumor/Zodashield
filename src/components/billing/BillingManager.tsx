@@ -207,9 +207,6 @@ export default function BillingManager() {
                   placeholder={`Minimum ${MIN_DEPOSIT} USDT`}
                   required
                 />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                  USDT
-                </div>
               </div>
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                 <span>Minimum deposit: {MIN_DEPOSIT} USDT</span>

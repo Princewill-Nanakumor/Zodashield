@@ -112,16 +112,19 @@ export default function DashboardOverview({
   const fetchLeadStats = useCallback(async () => {
     setIsLoadingLeadStats(true);
     try {
-      // If user is admin, fetch all leads, otherwise fetch only assigned leads
       const endpoint =
         session?.user?.role === "ADMIN"
           ? "/api/leads/all"
-          : "/api/leads/user-leads";
+          : "/api/leads/assigned";
 
       const res = await fetch(endpoint);
       if (!res.ok) throw new Error("Failed to fetch leads");
       const data = await res.json();
-      const leads = Array.isArray(data) ? data : [];
+      const leads = Array.isArray(data)
+        ? data
+        : data.assignedLeads // /api/leads/assigned returns { assignedLeads: [...] }
+          ? data.assignedLeads
+          : [];
 
       if (session?.user?.role === "ADMIN") {
         // Admin sees all stats
@@ -133,9 +136,13 @@ export default function DashboardOverview({
 
         setLeadStats({ total, assigned, unassigned, myLeads: 0 });
       } else {
-        // User/Agent sees only their assigned leads count
-        const myLeads = leads.length;
-        setLeadStats({ total: 0, assigned: 0, unassigned: 0, myLeads });
+        // Agent: Only count leads assigned to this user
+        setLeadStats({
+          total: 0,
+          assigned: 0,
+          unassigned: 0,
+          myLeads: leads.length,
+        });
       }
     } catch (error) {
       console.error("Error fetching lead stats:", error);
