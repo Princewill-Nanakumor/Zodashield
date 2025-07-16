@@ -14,6 +14,8 @@ declare module "next-auth" {
     role: string;
     permissions: string[];
     status: string;
+    phoneNumber: string;
+    country: string;
     adminId?: string;
   }
 
@@ -26,6 +28,8 @@ declare module "next-auth" {
       role: string;
       permissions: string[];
       status: string;
+      phoneNumber: string;
+      country: string;
       adminId?: string;
     };
   }
@@ -40,6 +44,8 @@ declare module "next-auth/jwt" {
     status: string;
     firstName: string;
     lastName: string;
+    phoneNumber: string;
+    country: string;
     adminId?: string;
   }
 }
@@ -141,6 +147,8 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             permissions: user.permissions || [],
             status: user.status,
+            phoneNumber: user.phoneNumber || "",
+            country: user.country || "",
             adminId: user.adminId?.toString(),
           };
         } catch (error) {
@@ -171,6 +179,8 @@ export const authOptions: NextAuthOptions = {
         token.status = user.status;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
+        token.phoneNumber = user.phoneNumber;
+        token.country = user.country;
         token.adminId = user.adminId;
       }
       return token;
@@ -183,6 +193,8 @@ export const authOptions: NextAuthOptions = {
         session.user.status = token.status;
         session.user.firstName = token.firstName;
         session.user.lastName = token.lastName;
+        session.user.phoneNumber = token.phoneNumber;
+        session.user.country = token.country;
         session.user.adminId = token.adminId;
       }
       return session;
