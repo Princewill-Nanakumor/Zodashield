@@ -185,6 +185,12 @@ export const useUrlFilterSync = (
         }
       }
 
+      // Preserve the current page parameter
+      const currentPage = searchParams.get("page");
+      if (currentPage) {
+        params.set("page", currentPage);
+      }
+
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       console.log("Updating URL to:", newUrl);
 

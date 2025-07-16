@@ -1,4 +1,3 @@
-// src/components/dashboardComponents/TableConfiguration.tsx
 "use client";
 
 import {
@@ -57,13 +56,46 @@ export const useTableConfiguration = ({
       }
     },
     onPaginationChange: (updater) => {
+      console.log("onPaginationChange triggered:", {
+        updater,
+        currentPageIndex: pageIndex,
+        dataLength: data.length,
+      });
+
       if (typeof updater === "function") {
         const newState = updater({ pageIndex, pageSize });
-        setPageIndex(newState.pageIndex);
-        setPageSize(newState.pageSize);
+
+        // Only update if the page actually changed AND it's not being reset to 0
+        if (newState.pageIndex !== pageIndex && newState.pageIndex > 0) {
+          console.log("Updating pageIndex:", {
+            from: pageIndex,
+            to: newState.pageIndex,
+          });
+          setPageIndex(newState.pageIndex);
+        } else if (newState.pageIndex === 0 && pageIndex !== 0) {
+          console.log("Preventing automatic reset to page 0");
+          // Don't update - prevent automatic reset to page 0
+        }
+
+        if (newState.pageSize !== pageSize) {
+          setPageSize(newState.pageSize);
+        }
       } else {
-        setPageIndex(updater.pageIndex);
-        setPageSize(updater.pageSize);
+        // Only update if the page actually changed AND it's not being reset to 0
+        if (updater.pageIndex !== pageIndex && updater.pageIndex > 0) {
+          console.log("Updating pageIndex:", {
+            from: pageIndex,
+            to: updater.pageIndex,
+          });
+          setPageIndex(updater.pageIndex);
+        } else if (updater.pageIndex === 0 && pageIndex !== 0) {
+          console.log("Preventing automatic reset to page 0");
+          // Don't update - prevent automatic reset to page 0
+        }
+
+        if (updater.pageSize !== pageSize) {
+          setPageSize(updater.pageSize);
+        }
       }
     },
     manualPagination: false,

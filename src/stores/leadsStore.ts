@@ -15,8 +15,6 @@ interface LeadsState {
   filterByUser: string;
   filterByCountry: string;
   isPanelOpen: boolean;
-  pageSize: number;
-  pageIndex: number;
   sorting: Array<{ id: string; desc: boolean }>;
   availableCountries: string[];
   filteredLeads: Lead[];
@@ -33,8 +31,6 @@ interface LeadsState {
   setLoadingLeads: (loading: boolean) => void;
   setLoadingUsers: (loading: boolean) => void;
   setLoadingStatuses: (loading: boolean) => void;
-  setPageSize: (size: number) => void;
-  setPageIndex: (index: number) => void;
   setSorting: (sorting: Array<{ id: string; desc: boolean }>) => void;
   clearFilters: () => void;
   clearSelection: () => void;
@@ -130,8 +126,6 @@ export const useLeadsStore = create<LeadsState>()(
         filterByUser: "all",
         filterByCountry: "all",
         isPanelOpen: false,
-        pageSize: 15,
-        pageIndex: 0,
         sorting: [],
         availableCountries: [],
         filteredLeads: [],
@@ -180,7 +174,6 @@ export const useLeadsStore = create<LeadsState>()(
             return {
               filterByUser,
               filteredLeads,
-              pageIndex: 0,
               selectedLeads: [],
             };
           }),
@@ -194,7 +187,6 @@ export const useLeadsStore = create<LeadsState>()(
             return {
               filterByCountry,
               filteredLeads,
-              pageIndex: 0,
               selectedLeads: [],
             };
           }),
@@ -202,9 +194,7 @@ export const useLeadsStore = create<LeadsState>()(
         setLoadingLeads: (isLoadingLeads) => set({ isLoadingLeads }),
         setLoadingUsers: (isLoadingUsers) => set({ isLoadingUsers }),
         setLoadingStatuses: (isLoadingStatuses) => set({ isLoadingStatuses }),
-        setPageSize: (pageSize) => set({ pageSize, pageIndex: 0 }),
-        setPageIndex: (pageIndex) => set({ pageIndex }),
-        setSorting: (sorting) => set({ sorting, pageIndex: 0 }),
+        setSorting: (sorting) => set({ sorting }),
         clearFilters: () =>
           set((state) => {
             const filteredLeads = getFilteredLeads(state.leads, "all", "all");
@@ -212,7 +202,6 @@ export const useLeadsStore = create<LeadsState>()(
               filterByUser: "all",
               filterByCountry: "all",
               filteredLeads,
-              pageIndex: 0,
               selectedLeads: [],
             };
           }),
@@ -243,8 +232,28 @@ export const useLeadsStore = create<LeadsState>()(
               filteredLeads,
             };
           }),
+        // Add this optimized update function to your store:
         updateLeadOptimistically: (leadId, updates) =>
           set((state) => {
+            // Check if the update is actually needed
+            const existingLead = state.leads.find(
+              (lead) => lead._id === leadId
+            );
+            if (!existingLead) return state;
+
+            // Check if any values actually changed
+            const hasChanges = Object.keys(updates).some(
+              (key) =>
+                existingLead[key as keyof Lead] !== updates[key as keyof Lead]
+            );
+
+            if (!hasChanges) {
+              console.log("No changes detected, skipping update");
+              return state;
+            }
+
+            console.log("Optimistic update:", { leadId, updates });
+
             const updatedLeads = state.leads.map((lead) =>
               lead._id === leadId ? { ...lead, ...updates } : lead
             );
@@ -255,12 +264,19 @@ export const useLeadsStore = create<LeadsState>()(
               state.selectedLead?._id === leadId
                 ? { ...state.selectedLead, ...updates }
                 : state.selectedLead;
-            const availableCountries = getAvailableCountries(updatedLeads);
+
+            // Only recalculate if countries might have changed
+            const needsCountryRecalc = updates.country !== undefined;
+            const availableCountries = needsCountryRecalc
+              ? getAvailableCountries(updatedLeads)
+              : state.availableCountries;
+
             const filteredLeads = getFilteredLeads(
               updatedLeads,
               state.filterByUser,
               state.filterByCountry
             );
+
             return {
               leads: updatedLeads,
               selectedLeads: updatedSelectedLeads,
@@ -326,13 +342,14 @@ export const useLeadsStore = create<LeadsState>()(
         partialize: (state) => ({
           filterByUser: state.filterByUser,
           filterByCountry: state.filterByCountry,
-          pageSize: state.pageSize,
           sorting: state.sorting,
         }),
       }
     )
   )
 );
+
+// --- Hooks ---
 
 export const useSelectedLead = () =>
   useLeadsStore((state) => state.selectedLead);
@@ -367,12 +384,7 @@ export const useUpdateLeadOptimistically = () =>
   useLeadsStore((state) => state.updateLeadOptimistically);
 export const useRevertLeadUpdate = () =>
   useLeadsStore((state) => state.revertLeadUpdate);
-export const usePageSize = () => useLeadsStore((state) => state.pageSize);
-export const usePageIndex = () => useLeadsStore((state) => state.pageIndex);
 export const useSorting = () => useLeadsStore((state) => state.sorting);
-export const useSetPageSize = () => useLeadsStore((state) => state.setPageSize);
-export const useSetPageIndex = () =>
-  useLeadsStore((state) => state.setPageIndex);
 export const useSetSorting = () => useLeadsStore((state) => state.setSorting);
 export const useFilterByUser = () =>
   useLeadsStore((state) => state.filterByUser);

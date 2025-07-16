@@ -1,5 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm/src/components/dashboardComponents/LeadsPageContent.tsx
-
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -76,7 +74,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     searchQuery: searchQuery,
   });
 
-  // Session refresh logic - ADD THIS SECTION
+  // Session refresh logic
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (
@@ -90,7 +88,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 
           if (response.status === 401) {
             console.log("Session expired, refreshing...");
-            await update(); // Refresh the session
+            await update();
           }
         } catch (error) {
           console.error("Session check failed:", error);
@@ -135,8 +133,16 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     return getAvailableCountries(leads);
   }, [leads]);
 
+  // --- STABILIZED LEADS DATA ---
+  const stableLeads = useMemo(() => {
+    if (!leads || leads.length === 0) return [];
+
+    // Create a stable reference by sorting by _id
+    return [...leads].sort((a, b) => a._id.localeCompare(b._id));
+  }, [leads]);
+
   const filteredLeads = useMemo(() => {
-    let filtered = leads;
+    let filtered = stableLeads; // Use stableLeads instead of leads
 
     // Apply search filter first
     if (uiState.searchQuery.trim()) {
@@ -154,7 +160,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     }
 
     return filtered;
-  }, [leads, uiState.searchQuery, filterByUser, uiState.filterByCountry]);
+  }, [stableLeads, uiState.searchQuery, filterByUser, uiState.filterByCountry]);
 
   const counts = useMemo(
     () => ({
@@ -223,27 +229,38 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     [setSelectedLeads]
   );
 
-  // --- URL sync for country filter ---
+  // URL sync for country filter with page reset
   const handleCountryFilterChange = useCallback(
     (country: string) => {
       setUiState((prev) => ({ ...prev, filterByCountry: country }));
 
-      // Update the URL query string
+      // Reset page to 1 when user changes country filter
       const params = new URLSearchParams(Array.from(searchParams.entries()));
+      params.set("page", "1");
       if (country === "all") {
         params.delete("country");
       } else {
         params.set("country", country);
       }
-      // Use replace to avoid adding to browser history
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
     },
     [pathname, searchParams]
   );
-  // ---
 
+  // Updated filter change handler with page reset
   const handleFilterChange = useCallback(
-    (value: string) => setFilterByUser(value),
+    (value: string) => {
+      setFilterByUser(value);
+
+      // Reset page to 1 when user changes user filter
+      const params = new URLSearchParams(window.location.search);
+      params.set("page", "1");
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}?${params.toString()}`
+      );
+    },
     [setFilterByUser]
   );
 
@@ -331,6 +348,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <LeadsTable
+                  key={`leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}`}
                   leads={filteredLeads}
                   onLeadUpdated={handleLeadUpdate}
                   isLoading={isLoading}

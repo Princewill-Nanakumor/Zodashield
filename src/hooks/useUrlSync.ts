@@ -47,6 +47,12 @@ export const useUrlSync = () => {
       params.delete("name");
     }
 
+    // Preserve the current page parameter
+    const currentPage = searchParams?.get("page");
+    if (currentPage) {
+      params.set("page", currentPage);
+    }
+
     router.push(`?${params.toString()}`, { scroll: false });
 
     setTimeout(() => {

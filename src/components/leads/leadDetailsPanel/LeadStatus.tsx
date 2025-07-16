@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Lead } from "@/types/leads";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
@@ -91,69 +91,93 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     setCurrentStatus(lead.status);
   }, [lead.status]);
 
-  const handleStatusChange = async (newStatusId: string) => {
-    if (!lead._id) return;
+  // --- OPTIMIZED STATUS UPDATE ---
+  const handleStatusChange = useCallback(
+    async (newStatusId: string) => {
+      if (!lead._id) return;
 
-    // Don't update if status is the same
-    if (currentStatus === newStatusId) return;
+      // Don't update if status is the same
+      if (currentStatus === newStatusId) return;
 
-    // Optimistically update the UI
-    const previousStatus = currentStatus;
-    setCurrentStatus(newStatusId);
-    setIsUpdating(true);
-
-    try {
-      // Abort controller for request cancellation
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      const response = await fetch(`/api/leads/${lead._id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatusId }),
-        signal: controller.signal,
+      console.log("Status update initiated:", {
+        leadId: lead._id,
+        oldStatus: currentStatus,
+        newStatus: newStatusId,
       });
 
-      clearTimeout(timeoutId);
+      // Optimistically update the UI
+      const previousStatus = currentStatus;
+      setCurrentStatus(newStatusId);
+      setIsUpdating(true);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Failed to update status: ${response.status} - ${errorText}`
-        );
+      try {
+        // Abort controller for request cancellation
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        const response = await fetch(`/api/leads/${lead._id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatusId }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Failed to update status: ${response.status} - ${errorText}`
+          );
+        }
+
+        const updatedLead = await response.json();
+        setCurrentStatus(updatedLead.status);
+
+        // --- OPTIMIZED STORE UPDATE ---
+        updateLeadOptimistically(lead._id, updatedLead);
+
+        // --- MODIFIED QUERY INVALIDATION ---
+        // Only invalidate statuses, not all leads queries
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["statuses"],
+            exact: false,
+          }),
+          // Only invalidate specific lead queries, not all leads
+          queryClient.invalidateQueries({
+            queryKey: ["leads", "all"],
+            exact: true,
+          }),
+        ]);
+
+        console.log("Status update successful:", updatedLead.status);
+
+        toast({
+          title: "Status updated",
+          description: `Lead status changed successfully.`,
+          variant: "success",
+        });
+      } catch (error) {
+        // Revert the status if the update failed
+        setCurrentStatus(previousStatus);
+
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to update status";
+
+        console.error("Status update failed:", errorMessage);
+
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsUpdating(false);
       }
-
-      const updatedLead = await response.json();
-      setCurrentStatus(updatedLead.status);
-      updateLeadOptimistically(lead._id, updatedLead);
-
-      // Optimize: Invalidate queries in parallel
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["leads"] }),
-        queryClient.invalidateQueries({ queryKey: ["statuses"] }),
-      ]);
-
-      toast({
-        title: "Status updated",
-        description: `Lead status changed successfully.`,
-        variant: "success",
-      });
-    } catch (error) {
-      // Revert the status if the update failed
-      setCurrentStatus(previousStatus);
-
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to update status";
-
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+    },
+    [lead._id, currentStatus, updateLeadOptimistically, queryClient, toast]
+  );
 
   const currentStatusObj = statuses.find((s) => s._id === currentStatus);
   const currentStatusColor = currentStatusObj?.color || "#3b82f6";

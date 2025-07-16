@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { EmptyStateAdminLeadsTable } from "./EmptyStateAdminLeadsTable";
 import LeadDetailsPanel from "@/components/dashboardComponents/LeadDetailsPanel";
 import { Lead } from "@/types/leads";
@@ -14,11 +15,7 @@ import {
   useSelectedLead,
   useSetSelectedLead,
   useSetIsPanelOpen,
-  usePageSize,
-  usePageIndex,
   useSorting,
-  useSetPageSize,
-  useSetPageIndex,
   useSetSorting,
   useSelectedLeads,
   useSetSelectedLeads,
@@ -54,18 +51,100 @@ export default function LeadsTable({
   filterByUser = "all",
   filterByCountry = "all",
 }: LeadsTableProps) {
-  // Store hooks
+  // Store hooks (NOT for pagination)
   const selectedLead = useSelectedLead();
   const setSelectedLead = useSetSelectedLead();
   const setIsPanelOpen = useSetIsPanelOpen();
-  const pageSize = usePageSize();
-  const pageIndex = usePageIndex();
   const sorting = useSorting();
-  const setPageSize = useSetPageSize();
-  const setPageIndex = useSetPageIndex();
   const setSorting = useSetSorting();
   const storeSelectedLeads = useSelectedLeads();
   const setStoreSelectedLeads = useSetSelectedLeads();
+  const isInitializedRef = useRef(false);
+
+  // URL and pagination state (LOCAL ONLY - no store)
+  const searchParams = useSearchParams();
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(15); // Local pageSize
+
+  // --- STABILIZED SORTING STATE ---
+  const stableSorting = useMemo(() => {
+    if (!sorting || sorting.length === 0) {
+      return [{ id: "name", desc: false }];
+    }
+    return sorting;
+  }, [sorting]);
+
+  // --- DEBUG LOG: Every render ---
+  console.log("LeadsTable render", {
+    filterByUser,
+    filterByCountry,
+    sorting: stableSorting,
+    pageIndex,
+    pageSize,
+    leadsCount: leads.length,
+  });
+
+  // Debug log to see what's causing re-renders
+  useEffect(() => {
+    console.log("LeadsTable re-render triggered:", {
+      leadsLength: leads.length,
+      leadsIds: leads.slice(0, 3).map((l) => l._id), // First 3 IDs
+      pageIndex,
+      filterByUser,
+      filterByCountry,
+      reason: "props changed",
+    });
+  }, [leads, pageIndex, filterByUser, filterByCountry]);
+
+  // Sync pageIndex with URL on mount ONLY (not on every URL change)
+  useEffect(() => {
+    if (isInitializedRef.current) return; // Only run once
+
+    const pageParam = searchParams.get("page");
+    if (pageParam && !isNaN(Number(pageParam))) {
+      const newPageIndex = Number(pageParam) - 1;
+      console.log("Initializing pageIndex from URL:", {
+        pageParam,
+        newPageIndex,
+      });
+      setPageIndex(newPageIndex);
+    }
+
+    isInitializedRef.current = true;
+  }, [searchParams]);
+
+  // Preserve page position when leads change
+  // Preserve page position when leads change
+  // Preserve page position when leads change
+  useEffect(() => {
+    const currentPage = searchParams.get("page");
+    if (currentPage && !isNaN(Number(currentPage))) {
+      const targetPage = Number(currentPage) - 1;
+      if (pageIndex !== targetPage) {
+        console.log("Preserving page position:", {
+          from: pageIndex,
+          to: targetPage,
+          reason: "leads changed",
+        });
+        setPageIndex(targetPage);
+      }
+    }
+    // Intentionally only depend on leads.length to avoid infinite loops
+    // when pageIndex or searchParams change
+  }, [leads.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update URL when page changes
+  const handlePageChange = useCallback((page: number) => {
+    setPageIndex(page);
+    const currentPathname = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", String(page + 1));
+    window.history.replaceState(
+      {},
+      "",
+      `${currentPathname}?${params.toString()}`
+    );
+  }, []);
 
   useEffect(() => {
     console.log("LeadsTable: Received leads:", {
@@ -83,35 +162,38 @@ export default function LeadsTable({
   // Custom hooks
   const { sortedLeads, handleSort } = useTableSorting({
     leads,
-    sortField: (sorting[0]?.id as SortField) || "name",
-    sortOrder: sorting[0]?.desc ? "desc" : "asc",
+    sortField: (stableSorting[0]?.id as SortField) || "name",
+    sortOrder: stableSorting[0]?.desc ? "desc" : "asc",
     users,
-    searchQuery, // Add this prop
-    onSortChange: (field, order) => {
-      setSorting([{ id: field, desc: order === "desc" }]);
-    },
+    searchQuery,
+    onSortChange: useCallback(
+      (field, order) => {
+        console.log("Sort change triggered:", { field, order });
+        setSorting([{ id: field, desc: order === "desc" }]);
+        // Remove all page reset logic
+      },
+      [setSorting]
+    ),
   });
 
-  // Memoized current page leads with page preservation logic
+  // Memoized current page leads WITHOUT automatic page adjustment
   const currentPageLeads = useMemo(() => {
     const startIndex = pageIndex * pageSize;
     const endIndex = startIndex + pageSize;
 
-    // If the current page would be empty after filtering, adjust to the last valid page
-    if (startIndex >= sortedLeads.length && sortedLeads.length > 0) {
-      const newPageIndex = Math.floor((sortedLeads.length - 1) / pageSize);
-      // Only update if the page actually changed
-      if (newPageIndex !== pageIndex) {
-        setPageIndex(newPageIndex);
-        return sortedLeads.slice(
-          newPageIndex * pageSize,
-          (newPageIndex + 1) * pageSize
-        );
-      }
-    }
+    console.log("currentPageLeads calculation:", {
+      pageIndex,
+      pageSize,
+      startIndex,
+      endIndex,
+      sortedLeadsLength: sortedLeads.length,
+      wouldBeEmpty: startIndex >= sortedLeads.length,
+    });
 
+    // Don't automatically adjust the page - let the user handle it
+    // Just return the leads for the current page, even if it's empty
     return sortedLeads.slice(startIndex, endIndex);
-  }, [sortedLeads, pageIndex, pageSize, setPageIndex]);
+  }, [sortedLeads, pageIndex, pageSize]);
 
   const {
     rowSelection,
@@ -137,7 +219,7 @@ export default function LeadsTable({
     });
 
   const { columns } = useTableColumns({
-    sortField: (sorting[0]?.id as SortField) || "name",
+    sortField: (stableSorting[0]?.id as SortField) || "name",
     handleSort,
     allSelected,
     selectedLeads: displaySelectedLeads,
@@ -152,11 +234,11 @@ export default function LeadsTable({
     columns,
     pageSize,
     pageIndex,
-    sorting,
+    sorting: stableSorting,
     rowSelection,
     setSorting,
-    setPageIndex,
-    setPageSize,
+    setPageIndex: handlePageChange, // Use the URL-syncing handler
+    setPageSize, // Use local setPageSize
   });
 
   if (isLoading) {
@@ -200,7 +282,7 @@ export default function LeadsTable({
         <TablePagination
           pageIndex={pageIndex}
           pageCount={table.getPageCount()}
-          onPageChange={setPageIndex}
+          onPageChange={handlePageChange}
         />
       </div>
 
