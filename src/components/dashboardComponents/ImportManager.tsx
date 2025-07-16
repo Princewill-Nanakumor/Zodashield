@@ -9,7 +9,6 @@ import { ImportHistoryItem, ProcessedLead } from "@/types/import";
 import { ImportModal } from "@/components/dashboardComponents/ImportModal";
 import { processFile } from "@/utils/FileProcessing";
 import { ImportTabs } from "@/components/dashboardComponents/ImportTabs";
-import { SampleDataBanner } from "@/components/dashboardComponents/SampleDataBanner";
 import { ImportContent } from "@/components/dashboardComponents/ImportContent";
 import FileUploadSection from "@/components/dashboardComponents/FileUploadSection";
 import { HelpSection } from "@/components/dashboardComponents/HelpSection";
@@ -253,35 +252,32 @@ export const ImportManager = () => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-800 rounded ">
       <div className="flex-1 flex flex-col">
-        <div className="flex-1 p-8">
-          <SampleDataBanner />
-          <div className="bg-white dark:text-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <ImportContent />
-            <ImportTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-            <FileUploadSection
-              activeTab={activeTab}
-              fileInputRef={fileInputRef}
-              isLoading={isLoading}
-              error={error}
-              successMessage={successMessage}
-              handleFileUpload={handleFileUpload}
-              importHistory={importHistory}
-              onDelete={handleDeleteImport}
-              setShowModal={setShowModal}
-              missingFields={missingFields}
-            />
-            <ImportModal
-              isOpen={showModal}
-              onClose={() => {
-                setShowModal(false);
-                setError(null);
-                setMissingFields([]);
-              }}
-              missingFields={missingFields}
-              errorMessage={error ?? undefined}
-            />
-            <HelpSection />
-          </div>
+        <div className="bg-white dark:text-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <ImportContent />
+          <ImportTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          <FileUploadSection
+            activeTab={activeTab}
+            fileInputRef={fileInputRef}
+            isLoading={isLoading}
+            error={error}
+            successMessage={successMessage}
+            handleFileUpload={handleFileUpload}
+            importHistory={importHistory}
+            onDelete={handleDeleteImport}
+            setShowModal={setShowModal}
+            missingFields={missingFields}
+          />
+          <ImportModal
+            isOpen={showModal}
+            onClose={() => {
+              setShowModal(false);
+              setError(null);
+              setMissingFields([]);
+            }}
+            missingFields={missingFields}
+            errorMessage={error ?? undefined}
+          />
+          <HelpSection />
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     siteName: "ZodaShield",
     images: [
       {
-        url: "/og-image.png", // Add your OG image
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "ZodaShield - Modern CRM Solution",

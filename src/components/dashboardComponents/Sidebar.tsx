@@ -8,11 +8,11 @@ import {
   LayoutDashboard,
   Users,
   FileInput,
-  ListChecks,
   Megaphone,
   CreditCard,
   Settings,
   HelpCircle,
+  ShieldUser,
   Shield,
   LucideIcon,
 } from "lucide-react";
@@ -27,6 +27,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
+  { icon: ShieldUser, href: "/dashboard/profile", label: "Profile" },
   { icon: LayoutDashboard, href: "/dashboard", label: "Dashboard" },
   {
     icon: Users,
@@ -47,9 +48,18 @@ const mainNavItems: NavItem[] = [
     label: "Import",
     adminOnly: true,
   },
-  { icon: ListChecks, href: "/tasks", label: "Tasks" },
-  { icon: Megaphone, href: "/campaigns", label: "Campaigns" },
-  { icon: CreditCard, href: "/billing", label: "Billing" },
+  {
+    icon: Megaphone,
+    href: "/dashboard/adsManager",
+    label: "Ads",
+    adminOnly: true,
+  },
+  {
+    icon: CreditCard,
+    href: "/dashboard/billing",
+    label: "Billing",
+    adminOnly: true,
+  },
 ];
 
 export default function Sidebar() {

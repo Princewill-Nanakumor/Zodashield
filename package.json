@@ -43,6 +43,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.57.0",
     "react-phone-input-2": "^2.15.1",
+    "react-qr-code": "^2.0.18",
     "react-select": "^5.10.1",
     "react-window": "^1.8.11",
     "resend": "^4.6.0",

@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { BarChart3, LogOut, Users, Search } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
+import { BarChart3, Users, Search } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
 import { Lead } from "@/types/leads";
 
@@ -157,10 +156,6 @@ export default function DashboardOverview({
     }
   }, [status, fetchUsers, fetchLeadStats]);
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: "/signin" });
-  };
-
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -190,14 +185,6 @@ export default function DashboardOverview({
             Welcome back, {session?.user?.firstName || "User"}
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="flex items-center gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </Button>
       </div>
 
       {/* Statistics Cards Grid */}

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  LogOut,
   Mail,
   Phone,
   Shield,
@@ -14,7 +13,7 @@ import {
   Lock,
   MapPin,
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -188,10 +187,6 @@ export default function GlassmorphismProfileCard({
     }));
   };
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: "/signin" });
-  };
-
   if (status === "loading" || isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -266,7 +261,7 @@ export default function GlassmorphismProfileCard({
     <div className={`min-h-screen ${className}`}>
       <div className="container mx-auto px-4 py-8 rounded-lg border">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div className="flex flex-col md:flex-row  items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold dark:text-white text-gray-900 mb-2">
               Your Profile
@@ -275,13 +270,6 @@ export default function GlassmorphismProfileCard({
               Manage your account settings
             </p>
           </div>
-          <Button
-            onClick={handleLogout}
-            className="mt-4 md:mt-0 dark:bg-transparent dark:hover:bg-white/10 dark:border dark:border-white/20 dark:text-white bg-gray-900 hover:bg-gray-800 text-white backdrop-blur-lg"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
