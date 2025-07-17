@@ -7,6 +7,7 @@ import { ContactSection } from "../leads/leadDetailsPanel/ContactSection";
 import { DetailsSection } from "../leads/leadDetailsPanel/DetailsSection";
 import LeadStatus from "../leads/leadDetailsPanel/LeadStatus";
 import CommentsAndActivities from "../leads/leadDetailsPanel/CommentsAndActivities";
+import AdsImageSlider from "../ads/AdsImageSlider";
 import {
   useSelectedLead,
   useUpdateLeadOptimistically,
@@ -41,7 +42,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
   >({
     details: true,
     contact: true,
-    deal: true,
+    ads: true, // Add ads section
   });
 
   // Use store's selectedLead if available, otherwise fall back to prop
@@ -110,6 +111,10 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
             lead={currentLead}
             isExpanded={expandedSections.contact}
             onToggle={() => toggleSection("contact")}
+          />
+          <AdsImageSlider
+            isExpanded={expandedSections.ads}
+            onToggle={() => toggleSection("ads")}
           />
           <DetailsSection
             lead={currentLead}
