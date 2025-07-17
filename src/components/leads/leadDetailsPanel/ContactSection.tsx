@@ -7,6 +7,7 @@ import {
   Copy,
   Check,
   Globe,
+  User,
 } from "lucide-react";
 import { Lead } from "@/types/leads";
 import { useToast } from "@/components/ui/use-toast";
@@ -24,21 +25,23 @@ export const ContactSection: FC<ContactSectionProps> = ({
 }) => {
   const { toast } = useToast();
   const [copiedField, setCopiedField] = useState<
-    "email" | "phone" | "country" | null
+    "name" | "email" | "phone" | "country" | null
   >(null);
 
   const handleCopy = useCallback(
-    async (text: string, field: "email" | "phone" | "country") => {
+    async (text: string, field: "name" | "email" | "phone" | "country") => {
       try {
         await navigator.clipboard.writeText(text);
         setCopiedField(field);
         toast({
           description: `${
-            field === "email"
-              ? "Email"
-              : field === "phone"
-              ? "Phone number"
-              : "Country"
+            field === "name"
+              ? "Name"
+              : field === "email"
+                ? "Email"
+                : field === "phone"
+                  ? "Phone number"
+                  : "Country"
           } copied to clipboard`,
         });
         setTimeout(() => setCopiedField(null), 2000);
@@ -53,6 +56,9 @@ export const ContactSection: FC<ContactSectionProps> = ({
   );
 
   if (!lead) return null;
+
+  // Get the full name
+  const fullName = `${lead.firstName} ${lead.lastName}`.trim();
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -71,6 +77,29 @@ export const ContactSection: FC<ContactSectionProps> = ({
       </div>
       {isExpanded && (
         <div className="px-4 pb-4 space-y-3">
+          <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+            <User className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <div className="flex-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
+              <div className="flex items-center justify-between">
+                <p>{fullName}</p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopy(fullName, "name");
+                  }}
+                  className="ml-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  title="Copy name"
+                >
+                  {copiedField === "name" ? (
+                    <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
           <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
             <Mail className="w-5 h-5 text-gray-400 dark:text-gray-500" />
             <div className="flex-1">
