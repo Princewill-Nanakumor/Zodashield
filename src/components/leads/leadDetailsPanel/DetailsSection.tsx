@@ -15,10 +15,9 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
 }) => {
   if (!lead) return null;
 
-  // Helper function to get assigned user name - FIXED VERSION
+  // Helper function to get assigned user name
   const getAssignedUserName = () => {
     if (!lead.assignedTo) return "Unassigned";
-
     if (typeof lead.assignedTo === "string") {
       return "Unassigned";
     }
@@ -27,15 +26,12 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
         firstName?: string;
         lastName?: string;
       };
-
       if (assignedTo.firstName && assignedTo.lastName) {
-        const fullName = `${assignedTo.firstName} ${assignedTo.lastName}`;
-        return fullName;
+        return `${assignedTo.firstName} ${assignedTo.lastName}`;
       }
       if (assignedTo.firstName) return assignedTo.firstName;
       if (assignedTo.lastName) return assignedTo.lastName;
     }
-
     return "Unknown User";
   };
 
@@ -54,7 +50,11 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
           <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         )}
       </div>
-      {isExpanded && (
+      <div
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
         <div className="px-4 pb-4 space-y-3">
           <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
             <User className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -82,7 +82,7 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

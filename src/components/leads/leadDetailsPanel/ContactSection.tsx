@@ -75,7 +75,13 @@ export const ContactSection: FC<ContactSectionProps> = ({
           <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         )}
       </div>
-      {isExpanded && (
+
+      {/* Content with smooth transition */}
+      <div
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
         <div className="px-4 pb-4 space-y-3">
           <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
             <User className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -176,7 +182,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
