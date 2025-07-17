@@ -80,16 +80,21 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     [updateLeadOptimistically, revertLeadUpdate, currentLead]
   );
 
-  if (!isOpen || !currentLead?._id) {
+  // Don't render anything if no lead or not open
+  if (!currentLead?._id || !isOpen) {
     return null;
   }
 
   return (
     <div
-      className={`fixed inset-y-0 right-0 flex bg-white dark:bg-gray-800  border-l-2 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
-        isOpen ? "translate-x-0" : "translate-x-full"
-      }`}
-      style={{ width: "80vw", maxWidth: "1200px" }}
+      className="fixed right-0 flex bg-white dark:bg-gray-800 border-l-2 shadow-2xl z-50"
+      style={{
+        width: "80vw",
+        maxWidth: "1200px",
+        top: "80px", // Height of the navbar
+        bottom: "0px", // Extend to bottom of viewport
+        height: "calc(100vh - 80px)", // Subtract navbar height
+      }}
     >
       <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
         <LeadHeader

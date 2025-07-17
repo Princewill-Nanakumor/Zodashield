@@ -137,7 +137,7 @@ export default function DashboardNavbar({
             </div>
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 dark:divide-gray-700 rounded-md bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black/10 dark:ring-white/10 z-50 overflow-hidden transition-all duration-200 ease-out transform opacity-100 scale-100">
+            <div className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 dark:divide-gray-700 rounded-md bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black/10 dark:ring-white/10 z-[60] overflow-hidden transition-all duration-200 ease-out transform opacity-100 scale-100">
               {/* User Info Section */}
               <div className="px-4 py-3">
                 <div className="flex items-center">
