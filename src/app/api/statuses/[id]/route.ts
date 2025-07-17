@@ -1,30 +1,56 @@
-import { NextResponse } from "next/server";
+// /api/statuses/[id]/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
-import { ObjectId } from "mongodb";
 import Status from "@/models/Status";
 import { authOptions } from "@/libs/auth";
+import mongoose from "mongoose";
 
-function extractIdFromUrl(urlString: string): string {
-  const url = new URL(urlString);
-  const parts = url.pathname.split("/");
-  // Assumes route: /api/statuses/[id]
-  // e.g. /api/statuses/123 -> parts = ["", "api", "statuses", "123"]
-  return parts[parts.length - 1];
+// Helper to retry DB operation if connection fails
+async function withDbRetry<T>(
+  operation: () => Promise<T>,
+  retries = 2
+): Promise<T> {
+  let lastError;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      await connectMongoDB();
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (i === retries) throw err;
+      // Wait a bit before retrying
+      await new Promise((res) => setTimeout(res, 500 * (i + 1)));
+    }
+  }
+  throw lastError;
 }
 
-export async function PUT(request: Request) {
+// PUT /api/statuses/[id]
+export async function PUT(req: NextRequest) {
   try {
-    const id = extractIdFromUrl(request.url);
-
     const session = await getServerSession(authOptions);
-
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, color } = await request.json();
+    // Only ADMIN users can update statuses
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only administrators can update statuses" },
+        { status: 403 }
+      );
+    }
 
+    // Extract status ID from URL
+    const segments = req.url.split("/");
+    const id = segments[segments.length - 1];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid status ID" }, { status: 400 });
+    }
+
+    const { name, color } = await req.json();
     if (!name || !color) {
       return NextResponse.json(
         { message: "Name and color are required" },
@@ -32,70 +58,89 @@ export async function PUT(request: Request) {
       );
     }
 
-    await connectMongoDB();
+    // Build query for multi-tenancy
+    const query: {
+      _id: mongoose.Types.ObjectId;
+      adminId: mongoose.Types.ObjectId;
+    } = {
+      _id: new mongoose.Types.ObjectId(id),
+      adminId: new mongoose.Types.ObjectId(session.user.id),
+    };
 
-    // Update status with adminId filter for multi-tenancy
-    const updatedStatus = await Status.findOneAndUpdate(
-      {
-        _id: new ObjectId(id),
-        adminId: new ObjectId(session.user.id), // Only update statuses owned by this admin
-      },
-      { $set: { name, color } },
-      { new: true }
+    const updatedStatus = await withDbRetry(() =>
+      Status.findOneAndUpdate(
+        query,
+        { name, color, updatedAt: new Date() },
+        { new: true }
+      )
     );
 
     if (!updatedStatus) {
       return NextResponse.json(
-        { message: "Status not found" },
+        { error: "Status not found or not authorized" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      message: "Status updated successfully",
-      data: updatedStatus,
-    });
+    return NextResponse.json(updatedStatus);
   } catch (error) {
     console.error("Error updating status:", error);
     return NextResponse.json(
-      { message: "Error updating status" },
+      { message: "Failed to update status" },
       { status: 500 }
     );
   }
 }
 
-export async function DELETE(request: Request) {
+// DELETE /api/statuses/[id]
+export async function DELETE(req: NextRequest) {
   try {
-    const id = extractIdFromUrl(request.url);
-
     const session = await getServerSession(authOptions);
-
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongoDB();
+    // Only ADMIN users can delete statuses
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only administrators can delete statuses" },
+        { status: 403 }
+      );
+    }
 
-    // Delete status with adminId filter for multi-tenancy
-    const deletedStatus = await Status.findOneAndDelete({
-      _id: new ObjectId(id),
-      adminId: new ObjectId(session.user.id), // Only delete statuses owned by this admin
-    });
+    // Extract status ID from URL
+    const segments = req.url.split("/");
+    const id = segments[segments.length - 1];
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid status ID" }, { status: 400 });
+    }
+
+    // Build query for multi-tenancy
+    const query: {
+      _id: mongoose.Types.ObjectId;
+      adminId: mongoose.Types.ObjectId;
+    } = {
+      _id: new mongoose.Types.ObjectId(id),
+      adminId: new mongoose.Types.ObjectId(session.user.id),
+    };
+
+    const deletedStatus = await withDbRetry(() =>
+      Status.findOneAndDelete(query)
+    );
 
     if (!deletedStatus) {
       return NextResponse.json(
-        { message: "Status not found" },
+        { error: "Status not found or not authorized" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      message: "Status deleted successfully",
-    });
+    return NextResponse.json({ message: "Status deleted successfully" });
   } catch (error) {
     console.error("Error deleting status:", error);
     return NextResponse.json(
-      { message: "Error deleting status" },
+      { message: "Failed to delete status" },
       { status: 500 }
     );
   }

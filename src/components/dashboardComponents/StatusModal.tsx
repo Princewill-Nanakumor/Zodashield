@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Status {
   _id: string;
@@ -31,6 +32,7 @@ const StatusModal = ({
   onStatusCreated,
 }: StatusModalProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: "",
     color: "#000000",
@@ -88,12 +90,25 @@ const StatusModal = ({
         );
       }
 
-      sessionStorage.removeItem("leadStatuses");
+      // Parse the response but don't store it since we're invalidating cache
+      await response.json();
 
       toast({
         title: "Success",
         description: `Status ${isEditing ? "updated" : "created"} successfully`,
         variant: "success",
+      });
+
+      // Invalidate the statuses cache so StatusContext gets updated
+      await queryClient.invalidateQueries({
+        queryKey: ["statuses"],
+        exact: false,
+      });
+
+      // Also invalidate the leads cache to refresh the table
+      await queryClient.invalidateQueries({
+        queryKey: ["leads"],
+        exact: false,
       });
 
       if (isEditing && editingId) {
@@ -151,6 +166,18 @@ const StatusModal = ({
           title: "Success",
           description: "Status deleted successfully",
           variant: "success",
+        });
+
+        // Invalidate the statuses cache
+        await queryClient.invalidateQueries({
+          queryKey: ["statuses"],
+          exact: false,
+        });
+
+        // Also invalidate the leads cache
+        await queryClient.invalidateQueries({
+          queryKey: ["leads"],
+          exact: false,
         });
 
         setStatuses((prev) => prev.filter((status) => status._id !== statusId));

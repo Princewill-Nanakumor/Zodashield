@@ -93,14 +93,14 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
 
         const data = await response.json();
 
-        // Add NEW status if it doesn't exist
+        // Add NEW status if it doesn't exist - FIX: Use "NEW" as both _id and name
         const hasNewStatus = data.some(
-          (status: Status) => status._id === "NEW"
+          (status: Status) => status.name === "NEW"
         );
         if (!hasNewStatus) {
           data.unshift({
             _id: "NEW",
-            name: "New",
+            name: "NEW", // Changed from "New" to "NEW" to match your leads
             color: "#3B82F6",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

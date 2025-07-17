@@ -1,3 +1,4 @@
+// /Users/safeconnection/Downloads/drivecrm/src/app/api/leads/[id]/status/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession, Session as NextAuthSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";

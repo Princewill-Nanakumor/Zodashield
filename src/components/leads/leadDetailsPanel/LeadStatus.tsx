@@ -12,18 +12,13 @@ import {
 } from "@/components/ui/select";
 import { useUpdateLeadOptimistically } from "@/stores/leadsStore";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface Status {
-  _id: string;
-  name: string;
-  color: string;
-}
+import { useStatuses } from "@/context/StatusContext";
 
 interface LeadStatusProps {
   lead: Lead;
 }
 
-// Helper to add alpha to hex color (opacity: 0-255 as hex, e.g. "CC" or "B3")
+// Helper to add alpha to hex color
 function hexWithAlpha(hex: string, alpha: string) {
   if (!hex) return "#3b82f6" + alpha;
   if (hex.length === 7) return hex + alpha;
@@ -35,13 +30,14 @@ function hexWithAlpha(hex: string, alpha: string) {
 const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
   const { toast } = useToast();
   const updateLeadOptimistically = useUpdateLeadOptimistically();
-  const [statuses, setStatuses] = useState<Status[]>([]);
-  const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>(lead.status);
   const queryClient = useQueryClient();
 
-  // Opacity for dark mode (hex alpha: "B3"=70%)
+  // Use the StatusContext instead of fetching statuses locally
+  const { statuses, isLoading: isLoadingStatuses } = useStatuses();
+
+  // Opacity for dark mode
   const darkAlpha = "B3";
 
   // Detect dark mode
@@ -54,44 +50,11 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     return () => match.removeEventListener("change", handler);
   }, []);
 
-  useEffect(() => {
-    const fetchStatuses = async () => {
-      setIsLoadingStatuses(true);
-      try {
-        const res = await fetch("/api/statuses");
-        if (!res.ok) throw new Error("Failed to fetch statuses");
-        const data = await res.json();
-
-        // Always ensure "New" is present
-        const hasNew = data.some((s: Status) => s.name.toLowerCase() === "new");
-        if (!hasNew) {
-          data.unshift({
-            _id: "new",
-            name: "New",
-            color: "#3B82F6",
-          });
-        }
-
-        setStatuses(data);
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to load statuses",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingStatuses(false);
-      }
-    };
-    fetchStatuses();
-  }, [toast]);
-
   // Keep currentStatus in sync with lead prop
   useEffect(() => {
     setCurrentStatus(lead.status);
   }, [lead.status]);
 
-  // --- OPTIMIZED STATUS UPDATE ---
   const handleStatusChange = useCallback(
     async (newStatusId: string) => {
       if (!lead._id) return;
@@ -111,9 +74,8 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
       setIsUpdating(true);
 
       try {
-        // Abort controller for request cancellation
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const response = await fetch(`/api/leads/${lead._id}/status`, {
           method: "PATCH",
@@ -134,20 +96,18 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
         const updatedLead = await response.json();
         setCurrentStatus(updatedLead.status);
 
-        // --- OPTIMIZED STORE UPDATE ---
+        // Update store optimistically
         updateLeadOptimistically(lead._id, updatedLead);
 
-        // --- MODIFIED QUERY INVALIDATION ---
-        // Only invalidate statuses, not all leads queries
+        // Invalidate queries to refresh the table
         await Promise.all([
           queryClient.invalidateQueries({
             queryKey: ["statuses"],
             exact: false,
           }),
-          // Only invalidate specific lead queries, not all leads
           queryClient.invalidateQueries({
-            queryKey: ["leads", "all"],
-            exact: true,
+            queryKey: ["leads"],
+            exact: false,
           }),
         ]);
 
@@ -179,11 +139,10 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
     [lead._id, currentStatus, updateLeadOptimistically, queryClient, toast]
   );
 
+  // Find the current status object by ID (not name)
   const currentStatusObj = statuses.find((s) => s._id === currentStatus);
   const currentStatusColor = currentStatusObj?.color || "#3b82f6";
 
-  // Light mode: text is always white, bg is status color
-  // Dark mode: text is always white, bg is faded status color
   const triggerBg = isDark
     ? hexWithAlpha(currentStatusColor, darkAlpha)
     : currentStatusColor;
@@ -246,7 +205,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
                 return (
                   <SelectItem
                     key={status._id}
-                    value={status._id}
+                    value={status._id} // Use status._id as the value
                     className="my-1 rounded-md transition-colors font-medium cursor-pointer"
                     style={{
                       backgroundColor: itemBg,

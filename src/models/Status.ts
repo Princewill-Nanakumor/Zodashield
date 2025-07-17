@@ -4,7 +4,7 @@ export interface IStatus {
   _id: mongoose.Types.ObjectId;
   name: string;
   color: string;
-  adminId: mongoose.Types.ObjectId; // For multi-tenancy
+  adminId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
