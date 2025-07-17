@@ -36,8 +36,8 @@ export function AuthGuard({
 
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center h-screen bg-background dark:bg-gray-800">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 dark:border-white border-t-transparent"></div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-pulse rounded-full w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500"></div>
       </div>
     );
   }

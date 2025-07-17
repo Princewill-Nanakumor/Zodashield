@@ -16,6 +16,7 @@ import {
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { ProfileSkeleton } from "./ProfileSkeleton";
 
 interface UserProfile {
   id: string;
@@ -188,11 +189,7 @@ export default function GlassmorphismProfileCard({
   };
 
   if (status === "loading" || isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-pulse rounded-full w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500"></div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!session) {

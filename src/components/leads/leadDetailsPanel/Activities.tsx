@@ -252,7 +252,7 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-gray-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-purple-500 dark:text-gray-500" />
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LeadsPageContent from "@/components/dashboardComponents/LeadsPageContent";
 import { useSearchContext } from "@/context/SearchContext";
+import { Shield } from "lucide-react";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -35,8 +36,15 @@ const AllLeadsPage: React.FC = () => {
 
   if (status === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 dark:border-white border-t-transparent"></div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="relative w-16 h-16 flex items-center justify-center">
+          {/* Rotating border */}
+          <div className="absolute inset-0 border-4 border-transparent border-t-blue-400 border-r-purple-500 rounded-full animate-spin w-16 h-16"></div>
+
+          <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600">
+            <Shield size={28} className="text-white" />
+          </div>
+        </div>
       </div>
     );
   }

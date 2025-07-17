@@ -5,11 +5,12 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import { UserFormModal } from "@/components/dashboardComponents/UserFormModal";
-import { PasswordResetModal } from "@/components/dashboardComponents/PasswordRestModal";
+import { PasswordResetModal } from "./PasswordRestModal";
 import { UserDataManager } from "../user-management/UserDataManager";
 import { UserCRUDOperations } from "@/components/user-management/UserCRUDOperations";
 import { UserTableDisplay } from "@/components/user-management/UserTableDisplay";
 import { AuthGuard } from "@/components/user-management/AuthGuard";
+import { Shield } from "lucide-react";
 
 interface User {
   id: string;
@@ -53,56 +54,34 @@ export default function UsersManagement({
     useState<User | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Create a callback to trigger data refresh
+  // Only trigger refresh when needed
   const triggerRefresh = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1);
   }, []);
 
-  // Handle successful user creation
   const handleUserCreated = useCallback(
     (user: User) => {
-      // Call the parent callback if provided
-      if (onUserCreated) {
-        onUserCreated(user);
-      }
-
-      // Trigger data refresh
+      if (onUserCreated) onUserCreated(user);
       triggerRefresh();
-
-      // Close the modal
       setShowModal(false);
       setSelectedUser(null);
     },
     [onUserCreated, triggerRefresh]
   );
 
-  // Handle successful user update
   const handleUserUpdated = useCallback(
     (user: User) => {
-      // Call the parent callback if provided
-      if (onUserUpdated) {
-        onUserUpdated(user);
-      }
-
-      // Trigger data refresh
+      if (onUserUpdated) onUserUpdated(user);
       triggerRefresh();
-
-      // Close the modal
       setShowModal(false);
       setSelectedUser(null);
     },
     [onUserUpdated, triggerRefresh]
   );
 
-  // Handle successful user deletion
   const handleUserDeleted = useCallback(
     (userId: string) => {
-      // Call the parent callback if provided
-      if (onUserDeleted) {
-        onUserDeleted(userId);
-      }
-
-      // Trigger data refresh
+      if (onUserDeleted) onUserDeleted(userId);
       triggerRefresh();
     },
     [onUserDeleted, triggerRefresh]
@@ -110,8 +89,15 @@ export default function UsersManagement({
 
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center h-screen bg-background dark:bg-gray-800">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 dark:border-white border-t-transparent"></div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="relative w-16 h-16 flex items-center justify-center">
+          {/* Rotating border */}
+          <div className="absolute inset-0 border-4 border-transparent border-t-blue-400 border-r-purple-500 rounded-full animate-spin w-16 h-16"></div>
+
+          <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600">
+            <Shield size={28} className="text-white" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -186,19 +172,16 @@ export default function UsersManagement({
                 onSubmit={async (userData) => {
                   try {
                     if (selectedUser) {
-                      // Update existing user
                       const updatedUser = await handleUpdateUser(
                         userData,
                         selectedUser.id
                       );
                       handleUserUpdated(updatedUser);
                     } else {
-                      // Create new user
                       const newUser = await handleCreateUser(userData);
                       handleUserCreated(newUser);
                     }
                   } catch (error) {
-                    // Error handling is done in the modal component
                     console.error("Error in form submission:", error);
                   }
                 }}

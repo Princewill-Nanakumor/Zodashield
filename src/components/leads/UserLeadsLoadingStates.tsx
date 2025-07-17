@@ -1,5 +1,7 @@
 "use client";
 
+import { Shield } from "lucide-react";
+
 export const FilterSkeleton = () => (
   <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
     <div className="flex items-center justify-between">
@@ -61,7 +63,14 @@ export const HeaderSkeleton = () => (
 );
 
 export const LoadingSpinner = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-    <div className="h-12 w-12 animate-spin text-gray-500 dark:text-gray-400 border-4 border-gray-300 dark:border-white border-t-transparent rounded-full"></div>
+  <div className="flex justify-center items-center h-screen">
+    <div className="relative w-16 h-16 flex items-center justify-center">
+      {/* Rotating border */}
+      <div className="absolute inset-0 border-4 border-transparent border-t-blue-400 border-r-purple-500 rounded-full animate-spin w-16 h-16"></div>
+
+      <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600">
+        <Shield size={28} className="text-white" />
+      </div>
+    </div>
   </div>
 );

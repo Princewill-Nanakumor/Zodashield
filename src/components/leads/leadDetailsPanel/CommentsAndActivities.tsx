@@ -306,7 +306,7 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
       <div className="flex-1 flex flex-col min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 dark:text-blue-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-purple-500 dark:text-blue-400" />
           </div>
         ) : (
           <>

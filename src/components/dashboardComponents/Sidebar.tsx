@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   LayoutDashboard,
+  ChartCandlestick,
   Users,
   FileInput,
   Megaphone,
@@ -28,7 +29,7 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { icon: ShieldUser, href: "/dashboard/profile", label: "Profile" },
-  { icon: LayoutDashboard, href: "/dashboard", label: "Dashboard" },
+  { icon: ChartCandlestick, href: "/dashboard", label: "Dashboard" },
   {
     icon: Users,
     href: "/dashboard/all-leads",

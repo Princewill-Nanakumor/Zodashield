@@ -10,7 +10,6 @@ import { TableHeader as CustomTableHeader } from "@/components/leads/LeadsTable/
 import { TableContent } from "@/components/leads/TableContent";
 import { TablePagination } from "@/components/leads/TablePagination";
 import { Table } from "@/components/ui/Table";
-import { Loader2 } from "lucide-react";
 import {
   useSelectedLead,
   useSetSelectedLead,
@@ -243,8 +242,8 @@ export default function LeadsTable({
 
   if (isLoading) {
     return (
-      <div className="p-4 rounded-lg shadow dark:bg-gray-800 dark:text-white flex items-center justify-center min-h-[200px]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-pulse rounded-full w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500"></div>
       </div>
     );
   }

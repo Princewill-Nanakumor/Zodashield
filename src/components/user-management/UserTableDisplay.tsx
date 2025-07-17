@@ -1,4 +1,3 @@
-// src/components/user-management/UserTableDisplay.tsx
 "use client";
 
 import {
@@ -12,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash, KeyRound } from "lucide-react";
+import { UserTableSkeleton } from "../dashboardComponents/CreateUserTableSkeleton";
 
 interface User {
   id: string;
@@ -104,16 +104,11 @@ export function UserTableDisplay({
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow>
-              <TableCell
-                colSpan={showActions ? 7 : 6}
-                className="text-center py-8 text-gray-500 dark:text-gray-400"
-              >
-                <div className="flex justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 dark:border-gray-600 border-t-transparent"></div>
-                </div>
-              </TableCell>
-            </TableRow>
+            <tr>
+              <td colSpan={showActions ? 7 : 6} className="p-0">
+                <UserTableSkeleton rows={6} />
+              </td>
+            </tr>
           ) : filteredUsers.length === 0 ? (
             <TableRow>
               <TableCell
