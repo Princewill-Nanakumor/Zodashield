@@ -73,12 +73,8 @@ export default function DashboardNavbar({
   if (!mounted) {
     // SSR fallback
     return (
-      <nav className="bg-gradient-to-r from-purple-300 to-purple-500 shadow-lg px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Leads
-          </h1>
-        </div>
+      <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center space-x-3"></div>
         <div className="relative w-full max-w-md mx-8">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-purple-300" />
@@ -97,7 +93,7 @@ export default function DashboardNavbar({
   }
 
   return (
-    <nav className="bg-gradient-to-r from-purple-300 to-purple-500 shadow-lg px-8 py-4 flex items-center justify-between">
+    <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
       {/* Center: Search Bar */}
       <div className="flex-1 flex justify-center">
         <div className="w-full max-w-md">
