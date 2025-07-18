@@ -98,11 +98,6 @@ export default function DashboardNavbar({
 
   return (
     <nav className="bg-gradient-to-r from-purple-300 to-purple-500 shadow-lg px-8 py-4 flex items-center justify-between">
-      {/* Left: Logo/Title */}
-      <div className="flex items-center space-x-3">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Leads</h1>
-      </div>
-
       {/* Center: Search Bar */}
       <div className="flex-1 flex justify-center">
         <div className="w-full max-w-md">
