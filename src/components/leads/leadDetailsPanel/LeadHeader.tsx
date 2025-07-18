@@ -22,7 +22,7 @@ export const LeadHeader: FC<LeadHeaderProps> = ({
   const initials = `${lead.firstName.charAt(0)}${lead.lastName.charAt(0)}`;
 
   return (
-    <div className="p-6 border-b border-gray-200 dark:border-gray-700 border-l-1 bg-white dark:bg-gray-800 relative z-50">
+    <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-50">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
