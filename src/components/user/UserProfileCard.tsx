@@ -278,13 +278,16 @@ export default function GlassmorphismProfileCard({
                   Personal Information
                 </h2>
                 {!isEditing ? (
-                  <Button
-                    onClick={handleEdit}
-                    className="dark:bg-transparent dark:hover:bg-white/10 dark:border dark:border-white/20 dark:text-white bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
+                  // Only show Edit button for ADMIN
+                  profile.role === "ADMIN" && (
+                    <Button
+                      onClick={handleEdit}
+                      className="dark:bg-transparent dark:hover:bg-white/10 dark:border dark:border-white/20 dark:text-white bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  )
                 ) : (
                   <div className="flex gap-2">
                     <Button
