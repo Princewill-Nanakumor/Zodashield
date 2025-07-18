@@ -131,7 +131,7 @@ export default function BillingManager() {
                       </span>
                       <Button
                         onClick={handleCopy}
-                        className="flex items-center text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 bg-transparent p-0"
+                        className="flex items-center text-sm text-purple-600  hover:bg-gray-200 hover:dark:bg-gray-800 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 bg-transparent p-0"
                       >
                         {copied ? (
                           <>
