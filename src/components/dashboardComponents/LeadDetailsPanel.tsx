@@ -92,9 +92,9 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
       style={{
         width: "80vw",
         maxWidth: "1200px",
-        top: "80px", // Height of the navbar
-        bottom: "0px", // Extend to bottom of viewport
-        height: "calc(100vh - 80px)", // Subtract navbar height
+        top: "80px",
+        bottom: "0px",
+        height: "calc(100vh - 80px)",
       }}
     >
       <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">

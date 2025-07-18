@@ -1,5 +1,3 @@
-"use client";
-
 import { FC, useState, useEffect } from "react";
 import {
   ChevronLeft,
@@ -20,16 +18,20 @@ export const AdsImageSlider: FC<AdsImageSliderProps> = ({
 }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Auto-advance slides
+  // Auto-advance slides to a random slide (not the current one)
   useEffect(() => {
     if (!isExpanded) return;
 
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % motivationalAds.length);
-    }, 5000); // Change slide every 5 seconds
+      let next;
+      do {
+        next = Math.floor(Math.random() * motivationalAds.length);
+      } while (next === currentSlide && motivationalAds.length > 1);
+      setCurrentSlide(next);
+    }, 6000);
 
     return () => clearInterval(interval);
-  }, [isExpanded]);
+  }, [isExpanded, currentSlide]);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % motivationalAds.length);
