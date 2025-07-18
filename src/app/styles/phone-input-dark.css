@@ -1,52 +1,77 @@
-.phone-input-container.dark .react-tel-input {
-  background: #374151 !important; /* Tailwind gray-700 */
-  border-color: #4b5563 !important; /* Tailwind gray-600 */
+/* --- Light mode: phone input border, radius, and focus ring --- */
+.phone-input-container .react-tel-input {
+  background: #fff !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid #d1d5db !important; /* Tailwind gray-300 */
 }
-
-.phone-input-container.dark .react-tel-input input {
-  background: #374151 !important; /* Tailwind gray-700 */
-  color: #fff !important; /* Tailwind white */
-  border-color: #4b5563 !important; /* Tailwind gray-600 */
+.phone-input-container .react-tel-input input {
+  background: #fff !important;
+  color: #111827 !important; /* Tailwind gray-900 */
+  border-radius: 0.75rem !important;
+  border: 1px solid #d1d5db !important; /* Tailwind gray-300 */
   box-shadow: none !important;
+  outline: none !important;
+  font-size: 1rem !important;
+  font-family: inherit !important;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
-
-.phone-input-container.dark .react-tel-input input:focus {
-  border-color: #818cf8 !important; /* Tailwind indigo-400 for focus */
+.phone-input-container .react-tel-input input:focus {
+  border: 2px solid #6366f1 !important; /* Tailwind indigo-500 */
+  box-shadow: 0 0 0 2px #818cf833 !important; /* Tailwind indigo-400/20 */
   outline: none !important;
 }
 
+/* --- Dark mode: your existing styles, with focus ring added --- */
+.phone-input-container.dark .react-tel-input {
+  background: #374151 !important; /* Tailwind gray-700 */
+  border-radius: 0.75rem !important;
+  border: 1px solid #4b5563 !important; /* Tailwind gray-600 */
+}
+.phone-input-container.dark .react-tel-input input {
+  background: #374151 !important; /* Tailwind gray-700 */
+  color: #fff !important; /* Tailwind white */
+  border-radius: 0.75rem !important;
+  border: 1px solid #4b5563 !important; /* Tailwind gray-600 */
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 1rem !important;
+  font-family: inherit !important;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.phone-input-container.dark .react-tel-input input:focus {
+  border: 2px solid #818cf8 !important; /* Tailwind indigo-400 for focus */
+  box-shadow: 0 0 0 2px #818cf833 !important;
+  outline: none !important;
+}
+
+/* Placeholder color for both modes */
+.phone-input-container .react-tel-input input::placeholder,
 .phone-input-container.dark .react-tel-input input::placeholder {
   color: #9ca3af !important; /* Tailwind gray-400 */
 }
 
+/* Hide flag if you want, or keep your previous flag styles */
+.phone-input-container .react-tel-input .flag-dropdown,
+.phone-input-container .react-tel-input .selected-flag,
 .phone-input-container.dark .react-tel-input .flag-dropdown,
 .phone-input-container.dark .react-tel-input .selected-flag {
-  background: #374151 !important; /* Tailwind gray-700 */
-  border-color: #4b5563 !important; /* Tailwind gray-600 */
-}
-
-.phone-input-container.dark .react-tel-input .country-list {
-  background: #374151 !important; /* Tailwind gray-700 */
-  color: #fff !important;
-  border-color: #4b5563 !important;
-  box-shadow: none !important;
-}
-
-.phone-input-container.dark .react-tel-input .country-list .country {
-  color: #fff !important;
-}
-
-.phone-input-container.dark .react-tel-input .country-list .country:hover,
-.phone-input-container.dark .react-tel-input .country-list .country.highlight {
-  background: #1f2937 !important; /* Tailwind gray-800 */
+  background: transparent !important;
+  border: none !important;
 }
 
 /* Remove border radius if you want squared corners, or match your other inputs */
+.phone-input-container .react-tel-input,
+.phone-input-container .react-tel-input input,
 .phone-input-container.dark .react-tel-input,
 .phone-input-container.dark .react-tel-input input {
   border-radius: 0.75rem !important; /* Match your other inputs */
 }
 
+.phone-input-container .react-tel-input input,
 .phone-input-container.dark .react-tel-input input {
   width: 100% !important;
 }

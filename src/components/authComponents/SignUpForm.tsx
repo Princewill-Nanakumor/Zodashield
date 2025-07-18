@@ -293,10 +293,11 @@ export default function SignUpForm() {
                     }}
                     inputClass={`!pl-10 sm:!pl-12 !h-10 sm:!h-12 !w-full !rounded-lg !text-sm sm:!text-base ${
                       errors.phoneNumber
-                        ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500"
-                        : "!border-gray-300 focus:!border-indigo-500 focus:!ring-indigo-500"
-                    } placeholder-gray-500 dark:placeholder-gray-400 transition-colors`}
+                        ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500 focus:!ring-2"
+                        : "!border-gray-300 dark:!border-gray-600 focus:!ring-indigo-500 focus:!ring-2"
+                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:border-transparent transition-colors`}
                     buttonClass="hidden"
+                    containerClass="!w-full"
                     disabled={loading}
                     placeholder="Phone Number"
                     disableDropdown={true}
@@ -400,18 +401,18 @@ export default function SignUpForm() {
         <button
           type="submit"
           disabled={loading}
-          className="group relative w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
-            <span className="flex items-center">
-              <Loader2 className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
-              Creating account...
-            </span>
+            <>
+              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+              <span>Creating account...</span>
+            </>
           ) : (
-            <span className="flex items-center">
-              Sign up
-              <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </span>
+            <>
+              <span>Sign up</span>
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
+            </>
           )}
         </button>
 
@@ -419,7 +420,7 @@ export default function SignUpForm() {
         <div className="text-center text-xs sm:text-sm">
           <Link
             href="/signin"
-            className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
+            className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors inline-block"
           >
             Already have an account? Sign in
           </Link>

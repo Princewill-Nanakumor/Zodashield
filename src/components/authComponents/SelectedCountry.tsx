@@ -7,7 +7,7 @@ import Select, {
 import Image from "next/image";
 import { countryOptions } from "./CountryData";
 import { Inter } from "next/font/google";
-import { Globe } from "lucide-react"; // <-- Import Globe icon
+import { Globe } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
