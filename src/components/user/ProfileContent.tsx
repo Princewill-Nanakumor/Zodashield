@@ -43,6 +43,7 @@ interface ProfileContentProps {
   onCancel: () => void;
   onInputChange: (field: keyof UserProfile, value: string) => void;
   inputClass?: (editing: boolean) => string;
+  isUpdating?: boolean;
 }
 
 export const ProfileContent: React.FC<ProfileContentProps> = ({

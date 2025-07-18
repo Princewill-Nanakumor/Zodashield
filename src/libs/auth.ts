@@ -1,3 +1,4 @@
+// /Users/safeconnection/Downloads/drivecrm/src/libs/auth.ts
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
@@ -171,7 +172,7 @@ export const authOptions: NextAuthOptions = {
     verifyRequest: "/forgot-password",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -183,6 +184,12 @@ export const authOptions: NextAuthOptions = {
         token.country = user.country;
         token.adminId = user.adminId;
       }
+
+      // Handle session updates
+      if (trigger === "update" && session) {
+        return { ...token, ...session.user };
+      }
+
       return token;
     },
     async session({ session, token }) {

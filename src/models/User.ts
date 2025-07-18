@@ -1,3 +1,5 @@
+// /Users/safeconnection/Downloads/drivecrm/src/models/User.ts
+
 import mongoose, { Schema } from "mongoose";
 
 export interface IUser {
