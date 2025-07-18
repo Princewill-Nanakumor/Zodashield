@@ -1,3 +1,4 @@
+// Update your existing Activity model to include user-specific activities
 import mongoose from "mongoose";
 
 export type ActivityType =
@@ -8,7 +9,19 @@ export type ActivityType =
   | "STATUS_CHANGE"
   | "ASSIGNMENT"
   | "COMMENT"
-  | "LEAD_CREATED";
+  | "LEAD_CREATED"
+  // Add user-specific activity types
+  | "USER_LOGIN"
+  | "USER_LOGOUT"
+  | "USER_CREATED"
+  | "USER_UPDATED"
+  | "USER_DELETED"
+  | "SUBSCRIPTION_CREATED"
+  | "SUBSCRIPTION_UPDATED"
+  | "SUBSCRIPTION_CANCELLED"
+  | "PROFILE_UPDATED"
+  | "PASSWORD_CHANGED"
+  | "PERMISSION_CHANGED";
 
 export interface IActivity {
   type: ActivityType;
@@ -16,7 +29,7 @@ export interface IActivity {
   details: string;
   timestamp: Date;
   leadId?: mongoose.Types.ObjectId;
-  adminId?: mongoose.Types.ObjectId; // Add multi-tenancy field
+  adminId?: mongoose.Types.ObjectId;
   metadata: {
     contactId?: string;
     email?: string;
@@ -51,6 +64,17 @@ export interface IActivity {
       oldValue: string | null;
       newValue: string | null;
     }>;
+    // Add user-specific metadata
+    ipAddress?: string;
+    userAgent?: string;
+    sessionId?: string;
+    targetUserId?: string; // For admin actions on other users
+    subscriptionPlan?: string;
+    subscriptionStatus?: string;
+    permissionChanges?: Array<{
+      permission: string;
+      granted: boolean;
+    }>;
   };
 }
 
@@ -70,6 +94,17 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
         "ASSIGNMENT",
         "COMMENT",
         "LEAD_CREATED",
+        "USER_LOGIN",
+        "USER_LOGOUT",
+        "USER_CREATED",
+        "USER_UPDATED",
+        "USER_DELETED",
+        "SUBSCRIPTION_CREATED",
+        "SUBSCRIPTION_UPDATED",
+        "SUBSCRIPTION_CANCELLED",
+        "PROFILE_UPDATED",
+        "PASSWORD_CHANGED",
+        "PERMISSION_CHANGED",
       ],
     },
     userId: {
@@ -92,7 +127,7 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
     },
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: false, // Make it optional for backward compatibility
+      required: false,
       index: true,
     },
     metadata: {
@@ -106,14 +141,18 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
   }
 );
 
+// Existing indexes
 activitySchema.index({ leadId: 1, timestamp: -1 });
 activitySchema.index({ userId: 1 });
 activitySchema.index({ type: 1 });
 activitySchema.index({ "metadata.oldStatusId": 1 });
 activitySchema.index({ "metadata.newStatusId": 1 });
-// Add multi-tenancy indexes
 activitySchema.index({ leadId: 1, adminId: 1 });
 activitySchema.index({ adminId: 1, timestamp: -1 });
+
+// Add new indexes for user activities
+activitySchema.index({ type: 1, adminId: 1, timestamp: -1 }); // For filtering user activities by admin
+activitySchema.index({ "metadata.targetUserId": 1 }); // For admin actions on specific users
 
 activitySchema.pre("save", function (this: IActivityDocument, next) {
   if (!this.metadata || typeof this.metadata !== "object") {
