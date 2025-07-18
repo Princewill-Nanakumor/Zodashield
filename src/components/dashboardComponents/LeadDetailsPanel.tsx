@@ -88,13 +88,13 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
 
   return (
     <div
-      className="fixed right-0 flex bg-white dark:bg-gray-800 border-l-2 shadow-2xl z-50"
+      className="fixed right-0 flex bg-white dark:bg-gray-800 border-l-2 z-50"
       style={{
         width: "80vw",
         maxWidth: "1200px",
         top: "80px",
-        bottom: "0px",
-        height: "calc(100vh - 80px)",
+        bottom: "80px",
+        height: "calc(100vh - 160px)",
       }}
     >
       <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">

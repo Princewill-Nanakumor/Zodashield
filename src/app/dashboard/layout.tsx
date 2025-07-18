@@ -7,6 +7,7 @@ import Sidebar from "@/components/dashboardComponents/Sidebar";
 import DashboardNavbar from "@/components/dashboardComponents/DashboardNavbar";
 import { SearchProvider, useSearchContext } from "@/context/SearchContext";
 import { Shield } from "lucide-react";
+import Footer from "@/components/dashboardComponents/Footer";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { searchQuery, setSearchQuery, isLoading } = useSearchContext();
@@ -46,6 +47,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-auto p-8 bg-background text-foreground">
           {children}
         </main>
+        <Footer />
       </div>
     </div>
   );
