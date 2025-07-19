@@ -1,4 +1,3 @@
-// src/app/api/admin/overview/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -7,6 +6,7 @@ import User from "@/models/User";
 import Lead from "@/models/Lead";
 import Subscription from "@/models/Subscription";
 import Activity from "@/models/Activity";
+import Payment from "@/models/Payment";
 
 // Define proper types for the subscription
 interface SubscriptionData {
@@ -55,11 +55,25 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get allowed emails from environment variable
+    const allowedEmails =
+      process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS?.split(",").map((email) =>
+        email.trim()
+      ) || [];
+
+    // Check if the user's email is in the allowed list
+    if (
+      allowedEmails.length > 0 &&
+      !allowedEmails.includes(session.user.email)
+    ) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
     await connectMongoDB();
 
     // Get all admins (users with role ADMIN)
     const admins = await User.find({ role: "ADMIN" })
-      .select("firstName lastName email status lastLogin createdAt")
+      .select("firstName lastName email status lastLogin createdAt balance")
       .lean();
 
     // Get stats for each admin
@@ -133,6 +147,18 @@ export async function GET() {
           .limit(3)
           .lean();
 
+        // Get payment stats for this admin
+        const paymentStats = await Payment.aggregate([
+          { $match: { adminId: adminId } },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+        ]);
+
         // Safely access subscription properties
         const subscriptionData = extractSubscriptionData(subscription);
 
@@ -149,6 +175,7 @@ export async function GET() {
           recentLogins,
           subscriptionActivities,
           lastAgentLogin,
+          paymentStats,
         };
       })
     );
@@ -160,6 +187,17 @@ export async function GET() {
     const activeSubscriptions = await Subscription.countDocuments({
       status: "ACTIVE",
     });
+
+    // Get total balance across all admins
+    const totalBalance = await User.aggregate([
+      { $match: { role: "ADMIN" } },
+      {
+        $group: {
+          _id: null,
+          totalBalance: { $sum: { $ifNull: ["$balance", 0] } },
+        },
+      },
+    ]);
 
     // Get platform-wide activity stats
     const platformActivityStats = await Activity.aggregate([
@@ -200,6 +238,17 @@ export async function GET() {
       { $limit: 7 }, // Last 7 days
     ]);
 
+    // Get payment stats across platform
+    const platformPaymentStats = await Payment.aggregate([
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
     return NextResponse.json({
       admins: adminStats,
       platformStats: {
@@ -208,10 +257,12 @@ export async function GET() {
         totalLeads,
         activeSubscriptions,
         totalActivities: await Activity.countDocuments({}),
+        totalBalance: totalBalance[0]?.totalBalance || 0,
       },
       platformActivityStats,
       recentPlatformActivities,
       userLoginStats,
+      platformPaymentStats,
     });
   } catch (error) {
     console.error("Error fetching admin overview:", error);

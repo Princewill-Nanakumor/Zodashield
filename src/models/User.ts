@@ -16,6 +16,7 @@ export interface IUser {
   adminId?: mongoose.Types.ObjectId; // For multi-tenancy - AGENT users have adminId, ADMIN users don't
   createdBy?: mongoose.Types.ObjectId; // For AGENT users, this is their admin
   lastLogin?: Date;
+  balance?: number;
   createdAt: Date;
   updatedAt: Date;
   __v: number;
@@ -77,6 +78,10 @@ const userSchema = new Schema(
     },
     lastLogin: {
       type: Date,
+    },
+    balance: {
+      type: Number,
+      default: 0,
     },
   },
   {

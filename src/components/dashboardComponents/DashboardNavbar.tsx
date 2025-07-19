@@ -14,6 +14,16 @@ interface DashboardNavbarProps {
   isLoading?: boolean;
 }
 
+interface UserProfile {
+  _id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  balance: number;
+  status: string;
+}
+
 export default function DashboardNavbar({
   onSearch,
   searchQuery,
@@ -22,12 +32,36 @@ export default function DashboardNavbar({
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Fetch user profile and balance
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (session?.user?.email) {
+        try {
+          setBalanceLoading(true);
+          const response = await fetch("/api/user/profile");
+          if (response.ok) {
+            const data = await response.json();
+            setUserProfile(data.user);
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        } finally {
+          setBalanceLoading(false);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [session?.user?.email]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -68,6 +102,13 @@ export default function DashboardNavbar({
   const handleLogout = async () => {
     setDropdownOpen(false);
     await signOut({ callbackUrl: "/signin" });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
   };
 
   if (!mounted) {
@@ -136,7 +177,9 @@ export default function DashboardNavbar({
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {session?.user?.firstName && session?.user?.lastName
                         ? `${session.user.firstName} ${session.user.lastName}`
-                        : "User"}
+                        : userProfile?.firstName && userProfile?.lastName
+                          ? `${userProfile.firstName} ${userProfile.lastName}`
+                          : "User"}
                     </p>
 
                     <div className="flex items-center">
@@ -148,9 +191,15 @@ export default function DashboardNavbar({
                     <div className="mt-1">
                       <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
                         Balance:{" "}
-                        <span className="text-green-600 dark:text-green-400">
-                          $0
-                        </span>
+                        {balanceLoading ? (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Loading...
+                          </span>
+                        ) : (
+                          <span className="text-green-600 dark:text-green-400">
+                            {formatCurrency(userProfile?.balance || 0)}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>

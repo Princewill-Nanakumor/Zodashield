@@ -14,6 +14,7 @@ import {
   Trash2,
   Clock,
   DollarSign,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,20 +78,34 @@ export default function AdminManagementContent() {
     null
   );
   const [loading, setLoading] = useState(true);
+  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Get allowed emails from environment variable
+    const envEmails = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS;
+    if (envEmails) {
+      setAllowedEmails(envEmails.split(",").map((email) => email.trim()));
+    }
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/signin");
-    } else if (status === "authenticated" && session?.user?.role !== "ADMIN") {
-      router.push("/dashboard");
+    } else if (status === "authenticated") {
+      // Check if user is ADMIN and has access
+      if (session?.user?.role !== "ADMIN") {
+        router.push("/dashboard");
+      } else if (
+        allowedEmails.length > 0 &&
+        !allowedEmails.includes(session.user.email)
+      ) {
+        // Redirect to dashboard if not authorized
+        router.push("/dashboard");
+      } else {
+        fetchAdminData();
+      }
     }
-  }, [status, session, router]);
-
-  useEffect(() => {
-    if (session?.user?.role === "ADMIN") {
-      fetchAdminData();
-    }
-  }, [session]);
+  }, [status, session, router, allowedEmails]);
 
   const fetchAdminData = async () => {
     try {
@@ -158,7 +173,7 @@ export default function AdminManagementContent() {
     );
 
     if (diffInHours < 24) return "text-green-600 dark:text-green-400";
-    if (diffInHours < 168) return "text-yellow-600 dark:text-yellow-400"; // 1 week
+    if (diffInHours < 168) return "text-yellow-600 dark:text-yellow-400";
     return "text-red-600 dark:text-red-400";
   };
 
@@ -194,6 +209,12 @@ export default function AdminManagementContent() {
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Manage all administrators and monitor their activities
           </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200 dark:border-green-800">
+            <Shield className="h-3 w-3 mr-1" />
+            Super Admin
+          </Badge>
         </div>
       </div>
 
@@ -314,6 +335,12 @@ export default function AdminManagementContent() {
                             className={getPlanColor(admin.subscription.plan)}
                           >
                             {admin.subscription.plan}
+                          </Badge>
+                        )}
+                        {allowedEmails.includes(admin.email) && (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Super Admin
                           </Badge>
                         )}
                       </div>

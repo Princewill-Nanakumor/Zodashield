@@ -12,6 +12,9 @@ export default withAuth(
     const isAdminPage = path.startsWith("/admin");
     const isDashboardPage = path.startsWith("/dashboard");
     const isResetPasswordPage = path.startsWith("/reset-password");
+    const isAdminManagementPage = path.startsWith(
+      "/dashboard/admin-management"
+    );
 
     const publicPages = [
       "/",
@@ -47,6 +50,17 @@ export default withAuth(
     // ✅ Protect admin routes by role
     if (isAdminPage && token?.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    // ✅ Protect admin management routes by specific emails
+    if (isAdminManagementPage && token?.role === "ADMIN" && token?.email) {
+      const allowedEmails =
+        process.env.SUPER_ADMIN_EMAILS?.split(",").map((email) =>
+          email.trim()
+        ) || [];
+      if (allowedEmails.length > 0 && !allowedEmails.includes(token.email)) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
     }
 
     // ✅ Redirect unauthenticated users trying to access other pages

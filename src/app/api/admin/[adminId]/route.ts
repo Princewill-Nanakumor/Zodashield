@@ -1,4 +1,3 @@
-// src/app/api/admin/[adminId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -7,7 +6,18 @@ import User from "@/models/User";
 import Lead from "@/models/Lead";
 import Subscription from "@/models/Subscription";
 import Activity from "@/models/Activity";
+import Payment from "@/models/Payment";
 import mongoose from "mongoose";
+
+// Define interface for Ad (placeholder - you can create an Ad model later)
+interface Ad {
+  _id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  status: string;
+  createdAt: string;
+}
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +28,20 @@ export async function GET(
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get allowed emails from environment variable
+    const allowedEmails =
+      process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS?.split(",").map((email) =>
+        email.trim()
+      ) || [];
+
+    // Check if the user's email is in the allowed list
+    if (
+      allowedEmails.length > 0 &&
+      !allowedEmails.includes(session.user.email)
+    ) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     await connectMongoDB();
@@ -62,6 +86,14 @@ export async function GET(
       .limit(50)
       .lean();
 
+    // Get payments for this admin
+    const payments = await Payment.find({ adminId: adminObjectId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Get ads (placeholder - you might need to create an Ad model)
+    const ads: Ad[] = [];
+
     return NextResponse.json({
       admin,
       agents,
@@ -71,6 +103,8 @@ export async function GET(
       },
       subscription,
       activities,
+      payments,
+      ads,
     });
   } catch (error) {
     console.error("Error fetching admin details:", error);
