@@ -1,3 +1,5 @@
+// /Users/safeconnection/Downloads/drivecrm/src/app/api/payments/[paymentId]/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";

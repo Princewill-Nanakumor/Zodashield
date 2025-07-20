@@ -14,11 +14,29 @@ interface Transaction {
 interface RecentTransactionsProps {
   transactions?: Transaction[];
   onTransactionClick?: (transactionId: string) => void;
+  isLoading?: boolean;
 }
+
+// Loading skeleton component
+const TransactionSkeleton = () => (
+  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 animate-pulse">
+    <div className="flex-1">
+      <div className="flex items-center justify-between mb-1">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function RecentTransactions({
   transactions = [],
   onTransactionClick,
+  isLoading = false,
 }: RecentTransactionsProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -63,7 +81,16 @@ export default function RecentTransactions({
 
       <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
         <div className="space-y-3 pr-2">
-          {transactions.length === 0 ? (
+          {isLoading ? (
+            // Loading skeleton
+            <>
+              <TransactionSkeleton />
+              <TransactionSkeleton />
+              <TransactionSkeleton />
+              <TransactionSkeleton />
+              <TransactionSkeleton />
+            </>
+          ) : transactions.length === 0 ? (
             <div className="text-center py-8">
               <Wallet className="h-12 w-12 mx-auto dark:text-gray-400 text-gray-300 mb-3" />
               <p className="dark:text-gray-400 text-gray-500 text-sm">

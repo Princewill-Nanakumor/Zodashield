@@ -5,18 +5,21 @@ import { Settings } from "lucide-react";
 import RecentTransactions from "./RecentTransactions";
 import Support from "./Support";
 
+interface Transaction {
+  id: string;
+  amount: number;
+  status: string;
+  date: string;
+  type: string;
+}
+
 interface BillingSidebarProps {
   balance?: number;
   totalDeposits?: number;
   pendingAmount?: number;
-  recentTransactions?: Array<{
-    id: string;
-    amount: number;
-    status: string;
-    date: string;
-    type: string;
-  }>;
+  recentTransactions?: Transaction[];
   onTransactionClick?: (transactionId: string) => void;
+  isLoading?: boolean;
 }
 
 export default function BillingSidebar({
@@ -25,6 +28,7 @@ export default function BillingSidebar({
   pendingAmount = 0,
   recentTransactions = [],
   onTransactionClick,
+  isLoading = false,
 }: BillingSidebarProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -74,6 +78,7 @@ export default function BillingSidebar({
       <RecentTransactions
         transactions={recentTransactions}
         onTransactionClick={onTransactionClick}
+        isLoading={isLoading}
       />
 
       {/* Support Component */}
