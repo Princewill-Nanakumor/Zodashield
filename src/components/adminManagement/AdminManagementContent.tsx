@@ -82,7 +82,7 @@ export default function AdminManagementContent() {
 
   useEffect(() => {
     // Get allowed emails from environment variable
-    const envEmails = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS;
+    const envEmails = process.env.SUPER_ADMIN_EMAILS;
     if (envEmails) {
       setAllowedEmails(envEmails.split(",").map((email) => email.trim()));
     }

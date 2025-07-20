@@ -10,7 +10,6 @@ import UsdtDepositSection from "./UsdtDepositSection";
 import CardDepositSection from "./CardDepositSection";
 import PaymentDetailsModal from "./PaymentDetailsModal";
 import BillingHeader from "./BillingHeader";
-import ErrorMessage from "./ErrorMessage";
 import PaymentStorageManager from "./PaymentStorageManager";
 import BillingDataManager from "./BillingDataManager";
 import PaymentCreationManager from "./PaymentCreationManager";
@@ -289,10 +288,6 @@ export default function BillingManager() {
                   </Button>
                 </div>
               </div>
-
-              {/* Error Message */}
-              <ErrorMessage error={error} />
-
               {/* USDT Deposit Section */}
               {activeTab === "usdt" ? (
                 <UsdtDepositSection

@@ -32,9 +32,8 @@ export async function GET(
 
     // Get allowed emails from environment variable
     const allowedEmails =
-      process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS?.split(",").map((email) =>
-        email.trim()
-      ) || [];
+      process.env.SUPER_ADMIN_EMAILS?.split(",").map((email) => email.trim()) ||
+      [];
 
     // Check if the user's email is in the allowed list
     if (

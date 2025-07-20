@@ -55,14 +55,6 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Add this debugging section right after the user lookup
-    console.log("Environment variable check:", {
-      SUPER_ADMIN_EMAILS: process.env.SUPER_ADMIN_EMAILS,
-      NEXT_PUBLIC_SUPER_ADMIN_EMAILS:
-        process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS,
-      NODE_ENV: process.env.NODE_ENV,
-    });
-
     // Check if user is super admin
     const superAdminEmails =
       process.env.SUPER_ADMIN_EMAILS?.split(",").map((email) => email.trim()) ||
