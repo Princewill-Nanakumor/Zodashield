@@ -55,6 +55,16 @@ export default function PaymentRequestDetails({
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const handleBackToDeposit = () => {
+    // Clear localStorage
+    localStorage.removeItem("currentPayment");
+    localStorage.removeItem("paymentNetwork");
+    localStorage.removeItem("paymentConfirmed");
+
+    // Call the parent handler
+    onBackToDeposit();
+  };
+
   // Show confirmation screen after user clicks "I Have Made the Payment"
   if (paymentConfirmed) {
     return (
@@ -80,7 +90,7 @@ export default function PaymentRequestDetails({
                     Payment ID:
                   </span>
                   <p className="font-mono text-gray-900 dark:text-white">
-                    {currentPayment._id}
+                    {currentPayment.transactionId}
                   </p>
                 </div>
                 <div>
@@ -101,8 +111,9 @@ export default function PaymentRequestDetails({
                   <span className="text-gray-500 dark:text-gray-400">
                     Status:
                   </span>
-                  <p className="text-yellow-600 dark:text-yellow-400 font-medium">
-                    Verifying...
+                  <p className="text-yellow-600 dark:text-yellow-400 font-medium flex gap-1">
+                    <Clock className="h-5 w-5 text-yellow-600 animate-spin" />
+                    PENDING
                   </p>
                 </div>
               </div>
@@ -138,7 +149,7 @@ export default function PaymentRequestDetails({
             </Button>
 
             <Button
-              onClick={onBackToDeposit}
+              onClick={handleBackToDeposit}
               variant="outline"
               className="flex-1"
             >
@@ -164,8 +175,8 @@ export default function PaymentRequestDetails({
         <p className="text-green-700 dark:text-green-300 text-sm mb-4">
           Please send exactly{" "}
           <span className="font-bold">{currentPayment.amount} USDT</span> to the
-          address below. After making payment, click on&quot; I have made the
-          payment&quot;
+          wallet address below. After making payment, click on&quot; I have made
+          the payment&quot;
         </p>
 
         {currentPayment.walletAddress ? (
@@ -260,7 +271,7 @@ export default function PaymentRequestDetails({
                   Payment Created Successfully
                 </h4>
                 <p className="text-blue-700 dark:text-blue-300 text-xs">
-                  Payment ID: {currentPayment._id}
+                  Payment ID: {currentPayment.transactionId}
                 </p>
                 <p className="text-blue-700 dark:text-blue-300 text-xs">
                   Amount: {currentPayment.amount} {currentPayment.currency}
@@ -283,18 +294,9 @@ export default function PaymentRequestDetails({
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={onConfirmPayment}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white mt-2"
           >
             <CheckCircle className="h-4 w-4 mr-2" />I Have Made the Payment
-          </Button>
-
-          <Button
-            onClick={onShowPaymentDetails}
-            variant="outline"
-            className="flex-1"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            View Payment Details
           </Button>
         </div>
       </div>

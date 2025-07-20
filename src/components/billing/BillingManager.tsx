@@ -1,12 +1,16 @@
+// src/components/billing/BillingManager.tsx
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Info, CreditCard, Wallet } from "lucide-react";
+import { CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BillingSidebar from "./BillingSidebar";
 import UsdtDepositSection from "./UsdtDepositSection";
 import CardDepositSection from "./CardDepositSection";
 import PaymentDetailsModal from "./PaymentDetailsModal";
+import BillingHeader from "./BillingHeader";
+import ErrorMessage from "./ErrorMessage";
 import PaymentStorageManager from "./PaymentStorageManager";
 import BillingDataManager from "./BillingDataManager";
 import PaymentCreationManager from "./PaymentCreationManager";
@@ -79,7 +83,7 @@ export default function BillingManager() {
     recentTransactions: [],
   });
 
-  // Use refs to store managers to avoid dependency issues
+  // Use refs to store managers
   const paymentStorageRef = useRef<PaymentStorageManagerType | null>(null);
   const billingDataManagerRef = useRef<BillingDataManagerType | null>(null);
   const paymentCreationManagerRef = useRef<PaymentCreationManagerType | null>(
@@ -110,21 +114,32 @@ export default function BillingManager() {
       setAmount,
       billingDataManager: billingDataManagerRef.current!,
     });
-  }, [currentPayment, network, amount]);
+  }, [
+    currentPayment,
+    network,
+    amount,
+    setCurrentPayment,
+    setNetwork,
+    setPaymentConfirmed,
+    setError,
+    setIsSubmitting,
+    setAmount,
+    setBillingData,
+  ]);
 
   // Load persisted payment on component mount
   useEffect(() => {
     if (paymentStorageRef.current) {
       paymentStorageRef.current.loadPaymentFromStorage();
     }
-  }, []);
+  }, [paymentStorageRef]);
 
   // Save payment to localStorage when it changes
   useEffect(() => {
     if (currentPayment && paymentStorageRef.current) {
       paymentStorageRef.current.savePaymentToStorage();
     }
-  }, [currentPayment, network, paymentConfirmed]);
+  }, [currentPayment, network, paymentConfirmed, paymentStorageRef]);
 
   // Fetch billing data on component mount
   useEffect(() => {
@@ -134,59 +149,16 @@ export default function BillingManager() {
         .fetchBillingData()
         .finally(() => setIsBillingLoading(false));
     }
-  }, []);
+  }, [billingDataManagerRef]);
 
-  const handleCreatePayment = useCallback(async (e: React.FormEvent) => {
-    if (paymentCreationManagerRef.current) {
-      await paymentCreationManagerRef.current.handleCreatePayment(e);
-    }
-  }, []);
-
-  const handleConfirmPayment = useCallback(async () => {
-    if (!currentPayment) return;
-
-    try {
-      setPaymentConfirmed(true);
-      if (paymentStorageRef.current) {
-        paymentStorageRef.current.savePaymentToStorage(true);
+  const handleCreatePayment = useCallback(
+    async (e: React.FormEvent) => {
+      if (paymentCreationManagerRef.current) {
+        await paymentCreationManagerRef.current.handleCreatePayment(e);
       }
-
-      // Here you would typically verify the payment on the blockchain
-      // For now, we'll simulate the verification
-      const response = await fetch(
-        `/api/payments/${currentPayment._id}/verify`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok && billingDataManagerRef.current) {
-        billingDataManagerRef.current.fetchBillingData();
-      }
-    } catch (error) {
-      console.error("Error verifying payment:", error);
-    }
-  }, [currentPayment]);
-
-  const handleShowPaymentDetails = useCallback(() => {
-    if (currentPayment) {
-      setCurrentPaymentId(currentPayment._id);
-      setShowPaymentModal(true);
-    }
-  }, [currentPayment]);
-
-  const handleBackToDeposit = useCallback(() => {
-    if (paymentStorageRef.current) {
-      paymentStorageRef.current.clearPaymentFromStorage();
-    }
-    setCurrentPayment(null);
-    setPaymentConfirmed(false);
-    setAmount("");
-    setError(null);
-  }, []);
+    },
+    [paymentCreationManagerRef]
+  );
 
   const toggleNetwork = useCallback(() => {
     setNetwork(network === "TRC20" ? "ERC20" : "TRC20");
@@ -204,43 +176,97 @@ export default function BillingManager() {
     setActiveTab("usdt");
   }, []);
 
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+  }, []);
+
+  // Payment action handlers
+  const handleConfirmPayment = useCallback(() => {
+    setPaymentConfirmed(true);
+    if (paymentStorageRef.current) {
+      paymentStorageRef.current.savePaymentToStorage(true);
+    }
+  }, [paymentStorageRef]);
+
+  const handleShowPaymentDetails = useCallback(() => {
+    if (currentPayment) {
+      setCurrentPaymentId(currentPayment._id);
+      setShowPaymentModal(true);
+    }
+  }, [currentPayment]);
+
+  const handleBackToDeposit = useCallback(() => {
+    setCurrentPayment(null);
+    setPaymentConfirmed(false);
+    setAmount("");
+    setError(null);
+    if (paymentStorageRef.current) {
+      paymentStorageRef.current.clearPaymentFromStorage();
+    }
+  }, [paymentStorageRef]);
+
   const handleCloseModal = useCallback(() => {
     setShowPaymentModal(false);
     setCurrentPaymentId("");
-    setCurrentPayment(null);
   }, []);
 
-  const handleTransactionClick = useCallback((transactionId: string) => {
-    setCurrentPaymentId(transactionId);
-    setShowPaymentModal(true);
-  }, []);
+  // Updated handleTransactionClick to prevent opening modal when there's an unconfirmed payment
+  const handleTransactionClick = useCallback(
+    (transactionId: string) => {
+      // Don't open modal if there's an unconfirmed payment
+      if (currentPayment && !paymentConfirmed) {
+        return;
+      }
+
+      setCurrentPaymentId(transactionId);
+      setShowPaymentModal(true);
+    },
+    [currentPayment, paymentConfirmed]
+  );
+
+  // New function to handle clearing payment completely
+  const handleClearPayment = useCallback(() => {
+    // Clear all state
+    setCurrentPayment(null);
+    setPaymentConfirmed(false);
+    setAmount("");
+    setError(null);
+    setShowPaymentModal(false);
+    setCurrentPaymentId("");
+
+    // Clear localStorage completely
+    if (paymentStorageRef.current) {
+      paymentStorageRef.current.clearPaymentFromStorage();
+    }
+  }, [paymentStorageRef]);
+
+  // New function to handle new payment
+  const handleNewPayment = useCallback(() => {
+    handleClearPayment();
+    // Reset to initial state
+    setActiveTab("usdt");
+    setNetwork("TRC20");
+    setShowInstructions(false);
+  }, [handleClearPayment]);
 
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 rounded-lg border">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold dark:text-white text-gray-900 mb-2">
-              Billing & Fund Account
-            </h1>
-            <p className="dark:text-gray-300 text-gray-600">
-              Fund your account securely using USDT (Tether)
-            </p>
-          </div>
-        </div>
+        <BillingHeader activeTab={activeTab} onTabChange={handleTabChange} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2">
             <div className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg dark:border dark:border-white/10 bg-white border border-gray-200">
+              {/* Tab Navigation - Now inside the main content card */}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold dark:text-white text-gray-900">
                   Deposit Funds
                 </h2>
                 <div className="flex space-x-1">
                   <Button
-                    onClick={() => setActiveTab("usdt")}
+                    onClick={() => handleTabChange("usdt")}
                     className={`px-4 py-2 mr-4 rounded-lg text-sm font-medium ${
                       activeTab === "usdt"
                         ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
@@ -251,7 +277,7 @@ export default function BillingManager() {
                     Crypto
                   </Button>
                   <Button
-                    onClick={() => setActiveTab("card")}
+                    onClick={() => handleTabChange("card")}
                     className={`px-4 py-2 rounded-lg text-sm font-medium ${
                       activeTab === "card"
                         ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
@@ -265,16 +291,7 @@ export default function BillingManager() {
               </div>
 
               {/* Error Message */}
-              {error && (
-                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <div className="flex items-center">
-                    <Info className="h-4 w-4 mr-2 text-red-600 dark:text-red-400" />
-                    <span className="text-red-700 dark:text-red-300 text-sm">
-                      {error}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <ErrorMessage error={error} />
 
               {/* USDT Deposit Section */}
               {activeTab === "usdt" ? (
@@ -308,6 +325,7 @@ export default function BillingManager() {
             recentTransactions={billingData.recentTransactions}
             onTransactionClick={handleTransactionClick}
             isLoading={isBillingLoading}
+            hasUnconfirmedPayment={!!(currentPayment && !paymentConfirmed)}
           />
         </div>
       </div>
@@ -317,6 +335,8 @@ export default function BillingManager() {
         paymentId={currentPaymentId}
         isOpen={showPaymentModal}
         onClose={handleCloseModal}
+        onNewPayment={handleNewPayment}
+        onClearPayment={handleClearPayment}
       />
     </div>
   );

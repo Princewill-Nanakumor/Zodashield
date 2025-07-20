@@ -1,5 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm/src/app/api/payments/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -14,7 +12,6 @@ const WALLET_ADDRESSES = {
   ERC20: process.env.ERC20_WALLET_ADDRESS,
 };
 
-const MIN_AMOUNT = parseFloat(process.env.MIN_PAYMENT_AMOUNT || "10");
 const MAX_AMOUNT = parseFloat(process.env.MAX_PAYMENT_AMOUNT || "1000000");
 const MAX_PAYMENTS_PER_HOUR = parseInt(
   process.env.MAX_PAYMENTS_PER_HOUR || "500"
@@ -64,9 +61,6 @@ function validatePaymentRequest(data: PaymentRequestData) {
     errors.push("Amount is required and must be a valid number");
   } else {
     const amount = parseFloat(String(data.amount));
-    if (amount < MIN_AMOUNT) {
-      errors.push(`Minimum payment amount is ${MIN_AMOUNT} USDT`);
-    }
     if (amount > MAX_AMOUNT) {
       errors.push(`Maximum payment amount is ${MAX_AMOUNT} USDT`);
     }

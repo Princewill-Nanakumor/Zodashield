@@ -138,20 +138,59 @@ export default function Sidebar() {
 
         {/* Footer Actions */}
         <div className="flex flex-col gap-2 w-full">
-          <button
-            className="text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 dark:text-indigo-200 dark:hover:bg-gray-700 dark:hover:text-white p-3 rounded-xl transition-all flex items-center justify-center"
-            title="Settings"
-            aria-label="Settings"
-          >
-            <Settings size={22} />
-          </button>
-          <button
-            className="text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 dark:text-indigo-200 dark:hover:bg-gray-700 dark:hover:text-white p-3 rounded-xl transition-all flex items-center justify-center"
+          {session?.user?.role === "ADMIN" && (
+            <Link
+              href="/dashboard/settings"
+              className={cn(
+                "group relative flex flex-col items-center w-full py-3 transition-all rounded-xl",
+                pathname === "/dashboard/settings"
+                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+                  : "text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 dark:text-indigo-200 dark:hover:bg-gray-700 dark:hover:text-white"
+              )}
+              title="Settings"
+              aria-label="Settings"
+              aria-current={
+                pathname === "/dashboard/settings" ? "page" : undefined
+              }
+            >
+              {/* Active indicator bar */}
+              <span
+                className={cn(
+                  "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r bg-indigo-500 transition-all",
+                  pathname === "/dashboard/settings"
+                    ? "opacity-100"
+                    : "opacity-0"
+                )}
+                aria-hidden="true"
+              />
+              <Settings size={22} />
+              <span className="text-xs mt-1 font-medium">Settings</span>
+            </Link>
+          )}
+
+          <Link
+            href="/dashboard/help"
+            className={cn(
+              "group relative flex flex-col items-center w-full py-3 transition-all rounded-xl",
+              pathname === "/dashboard/help"
+                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+                : "text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 dark:text-indigo-200 dark:hover:bg-gray-700 dark:hover:text-white"
+            )}
             title="Help"
             aria-label="Help"
+            aria-current={pathname === "/dashboard/help" ? "page" : undefined}
           >
+            {/* Active indicator bar */}
+            <span
+              className={cn(
+                "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r bg-indigo-500 transition-all",
+                pathname === "/dashboard/help" ? "opacity-100" : "opacity-0"
+              )}
+              aria-hidden="true"
+            />
             <HelpCircle size={22} />
-          </button>
+            <span className="text-xs mt-1 font-medium">Help</span>
+          </Link>
         </div>
       </nav>
     </aside>

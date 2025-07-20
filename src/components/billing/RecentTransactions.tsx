@@ -15,6 +15,7 @@ interface RecentTransactionsProps {
   transactions?: Transaction[];
   onTransactionClick?: (transactionId: string) => void;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 // Loading skeleton component

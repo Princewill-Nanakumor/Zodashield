@@ -76,7 +76,7 @@ export default function UsdtDepositSection({
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold dark:text-white text-gray-900">
-          Deposit Funds
+          Cryptocurrency (USDT)
         </h2>
       </div>
 
@@ -137,7 +137,7 @@ export default function UsdtDepositSection({
               <li>Enter the amount you want to deposit below</li>
               <li>Click &quot;Generate Deposit Request&quot;</li>
               <li>Copy the wallet address or scan the QR code</li>
-              <li>Send the exact amount from your wallet</li>
+              <li>Send the exact amount the wallet address</li>
               <li>Click &quot;I Have Made the Payment&quot; after sending</li>
             </ol>
           </div>
@@ -151,27 +151,26 @@ export default function UsdtDepositSection({
             <div className="relative">
               <input
                 type="number"
-                min="10"
+                min="0.01"
                 step="0.01"
                 value={amount}
                 onChange={(e) => onAmountChange(e.target.value)}
-                className="w-full pl-4 pr-4 py-3 border border-gray-300 dark:border-white/10 rounded-lg dark:bg-white/5 bg-gray-50 dark:text-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Minimum 10 USDT"
+                className="w-full pl-4 pr-4 py-3 border border-gray-300 dark:border-white/10 rounded-lg dark:bg-white/5 bg-gray-50 dark:text-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-purple-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="Enter an amount"
                 required
                 disabled={isSubmitting}
               />
-            </div>
-            <div className="flex justify-between text-xs dark:text-gray-400 text-gray-500 mt-1">
-              <span>Minimum deposit: 10 USDT</span>
             </div>
           </div>
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !amount || parseFloat(amount) <= 0}
             className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Creating Payment..." : "Generate Deposit Request"}
+            {isSubmitting
+              ? "Creating a wallet address..."
+              : "Generate Deposit Address"}
           </Button>
         </form>
       </div>
