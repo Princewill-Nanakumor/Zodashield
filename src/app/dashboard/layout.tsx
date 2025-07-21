@@ -8,6 +8,7 @@ import DashboardNavbar from "@/components/dashboardComponents/DashboardNavbar";
 import { SearchProvider, useSearchContext } from "@/context/SearchContext";
 import { Shield } from "lucide-react";
 import Footer from "@/components/dashboardComponents/Footer";
+import { DateTimeSettingsProvider } from "@/context/DateTimeSettingsContext";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { searchQuery, setSearchQuery, isLoading } = useSearchContext();
@@ -26,7 +27,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <div className="relative w-16 h-16 flex items-center justify-center">
           {/* Rotating border */}
           <div className="absolute inset-0 border-4 border-transparent border-t-blue-400 border-r-purple-500 rounded-full animate-spin w-16 h-16"></div>
-
           <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600">
             <Shield size={28} className="text-white" />
           </div>
@@ -60,7 +60,9 @@ export default function DashboardLayout({
 }) {
   return (
     <SearchProvider>
-      <DashboardContent>{children}</DashboardContent>
+      <DateTimeSettingsProvider>
+        <DashboardContent>{children}</DashboardContent>
+      </DateTimeSettingsProvider>
     </SearchProvider>
   );
 }

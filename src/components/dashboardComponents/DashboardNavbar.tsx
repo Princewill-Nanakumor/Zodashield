@@ -1,12 +1,12 @@
 "use client";
 
-import { Search, UserCircle } from "lucide-react";
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { Search, UserCircle, LogOut, User, Settings } from "lucide-react";
 import { DashboardSearchBar } from "./DashboardSearchBar";
 import ThemeToggle from "./ThemeToggle";
-import { LogOut, User, Settings } from "lucide-react";
+import { useDateTimeSettings } from "@/context/DateTimeSettingsContext";
 
 interface DashboardNavbarProps {
   onSearch: (query: string) => void;
@@ -37,9 +37,38 @@ export default function DashboardNavbar({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Date/time settings
+  const { timeFormat, dateFormat, timezone } = useDateTimeSettings();
+  const [now, setNow] = useState(new Date());
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function formatDateTime(date: Date) {
+    let dateStr = "";
+    if (dateFormat === "YYYY-MM-DD") {
+      dateStr = date.toLocaleDateString("en-CA", { timeZone: timezone });
+    } else if (dateFormat === "DD/MM/YYYY") {
+      dateStr = date.toLocaleDateString("en-GB", { timeZone: timezone });
+    } else if (dateFormat === "MM/DD/YYYY") {
+      dateStr = date.toLocaleDateString("en-US", { timeZone: timezone });
+    }
+    const hour12 = timeFormat === "12h";
+    const timeStr = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12,
+      timeZone: timezone,
+    });
+    return `${dateStr} ${timeStr}`;
+  }
 
   // Fetch user profile and balance
   useEffect(() => {
@@ -59,10 +88,10 @@ export default function DashboardNavbar({
         }
       }
     };
-
     fetchUserProfile();
   }, [session?.user?.email]);
 
+  // Dropdown close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -147,8 +176,13 @@ export default function DashboardNavbar({
         </div>
       </div>
 
-      {/* Right: Theme/User Controls */}
-      <div className="flex items-center space-x-4">
+      {/* Right: Date/Time, Theme, User Controls */}
+      <div className="flex items-center space-x-4 ">
+        {/* Date/Time Display */}
+        <span className="font-mono text-xs text-white dark:text-gray-200 px-3 font-bold border rounded-xl p-1">
+          {formatDateTime(now)}
+        </span>
+
         {/* Theme Toggle */}
         <ThemeToggle isLoading={isLoading} />
 
@@ -181,7 +215,6 @@ export default function DashboardNavbar({
                           ? `${userProfile.firstName} ${userProfile.lastName}`
                           : "User"}
                     </p>
-
                     <div className="flex items-center">
                       <span className="block h-2 w-2 rounded-full bg-green-400 mr-1" />
                       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -205,7 +238,6 @@ export default function DashboardNavbar({
                   </div>
                 </div>
               </div>
-
               {/* Menu Items */}
               <div className="py-1">
                 <button
