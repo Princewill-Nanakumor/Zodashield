@@ -5,7 +5,7 @@ import { COUNTRIES } from "./UserFormConstants";
 import { UserFormData, UserFormSchema } from "@/schemas/UserFormSchema";
 import { z } from "zod";
 import { User, Mail, Lock, Phone, Globe, Eye, EyeOff, X } from "lucide-react";
-import { UserRoleStatusPermissions } from "./RoleStatusPermissions";
+// import { UserRoleStatusPermissions } from "./RoleStatusPermissions";
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -82,12 +82,12 @@ export function UserFormModal({
     }
   };
 
-  const handlePermissionChange = (permission: string, checked: boolean) => {
-    const newPermissions = checked
-      ? [...formData.permissions, permission]
-      : formData.permissions.filter((p: string) => p !== permission);
-    handleInputChange("permissions", newPermissions);
-  };
+  // const handlePermissionChange = (permission: string, checked: boolean) => {
+  //   const newPermissions = checked
+  //     ? [...formData.permissions, permission]
+  //     : formData.permissions.filter((p: string) => p !== permission);
+  //   handleInputChange("permissions", newPermissions);
+  // };
 
   const validateForm = (): boolean => {
     try {
@@ -402,7 +402,7 @@ export function UserFormModal({
               </div>
             </div>
 
-            {/* Role, Status, and Permissions Component */}
+            {/* Role, Status, and Permissions Component
             <UserRoleStatusPermissions
               formData={formData}
               errors={errors}
@@ -410,7 +410,7 @@ export function UserFormModal({
               onStatusChange={(value) => handleInputChange("status", value)}
               onPermissionChange={handlePermissionChange}
               disabled={isLoading}
-            />
+            /> */}
 
             {/* Submit Buttons */}
             <div className="flex justify-end space-x-3 pt-4">

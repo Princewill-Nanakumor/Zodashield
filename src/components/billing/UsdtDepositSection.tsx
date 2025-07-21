@@ -137,7 +137,7 @@ export default function UsdtDepositSection({
               <li>Enter the amount you want to deposit below</li>
               <li>Click &quot;Generate Deposit Address&quot;</li>
               <li>Copy the wallet address or scan the QR code</li>
-              <li>Send the exact amount the wallet address</li>
+              <li>Send the exact amount to the wallet address</li>
               <li>Click &quot;I Have Made the Payment&quot; after sending</li>
             </ol>
           </div>
