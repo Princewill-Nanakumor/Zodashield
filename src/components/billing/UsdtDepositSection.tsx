@@ -166,7 +166,7 @@ export default function UsdtDepositSection({
           <Button
             type="submit"
             disabled={isSubmitting || !amount || parseFloat(amount) <= 0}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting
               ? "Creating a wallet address..."

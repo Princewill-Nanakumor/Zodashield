@@ -1,5 +1,3 @@
-// src/components/billing/PaymentDetailsModal.tsx
-
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -28,7 +26,7 @@ interface PaymentDetailsModalProps {
   onClose: () => void;
   onNewPayment?: () => void;
   onViewAllPayments?: () => void;
-  onClearPayment?: () => void; // New prop
+  onClearPayment?: () => void;
 }
 
 export default function PaymentDetailsModal({
@@ -86,10 +84,10 @@ export default function PaymentDetailsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-2xl">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               Payment Details
@@ -111,7 +109,7 @@ export default function PaymentDetailsModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 bg-white dark:bg-gray-900 rounded-b-2xl">
           <PaymentDetailsContent
             loading={loading}
             error={error}

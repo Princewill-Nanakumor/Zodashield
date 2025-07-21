@@ -268,7 +268,7 @@ export default function BillingManager() {
                     onClick={() => handleTabChange("usdt")}
                     className={`px-4 py-2 mr-4 rounded-lg text-sm font-medium ${
                       activeTab === "usdt"
-                        ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
                         : "dark:bg-transparent dark:hover:bg-white/10 dark:border dark:border-white/20 dark:text-white bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
                     }`}
                   >
@@ -279,7 +279,7 @@ export default function BillingManager() {
                     onClick={() => handleTabChange("card")}
                     className={`px-4 py-2 rounded-lg text-sm font-medium ${
                       activeTab === "card"
-                        ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
                         : "dark:bg-transparent dark:hover:bg-white/10 dark:border dark:border-white/20 dark:text-white bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
                     }`}
                   >

@@ -4,6 +4,12 @@ import { Key, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "./PasswordInput";
 
+interface FieldErrors {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}
+
 export function ChangePasswordSection({
   currentPassword,
   setCurrentPassword,
@@ -19,6 +25,7 @@ export function ChangePasswordSection({
   setShowConfirmPassword,
   isResettingPassword,
   passwordError,
+  fieldErrors,
   handlePasswordReset,
 }: {
   currentPassword: string;
@@ -34,7 +41,8 @@ export function ChangePasswordSection({
   showConfirmPassword: boolean;
   setShowConfirmPassword: (v: boolean) => void;
   isResettingPassword: boolean;
-  passwordError: string;
+  passwordError: string | null;
+  fieldErrors: FieldErrors;
   handlePasswordReset: () => void;
 }) {
   return (
@@ -52,6 +60,13 @@ export function ChangePasswordSection({
           </p>
         </div>
       </div>
+      {passwordError && (
+        <div className="p-3 mb-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {passwordError}
+          </p>
+        </div>
+      )}
       <div className="space-y-4">
         <PasswordInput
           id="current-password"
@@ -61,6 +76,8 @@ export function ChangePasswordSection({
           placeholder="Enter current password"
           showPassword={showCurrentPassword}
           onTogglePassword={() => setShowCurrentPassword(!showCurrentPassword)}
+          error={fieldErrors.currentPassword}
+          disabled={isResettingPassword}
         />
         <PasswordInput
           id="new-password"
@@ -70,6 +87,8 @@ export function ChangePasswordSection({
           placeholder="Enter new password"
           showPassword={showNewPassword}
           onTogglePassword={() => setShowNewPassword(!showNewPassword)}
+          error={fieldErrors.newPassword}
+          disabled={isResettingPassword}
         />
         <PasswordInput
           id="confirm-password"
@@ -79,23 +98,14 @@ export function ChangePasswordSection({
           placeholder="Confirm new password"
           showPassword={showConfirmPassword}
           onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+          error={fieldErrors.confirmPassword}
+          disabled={isResettingPassword}
         />
-        {passwordError && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {passwordError}
-            </p>
-          </div>
-        )}
+
         <Button
           onClick={handlePasswordReset}
-          disabled={
-            isResettingPassword ||
-            !currentPassword ||
-            !newPassword ||
-            !confirmPassword
-          }
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          disabled={isResettingPassword}
         >
           {isResettingPassword ? (
             <>

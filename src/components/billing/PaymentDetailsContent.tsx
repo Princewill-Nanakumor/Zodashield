@@ -1,5 +1,3 @@
-// src/components/billing/PaymentDetailsContent.tsx
-
 "use client";
 
 import React from "react";
@@ -52,11 +50,8 @@ export default function PaymentDetailsContent({
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">
-            Loading payment details...
-          </p>
+        <div className="flex items-center justify-center w-full h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       </div>
     );
@@ -94,7 +89,7 @@ export default function PaymentDetailsContent({
       {/* Main Content */}
       <div className="lg:col-span-2">
         {/* Payment Status Card */}
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
               <DollarSign className="h-5 w-5" />
@@ -176,7 +171,6 @@ export default function PaymentDetailsContent({
         </Card>
       </div>
 
-      {/* Sidebar - Now using the extracted component */}
       <PaymentStatusCard
         payment={payment}
         onNewPayment={onNewPayment}

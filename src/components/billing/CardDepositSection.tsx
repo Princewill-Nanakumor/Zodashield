@@ -20,7 +20,7 @@ export default function CardDepositSection({
       </p>
       <Button
         onClick={onSwitchToUsdt}
-        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg transition"
+        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:to-blue-700 text-white rounded-lg transition"
       >
         Switch to USDT
       </Button>

@@ -195,7 +195,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({
                   <div className="flex gap-2">
                     <Button
                       onClick={onSave}
-                      className="bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Save

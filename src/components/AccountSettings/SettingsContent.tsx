@@ -22,7 +22,12 @@ export function SettingsContent() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    currentPassword?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+  }>({});
 
   // Delete account states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -31,44 +36,64 @@ export function SettingsContent() {
   const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // Password reset handler
   const handlePasswordReset = async () => {
+    setPasswordError(null);
+    setFieldErrors({});
     if (
       !currentPassword.trim() ||
       !newPassword.trim() ||
       !confirmPassword.trim()
     ) {
-      setPasswordError("All fields are required");
+      setFieldErrors({
+        currentPassword: !currentPassword.trim()
+          ? "Current password is required"
+          : undefined,
+        newPassword: !newPassword.trim()
+          ? "New password is required"
+          : undefined,
+        confirmPassword: !confirmPassword.trim()
+          ? "Please confirm your new password"
+          : undefined,
+      });
+      setPasswordError(null);
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters long");
+      setFieldErrors({ confirmPassword: "New passwords do not match" });
       return;
     }
     setIsResettingPassword(true);
-    setPasswordError("");
     try {
+      console.log("Sending request...");
       const response = await fetch("/api/users/reset-password", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
       const data = await response.json();
-      if (response.ok) {
-        toast({
-          title: "Password Updated",
-          description: "Your password has been successfully updated.",
-        });
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      } else {
-        setPasswordError(data.error || "Failed to update password");
+      console.log("API response:", data);
+      if (!response.ok) {
+        if (data.errors) {
+          setFieldErrors(data.errors);
+        } else if (data.error) {
+          setPasswordError(data.error);
+        } else {
+          setPasswordError("Failed to update password");
+        }
+        return;
       }
+      toast({
+        title: "Password Updated",
+        description:
+          "Your password has been successfully updated. Please log in again.",
+        variant: "success",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => {
+        signOut({ callbackUrl: "/signin" });
+      }, 1500);
     } catch {
       setPasswordError("An error occurred while updating your password");
     } finally {
@@ -143,6 +168,7 @@ export function SettingsContent() {
               setShowConfirmPassword={setShowConfirmPassword}
               isResettingPassword={isResettingPassword}
               passwordError={passwordError}
+              fieldErrors={fieldErrors}
               handlePasswordReset={handlePasswordReset}
             />
 
