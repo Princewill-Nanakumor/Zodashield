@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
-import { Search, UserCircle, LogOut, User, Settings } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Search } from "lucide-react";
 import { DashboardSearchBar } from "./DashboardSearchBar";
 import ThemeToggle from "./ThemeToggle";
-import { useDateTimeSettings } from "@/context/DateTimeSettingsContext";
+import { DateTimeDisplay } from "./DateTimeDisplay";
+import { UserDropdownMenu } from "./UserDropdownMenu";
+import { NotificationBell } from "./NotificationBell";
 
 interface DashboardNavbarProps {
   onSearch: (query: string) => void;
@@ -35,40 +36,10 @@ export default function DashboardNavbar({
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-
-  // Date/time settings
-  const { timeFormat, dateFormat, timezone } = useDateTimeSettings();
-  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  function formatDateTime(date: Date) {
-    let dateStr = "";
-    if (dateFormat === "YYYY-MM-DD") {
-      dateStr = date.toLocaleDateString("en-CA", { timeZone: timezone });
-    } else if (dateFormat === "DD/MM/YYYY") {
-      dateStr = date.toLocaleDateString("en-GB", { timeZone: timezone });
-    } else if (dateFormat === "MM/DD/YYYY") {
-      dateStr = date.toLocaleDateString("en-US", { timeZone: timezone });
-    }
-    const hour12 = timeFormat === "12h";
-    const timeStr = date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12,
-      timeZone: timezone,
-    });
-    return `${dateStr} ${timeStr}`;
-  }
 
   // Fetch user profile and balance
   useEffect(() => {
@@ -118,28 +89,6 @@ export default function DashboardNavbar({
     [onSearch]
   );
 
-  const handleProfile = () => {
-    setDropdownOpen(false);
-    router.push("/dashboard/profile");
-  };
-
-  const handleSettings = () => {
-    setDropdownOpen(false);
-    router.push("/dashboard/settings");
-  };
-
-  const handleLogout = async () => {
-    setDropdownOpen(false);
-    await signOut({ callbackUrl: "/signin" });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
   if (!mounted) {
     // SSR fallback
     return (
@@ -156,7 +105,14 @@ export default function DashboardNavbar({
           />
         </div>
         <div className="flex items-center space-x-4">
-          <UserCircle className="h-9 w-9 text-white" />
+          <UserDropdownMenu
+            session={session}
+            userProfile={userProfile}
+            balanceLoading={balanceLoading}
+            dropdownOpen={dropdownOpen}
+            setDropdownOpen={setDropdownOpen}
+            dropdownRef={dropdownRef}
+          />
         </div>
       </nav>
     );
@@ -178,95 +134,17 @@ export default function DashboardNavbar({
 
       {/* Right: Date/Time, Theme, User Controls */}
       <div className="flex items-center space-x-4 ">
-        {/* Date/Time Display */}
-        <span className="font-mono text-xs text-white dark:text-gray-200 px-3 font-bold border rounded-xl p-1">
-          {formatDateTime(now)}
-        </span>
-
-        {/* Theme Toggle */}
+        <DateTimeDisplay />
+        <NotificationBell />
         <ThemeToggle isLoading={isLoading} />
-
-        {/* User Avatar Dropdown */}
-        <div className="relative" ref={dropdownRef}>
-          <button
-            className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50"
-            disabled={isLoading}
-            onClick={() => setDropdownOpen((open) => !open)}
-            aria-haspopup="true"
-            aria-expanded={dropdownOpen}
-            aria-label="User menu"
-            type="button"
-          >
-            <div className="relative">
-              <UserCircle className="h-9 w-9 text-white drop-shadow hover:text-white/80 transition-colors" />
-              <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white" />
-            </div>
-          </button>
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 dark:divide-gray-700 rounded-md bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black/10 dark:ring-white/10 z-[60] overflow-hidden transition-all duration-200 ease-out transform opacity-100 scale-100">
-              {/* User Info Section */}
-              <div className="px-4 py-3">
-                <div className="flex items-center">
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {session?.user?.firstName && session?.user?.lastName
-                        ? `${session.user.firstName} ${session.user.lastName}`
-                        : userProfile?.firstName && userProfile?.lastName
-                          ? `${userProfile.firstName} ${userProfile.lastName}`
-                          : "User"}
-                    </p>
-                    <div className="flex items-center">
-                      <span className="block h-2 w-2 rounded-full bg-green-400 mr-1" />
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Online
-                      </p>
-                    </div>
-                    <div className="mt-1">
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                        Balance:{" "}
-                        {balanceLoading ? (
-                          <span className="text-gray-500 dark:text-gray-400">
-                            Loading...
-                          </span>
-                        ) : (
-                          <span className="text-green-600 dark:text-green-400">
-                            {formatCurrency(userProfile?.balance || 0)}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Menu Items */}
-              <div className="py-1">
-                <button
-                  onClick={handleProfile}
-                  className="flex w-full items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-gray-700/80 transition-colors duration-150 ease-in-out"
-                >
-                  <User className="h-4 w-4 mr-3 text-purple-500 dark:text-purple-400" />
-                  Profile
-                </button>
-                <button
-                  onClick={handleSettings}
-                  className="flex w-full items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-gray-700/80 transition-colors duration-150 ease-in-out"
-                >
-                  <Settings className="h-4 w-4 mr-3 text-blue-500 dark:text-blue-400" />
-                  Settings
-                </button>
-              </div>
-              <div className="py-1">
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150 ease-in-out"
-                >
-                  <LogOut className="h-4 w-4 mr-3" />
-                  Logout
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <UserDropdownMenu
+          session={session}
+          userProfile={userProfile}
+          balanceLoading={balanceLoading}
+          dropdownOpen={dropdownOpen}
+          setDropdownOpen={setDropdownOpen}
+          dropdownRef={dropdownRef}
+        />
       </div>
     </nav>
   );
