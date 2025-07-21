@@ -135,7 +135,7 @@ export default function UsdtDepositSection({
             <h4 className="font-medium mb-2">Deposit Instructions:</h4>
             <ol className="list-decimal pl-5 space-y-1">
               <li>Enter the amount you want to deposit below</li>
-              <li>Click &quot;Generate Deposit Request&quot;</li>
+              <li>Click &quot;Generate Deposit Address&quot;</li>
               <li>Copy the wallet address or scan the QR code</li>
               <li>Send the exact amount the wallet address</li>
               <li>Click &quot;I Have Made the Payment&quot; after sending</li>
