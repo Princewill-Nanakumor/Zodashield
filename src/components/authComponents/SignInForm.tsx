@@ -31,9 +31,10 @@ export default function SignInForm() {
     defaultValues: { remember: false },
   });
 
+  const isFormDisabled = loading || !!formSuccess;
+
   useEffect(() => {
     if (session) {
-      // Both ADMIN and AGENT go to dashboard, but see different content
       router.push("/dashboard");
     }
   }, [session, router]);
@@ -53,8 +54,9 @@ export default function SignInForm() {
 
       if (result?.error) {
         setFormError(result.error);
+        setLoading(false);
       } else {
-        setFormSuccess("Signed in successful! Redirecting to dashboard");
+        setFormSuccess("Signed in successfully! Redirecting to dashboard");
         router.push("/dashboard");
       }
     } catch (error: unknown) {
@@ -63,7 +65,6 @@ export default function SignInForm() {
           ? `An error occurred during sign in: ${error.message}`
           : "An unexpected error occurred during sign in"
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -97,9 +98,13 @@ export default function SignInForm() {
               {...register("email")}
               type="email"
               placeholder="Email address"
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+              disabled={isFormDisabled}
+              className={`w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
+                isFormDisabled ? "cursor-not-allowed opacity-75" : ""
+              }`}
             />
           </div>
+
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
               <Lock className="h-5 w-5 text-gray-400" />
@@ -108,12 +113,18 @@ export default function SignInForm() {
               {...register("password")}
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+              disabled={isFormDisabled}
+              className={`w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
+                isFormDisabled ? "cursor-not-allowed opacity-75" : ""
+              }`}
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              onClick={() => !isFormDisabled && setShowPassword(!showPassword)}
+              className={`absolute inset-y-0 right-0 pr-3 flex items-center ${
+                isFormDisabled ? "cursor-not-allowed" : "cursor-pointer"
+              }`}
+              disabled={isFormDisabled}
             >
               {showPassword ? (
                 <EyeOff className="h-5 w-5 text-gray-400" />
@@ -124,11 +135,18 @@ export default function SignInForm() {
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <label className="flex items-center">
+          <label
+            className={`flex items-center ${
+              isFormDisabled ? "cursor-not-allowed" : "cursor-pointer"
+            }`}
+          >
             <input
               {...register("remember")}
               type="checkbox"
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+              disabled={isFormDisabled}
+              className={`rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 ${
+                isFormDisabled ? "opacity-75" : ""
+              }`}
             />
             <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
               Remember me
@@ -136,15 +154,23 @@ export default function SignInForm() {
           </label>
           <Link
             href="/forgot-password"
-            className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className={`text-sm text-indigo-600 dark:text-indigo-400 font-semibold ${
+              isFormDisabled
+                ? "pointer-events-none opacity-75"
+                : "hover:text-indigo-500 dark:hover:text-indigo-300"
+            }`}
           >
             Forgot password?
           </Link>
         </div>
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isFormDisabled}
+          className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 ${
+            isFormDisabled
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer hover:from-indigo-700 hover:to-purple-700"
+          }`}
         >
           {loading ? (
             <>
@@ -160,10 +186,14 @@ export default function SignInForm() {
         </button>
         <div className="text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Dont have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="text-indigo-600 hover:text-indigo-500 font-semibold dark:text-indigo-400 dark:hover:text-indigo-300"
+              className={`text-indigo-600 dark:text-indigo-400 font-semibold ${
+                isFormDisabled
+                  ? "pointer-events-none opacity-75"
+                  : "hover:text-indigo-500 dark:hover:text-indigo-300"
+              }`}
             >
               Sign up
             </Link>
