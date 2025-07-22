@@ -54,8 +54,7 @@ export default function SignInForm() {
       if (result?.error) {
         setFormError(result.error);
       } else {
-        setFormSuccess("Signed in successfully! Redirecting...");
-        // Both roles go to dashboard, content will be different based on role
+        setFormSuccess("Signed in successful! Redirecting to dashboard");
         router.push("/dashboard");
       }
     } catch (error: unknown) {

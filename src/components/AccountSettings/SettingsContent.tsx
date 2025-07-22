@@ -115,11 +115,16 @@ export function SettingsContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: deletePassword }),
       });
+      if (response.status === 401) {
+        signOut({ callbackUrl: "/signin" });
+        return;
+      }
       const data = await response.json();
       if (response.ok) {
         toast({
           title: "Account Deleted",
           description: "Your account has been successfully deleted.",
+          variant: "success",
         });
         setTimeout(() => {
           signOut({ callbackUrl: "/signin" });

@@ -134,8 +134,11 @@ export default function PaymentRequestDetails({
                       • Processing time:{" "}
                       {network === "TRC20" ? "1-2 minutes" : "5-10 minutes"}
                     </li>
-                    <li>• You&apos;ll receive a notification when verified</li>
-                    <li>• Funds will be added to your account balance</li>
+                    <li>
+                      • You&apos;ll receive a notification when your deposit has
+                      been confirmed
+                    </li>
+                    <li>• Funds will be available on your account balance</li>
                   </ul>
                 </div>
               </div>
