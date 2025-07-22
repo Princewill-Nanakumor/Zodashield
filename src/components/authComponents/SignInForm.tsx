@@ -125,6 +125,7 @@ export default function SignInForm() {
                 isFormDisabled ? "cursor-not-allowed" : "cursor-pointer"
               }`}
               disabled={isFormDisabled}
+              tabIndex={isFormDisabled ? -1 : 0}
             >
               {showPassword ? (
                 <EyeOff className="h-5 w-5 text-gray-400" />
@@ -137,7 +138,9 @@ export default function SignInForm() {
         <div className="flex items-center justify-between">
           <label
             className={`flex items-center ${
-              isFormDisabled ? "cursor-not-allowed" : "cursor-pointer"
+              isFormDisabled
+                ? "cursor-not-allowed pointer-events-none"
+                : "cursor-pointer"
             }`}
           >
             <input
@@ -156,9 +159,10 @@ export default function SignInForm() {
             href="/forgot-password"
             className={`text-sm text-indigo-600 dark:text-indigo-400 font-semibold ${
               isFormDisabled
-                ? "pointer-events-none opacity-75"
+                ? "pointer-events-none opacity-75 cursor-not-allowed"
                 : "hover:text-indigo-500 dark:hover:text-indigo-300"
             }`}
+            tabIndex={isFormDisabled ? -1 : 0}
           >
             Forgot password?
           </Link>
@@ -166,9 +170,10 @@ export default function SignInForm() {
         <button
           type="submit"
           disabled={isFormDisabled}
+          style={isFormDisabled ? { cursor: "not-allowed" } : {}}
           className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 ${
             isFormDisabled
-              ? "opacity-50 cursor-not-allowed"
+              ? "opacity-50"
               : "cursor-pointer hover:from-indigo-700 hover:to-purple-700"
           }`}
         >
@@ -191,9 +196,10 @@ export default function SignInForm() {
               href="/signup"
               className={`text-indigo-600 dark:text-indigo-400 font-semibold ${
                 isFormDisabled
-                  ? "pointer-events-none opacity-75"
+                  ? "pointer-events-none opacity-75 cursor-not-allowed"
                   : "hover:text-indigo-500 dark:hover:text-indigo-300"
               }`}
+              tabIndex={isFormDisabled ? -1 : 0}
             >
               Sign up
             </Link>

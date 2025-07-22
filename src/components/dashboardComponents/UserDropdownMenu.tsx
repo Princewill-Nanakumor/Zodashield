@@ -9,6 +9,7 @@ interface UserDropdownMenuProps {
   session: {
     user?: {
       firstName?: string;
+      email?: string;
       lastName?: string;
       role?: string;
     };
@@ -16,6 +17,7 @@ interface UserDropdownMenuProps {
   userProfile: {
     firstName?: string;
     lastName?: string;
+    email?: string;
     balance?: number;
     role?: string;
   } | null;
@@ -72,30 +74,36 @@ export function UserDropdownMenu({
         <div className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 dark:divide-gray-700 rounded-md bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black/10 dark:ring-white/10 z-[60] overflow-hidden transition-all duration-200 ease-out transform opacity-100 scale-100">
           {/* User Info Section */}
           <div className="px-4 py-3">
-            <div className="flex items-center">
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {session?.user?.firstName && session?.user?.lastName
-                    ? `${session.user.firstName} ${session.user.lastName}`
-                    : userProfile?.firstName && userProfile?.lastName
-                      ? `${userProfile.firstName} ${userProfile.lastName}`
-                      : "User"}
+            <div className="ml-3 max-w-[180px]">
+              {" "}
+              <p className="text-sm font-medium text-gray-900 dark:text-white break-all">
+                {session?.user?.firstName && session?.user?.lastName
+                  ? `${session.user.firstName} ${session.user.lastName}`
+                  : userProfile?.firstName && userProfile?.lastName
+                    ? `${userProfile.firstName} ${userProfile.lastName}`
+                    : "User"}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
+                {session?.user?.email
+                  ? session.user.email
+                  : userProfile?.email
+                    ? userProfile.email
+                    : ""}
+              </p>
+              <div className="flex items-center mt-1">
+                <span className="block h-2 w-2 rounded-full bg-green-400 mr-1" />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Online
                 </p>
-                <div className="flex items-center">
-                  <span className="block h-2 w-2 rounded-full bg-green-400 mr-1" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Online
-                  </p>
-                </div>
-                {isAdmin && (
-                  <div className="mt-1">
-                    <BalanceDisplay
-                      balance={userProfile?.balance}
-                      loading={balanceLoading}
-                    />
-                  </div>
-                )}
               </div>
+              {isAdmin && (
+                <div className="mt-1">
+                  <BalanceDisplay
+                    balance={userProfile?.balance}
+                    loading={balanceLoading}
+                  />
+                </div>
+              )}
             </div>
           </div>
           {/* Menu Items */}

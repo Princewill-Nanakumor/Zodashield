@@ -21,12 +21,18 @@ export function DateTimeDisplay() {
       dateStr = date.toLocaleDateString("en-US", { timeZone: timezone });
     }
     const hour12 = timeFormat === "12h";
-    const timeStr = date.toLocaleTimeString([], {
+    let timeStr = date.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
       hour12,
       timeZone: timezone,
     });
+
+    // Replace the default space before AM/PM with a thin space
+    if (hour12) {
+      timeStr = timeStr.replace(/ (\w{2})$/, "\u2009$1");
+    }
+
     return `${dateStr} ${timeStr}`;
   }
 

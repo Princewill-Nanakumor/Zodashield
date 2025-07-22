@@ -93,18 +93,20 @@ export default function DashboardNavbar({
     // SSR fallback
     return (
       <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3"></div>
-        <div className="relative w-full max-w-md mx-8">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-purple-300" />
+        <div className="flex-shrink-0 w-32" />
+        <div className="flex-1 flex justify-center">
+          <div className="relative w-full max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-purple-300" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 rounded-lg bg-white/90 border border-purple-200"
+              disabled
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 rounded-lg bg-white/90 border border-purple-200"
-            disabled
-          />
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 flex-shrink-0 w-32">
           <UserDropdownMenu
             session={session}
             userProfile={userProfile}
@@ -120,7 +122,7 @@ export default function DashboardNavbar({
 
   return (
     <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
-      {/* Center: Search Bar */}
+      <div className="flex-shrink-0" />
       <div className="flex-1 flex justify-center">
         <div className="w-full max-w-md">
           <DashboardSearchBar
@@ -131,9 +133,7 @@ export default function DashboardNavbar({
           />
         </div>
       </div>
-
-      {/* Right: Date/Time, Theme, User Controls */}
-      <div className="flex items-center space-x-4 ">
+      <div className="flex items-center space-x-4 flex-shrink-0">
         <DateTimeDisplay />
         <NotificationBell />
         <ThemeToggle isLoading={isLoading} />
