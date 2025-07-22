@@ -1,15 +1,20 @@
+"use client";
+
 export default function AboutComponent() {
   return (
     <main className="max-w-7xl mx-auto px-6 py-20">
       {/* Hero Section */}
       <div className="text-center mb-16">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent mb-6">
-          About ZodaShield
+          About ZodaShield CRM
         </h1>
         <p className="text-xl text-indigo-900/70 dark:text-gray-300 max-w-3xl mx-auto">
-          Empowering businesses to manage leads efficiently through intelligent
-          Excel and CSV data processing, build stronger customer relationships,
-          and drive growth through our comprehensive CRM solution.
+          ZodaShield is a cutting-edge CRM platform engineered to revolutionize
+          how businesses interact with and manage their spreadsheet data. It
+          offers a comprehensive suite of features, from intelligent Excel/CSV
+          data import to advanced analytics, automation, and seamless team
+          collaboration. ZodaShield empowers organizations to cultivate robust
+          customer relationships and significantly accelerate business growth.
         </p>
       </div>
 
@@ -20,15 +25,11 @@ export default function AboutComponent() {
             Our Mission
           </h2>
           <p className="text-lg text-indigo-900/70 dark:text-gray-300 leading-relaxed">
-            At ZodaShield, we believe that successful businesses are built on
-            strong customer relationships and efficient data management. Our
-            mission is to provide organizations with powerful tools to import,
-            process, and manage Excel and CSV data seamlessly. We understand
-            that businesses often have valuable lead data in spreadsheets, and
-            our platform is designed to transform this data into actionable
-            insights. From bulk Excel imports to real-time CSV processing,
-            ZodaShield helps you capture, organize, and nurture potential
-            customers throughout their journey.
+            At ZodaShield, our mission is to help businesses of all sizes build
+            lasting customer relationships and maximize sales efficiency. We
+            provide a comprehensive CRM solution that streamlines lead capture,
+            automates workflows, and delivers actionable insights—so you can
+            focus on what matters most: growing your business.
           </p>
         </div>
       </section>
@@ -36,7 +37,7 @@ export default function AboutComponent() {
       {/* What We Do Section */}
       <section className="mb-16">
         <h2 className="text-3xl font-bold text-indigo-900 dark:text-white mb-8 text-center">
-          What We Do
+          What Makes ZodaShield CRM Different?
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700">
@@ -56,13 +57,12 @@ export default function AboutComponent() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">
-              Excel & CSV Data Management
+              Complete Lead & Customer Management
             </h3>
             <p className="text-indigo-900/70 dark:text-gray-300">
-              Comprehensive data import system that processes Excel and CSV
-              files with intelligent validation, duplicate detection, and
-              automatic field mapping to transform your spreadsheet data into
-              actionable leads.
+              Capture, organize, and nurture leads from multiple sources. Track
+              every interaction, manage contacts, and convert prospects into
+              loyal customers—all in one CRM platform.
             </p>
           </div>
 
@@ -83,12 +83,12 @@ export default function AboutComponent() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">
-              Analytics & Insights
+              Sales Pipeline & Automation
             </h3>
             <p className="text-indigo-900/70 dark:text-gray-300">
-              Powerful analytics tools that provide deep insights into your
-              imported data, sales performance, lead conversion rates, and team
-              productivity with visual dashboards and reports.
+              Visualize your sales pipeline, automate repetitive tasks, and move
+              deals forward with customizable workflows, reminders, and
+              follow-ups.
             </p>
           </div>
 
@@ -112,8 +112,9 @@ export default function AboutComponent() {
               Team Collaboration
             </h3>
             <p className="text-indigo-900/70 dark:text-gray-300">
-              Multi-user platform that enables seamless collaboration between
-              teams for managing imported lead data.
+              Collaborate with your team, assign leads, share notes, and track
+              activities. ZodaShield CRM keeps everyone on the same page for
+              better customer engagement.
             </p>
           </div>
 
@@ -134,13 +135,12 @@ export default function AboutComponent() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">
-              Data Import & Export
+              Analytics & Insights
             </h3>
             <p className="text-indigo-900/70 dark:text-gray-300">
-              Robust import/export capabilities supporting Excel (.xlsx, .xls)
-              and CSV files with intelligent data validation, duplicate
-              detection, and automatic field mapping for seamless data
-              processing.
+              Get real-time analytics on your leads, sales, and team
+              performance. Make data-driven decisions with visual dashboards and
+              detailed reports.
             </p>
           </div>
         </div>
@@ -149,23 +149,26 @@ export default function AboutComponent() {
       {/* Key Features Section */}
       <section className="mb-16">
         <h2 className="text-3xl font-bold text-indigo-900 dark:text-white mb-8 text-center">
-          Key Features
+          Key CRM Features
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            "Excel & CSV Import",
-            "Bulk Data Processing",
+            "Lead & Contact Management",
+            "Sales Pipeline Tracking",
+            "Bulk Excel/CSV Import",
+            "Automated Workflows",
             "Duplicate Detection",
             "Real-time Analytics",
-            "Multi-user Management",
+            "Multi-user Collaboration",
             "Bulk Operations",
             "Data Export (Excel/CSV)",
             "Activity Logging",
-            "Custom Status",
+            "Custom Status & Tags",
             "Search & Filtering",
             "Mobile Responsive",
             "Data Validation",
             "Lead Assignment",
+            "Reminders & Notifications",
           ].map((feature, index) => (
             <div
               key={index}
@@ -187,9 +190,9 @@ export default function AboutComponent() {
             Built with Modern Technology
           </h2>
           <p className="text-lg text-indigo-900/70 dark:text-gray-300 mb-6">
-            ZodaShield is built using cutting-edge technologies to ensure
-            reliable Excel and CSV data processing, security, and performance
-            for your business needs.
+            ZodaShield CRM is built using cutting-edge technologies to ensure
+            reliable data processing, security, and performance for your
+            business needs.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
@@ -222,11 +225,11 @@ export default function AboutComponent() {
       <section className="text-center">
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 rounded-2xl p-8 text-white">
           <h2 className="text-3xl font-bold mb-4">
-            Ready to Transform Your Data Management?
+            Ready to Transform Your Customer Relationships?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join thousands of businesses that trust ZodaShield to import,
-            process, and manage their Excel and CSV data efficiently.
+            Join thousands of businesses that trust ZodaShield CRM to manage
+            leads, automate sales, and grow their customer base.
           </p>
         </div>
       </section>

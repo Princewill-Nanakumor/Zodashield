@@ -23,8 +23,8 @@ export default function Hero() {
         </h1>
         <p className="text-xl text-indigo-900/70 dark:text-gray-300 mb-12 max-w-2xl mx-auto">
           Streamline your data processing, import Excel and CSV files
-          seamlessly, and manage leads efficiently with ZodaShield. Turn your
-          spreadsheet data into powerful customer relationships.
+          seamlessly, and manage leads efficiently with ZodaShield CRM. Turn
+          your spreadsheet data into powerful customer relationships.
         </p>
         <div className="flex justify-center space-x-6 h-12">
           {status === "loading" ? (
