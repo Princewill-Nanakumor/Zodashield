@@ -112,9 +112,8 @@ export default function AboutComponent() {
               Team Collaboration
             </h3>
             <p className="text-indigo-900/70 dark:text-gray-300">
-              Multi-user platform with role-based permissions that enables
-              seamless collaboration between sales teams, managers, and
-              administrators for managing imported lead data.
+              Multi-user platform that enables seamless collaboration between
+              teams for managing imported lead data.
             </p>
           </div>
 
@@ -161,7 +160,6 @@ export default function AboutComponent() {
             "Multi-user Management",
             "Bulk Operations",
             "Data Export (Excel/CSV)",
-            "Role-based Access",
             "Activity Logging",
             "Custom Status",
             "Search & Filtering",
