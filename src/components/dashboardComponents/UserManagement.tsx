@@ -133,12 +133,13 @@ export default function UsersManagement({
                 </div>
                 {showCreateButton && (
                   <Button
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 !text-white"
                     onClick={() => {
                       setSelectedUser(null);
                       setShowModal(true);
                     }}
                   >
-                    <PlusIcon className="h-4 w-4 mr-2" />
+                    <PlusIcon className="h-4 w-4" />
                     Create User
                   </Button>
                 )}
