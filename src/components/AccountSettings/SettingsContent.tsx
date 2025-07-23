@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSession } from "next-auth/react";
 import { AlertTriangle, UserX } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { signOut } from "next-auth/react";
 import { SettingsSidebar } from "./SettingsSidebar";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { ChangePasswordSection } from "./ChangePasswordSection";
@@ -12,9 +13,11 @@ import { PasswordInput } from "./PasswordInput";
 import { DateTimeSettingsSection } from "./DateTimeSettingsSection";
 
 export function SettingsContent() {
+  const { data: session } = useSession();
   const { toast } = useToast();
+  const userRole = session?.user?.role;
 
-  // Password reset states
+  // Password reset state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -23,13 +26,9 @@ export function SettingsContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{
-    currentPassword?: string;
-    newPassword?: string;
-    confirmPassword?: string;
-  }>({});
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  // Delete account states
+  // Account deletion state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -39,6 +38,7 @@ export function SettingsContent() {
   const handlePasswordReset = async () => {
     setPasswordError(null);
     setFieldErrors({});
+
     if (
       !currentPassword.trim() ||
       !newPassword.trim() ||
@@ -58,20 +58,22 @@ export function SettingsContent() {
       setPasswordError(null);
       return;
     }
+
     if (newPassword !== confirmPassword) {
       setFieldErrors({ confirmPassword: "New passwords do not match" });
       return;
     }
+
     setIsResettingPassword(true);
+
     try {
-      console.log("Sending request...");
       const response = await fetch("/api/users/reset-password", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
       const data = await response.json();
-      console.log("API response:", data);
+
       if (!response.ok) {
         if (data.errors) {
           setFieldErrors(data.errors);
@@ -82,15 +84,18 @@ export function SettingsContent() {
         }
         return;
       }
+
       toast({
         title: "Password Updated",
         description:
           "Your password has been successfully updated. Please log in again.",
         variant: "success",
       });
+
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+
       setTimeout(() => {
         signOut({ callbackUrl: "/signin" });
       }, 1500);
@@ -101,31 +106,36 @@ export function SettingsContent() {
     }
   };
 
-  // Delete account handler
   const handleDeleteAccount = async () => {
     if (!deletePassword.trim()) {
       setDeleteError("Please enter your password");
       return;
     }
+
     setIsDeleting(true);
     setDeleteError("");
+
     try {
       const response = await fetch("/api/users/delete-account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: deletePassword }),
       });
+
       if (response.status === 401) {
         signOut({ callbackUrl: "/signin" });
         return;
       }
+
       const data = await response.json();
+
       if (response.ok) {
         toast({
           title: "Account Deleted",
           description: "Your account has been successfully deleted.",
           variant: "success",
         });
+
         setTimeout(() => {
           signOut({ callbackUrl: "/signin" });
         }, 2000);
@@ -139,10 +149,20 @@ export function SettingsContent() {
     }
   };
 
+  if (userRole !== "ADMIN") {
+    return (
+      <div className="min-h-screen">
+        <div className="container mx-auto px-4 py-8 rounded-lg border">
+          <DateTimeSettingsSection />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 rounded-lg border">
-        {/* Header */}
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold dark:text-white text-gray-900 mb-2">
@@ -154,10 +174,11 @@ export function SettingsContent() {
           </div>
         </div>
 
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
+          {/* Left Column - Password and Danger Zone */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Change Password Section */}
+            {/* Password Change Section */}
             <ChangePasswordSection
               currentPassword={currentPassword}
               setCurrentPassword={setCurrentPassword}
@@ -213,32 +234,31 @@ export function SettingsContent() {
               </div>
             </section>
           </div>
-          {/* Delete Account Dialog */}
-          <DeleteAccountDialog
-            open={showDeleteDialog}
-            onClose={() => {
-              setShowDeleteDialog(false);
-              setDeletePassword("");
-              setDeleteError("");
-            }}
-            onDelete={handleDeleteAccount}
-            isDeleting={isDeleting}
-            deletePassword={deletePassword}
-            setDeletePassword={setDeletePassword}
-            showDeletePassword={showDeletePassword}
-            setShowDeletePassword={setShowDeletePassword}
-            deleteError={deleteError}
-            PasswordInput={PasswordInput}
-          />
 
-          {/* Right Column - Sidebar */}
+          {/* Right Column - Sidebar and Date Settings */}
           <div>
-            <div>
-              <SettingsSidebar />
-            </div>
+            <SettingsSidebar />
             <DateTimeSettingsSection />
           </div>
         </div>
+
+        {/* Delete Account Dialog */}
+        <DeleteAccountDialog
+          open={showDeleteDialog}
+          onClose={() => {
+            setShowDeleteDialog(false);
+            setDeletePassword("");
+            setDeleteError("");
+          }}
+          onDelete={handleDeleteAccount}
+          isDeleting={isDeleting}
+          deletePassword={deletePassword}
+          setDeletePassword={setDeletePassword}
+          showDeletePassword={showDeletePassword}
+          setShowDeletePassword={setShowDeletePassword}
+          deleteError={deleteError}
+          PasswordInput={PasswordInput}
+        />
       </div>
     </div>
   );
