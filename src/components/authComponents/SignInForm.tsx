@@ -7,7 +7,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock, Loader2, ArrowRight } from "lucide-react";
-import { LoginSchema } from "@/schemas/loginSchema";
+import { LoginSchema } from "@/schemas";
 import { z } from "zod";
 import { FormError } from "./FormError";
 import { FormSuccess } from "./FormSucess";
@@ -89,93 +89,113 @@ export default function SignInForm() {
           }
         />
         <FormSuccess message={formSuccess} />
-        <div className="space-y-3 sm:space-y-4">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-              <Mail className="h-5 w-5 text-gray-400" />
+
+        <div className="space-y-4">
+          {/* Email Field */}
+          <div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                {...register("email")}
+                type="email"
+                placeholder="Email address"
+                disabled={isFormDisabled}
+                className={`
+                  pl-10 pr-3 py-3 w-full rounded-lg border text-sm
+                  ${errors.email ? "border-red-500" : "border-gray-300 dark:border-gray-600"}
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                  ${isFormDisabled ? "cursor-not-allowed opacity-75" : ""}
+                `}
+              />
             </div>
-            <input
-              {...register("email")}
-              type="email"
-              placeholder="Email address"
-              disabled={isFormDisabled}
-              className={`w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
-                isFormDisabled ? "cursor-not-allowed opacity-75" : ""
-              }`}
-            />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-500 flex items-start">
+                <span className="ml-1">{errors.email.message}</span>
+              </p>
+            )}
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-              <Lock className="h-5 w-5 text-gray-400" />
+          {/* Password Field */}
+          <div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                {...register("password")}
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                disabled={isFormDisabled}
+                className={`
+                  pl-10 pr-10 py-3 w-full rounded-lg border text-sm
+                  ${errors.password ? "border-red-500" : "border-gray-300 dark:border-gray-600"}
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                  ${isFormDisabled ? "cursor-not-allowed opacity-75" : ""}
+                `}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  !isFormDisabled && setShowPassword(!showPassword)
+                }
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                disabled={isFormDisabled}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
             </div>
-            <input
-              {...register("password")}
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              disabled={isFormDisabled}
-              className={`w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
-                isFormDisabled ? "cursor-not-allowed opacity-75" : ""
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => !isFormDisabled && setShowPassword(!showPassword)}
-              className={`absolute inset-y-0 right-0 pr-3 flex items-center ${
-                isFormDisabled ? "cursor-not-allowed" : "cursor-pointer"
-              }`}
-              disabled={isFormDisabled}
-              tabIndex={isFormDisabled ? -1 : 0}
-            >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5 text-gray-400" />
-              ) : (
-                <Eye className="h-5 w-5 text-gray-400" />
-              )}
-            </button>
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-500 flex items-start">
+                <span className="ml-1">{errors.password.message}</span>
+              </p>
+            )}
           </div>
         </div>
+
         <div className="flex items-center justify-between">
-          <label
-            className={`flex items-center ${
-              isFormDisabled
-                ? "cursor-not-allowed pointer-events-none"
-                : "cursor-pointer"
-            }`}
-          >
+          <label className="flex items-center space-x-2">
             <input
               {...register("remember")}
               type="checkbox"
               disabled={isFormDisabled}
-              className={`rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 ${
-                isFormDisabled ? "opacity-75" : ""
-              }`}
+              className={`
+                h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500
+                dark:border-gray-600 dark:bg-gray-700
+                ${isFormDisabled ? "opacity-75 cursor-not-allowed" : "cursor-pointer"}
+              `}
             />
-            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               Remember me
             </span>
           </label>
           <Link
             href="/forgot-password"
-            className={`text-sm text-indigo-600 dark:text-indigo-400 font-semibold ${
-              isFormDisabled
-                ? "pointer-events-none opacity-75 cursor-not-allowed"
-                : "hover:text-indigo-500 dark:hover:text-indigo-300"
-            }`}
-            tabIndex={isFormDisabled ? -1 : 0}
+            className={`
+              text-sm text-indigo-600 dark:text-indigo-400 font-medium
+              ${isFormDisabled ? "opacity-75 cursor-not-allowed" : "hover:text-indigo-500 dark:hover:text-indigo-300"}
+            `}
           >
             Forgot password?
           </Link>
         </div>
+
         <button
           type="submit"
           disabled={isFormDisabled}
-          style={isFormDisabled ? { cursor: "not-allowed" } : {}}
-          className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 ${
-            isFormDisabled
-              ? "opacity-50"
-              : "cursor-pointer hover:from-indigo-700 hover:to-purple-700"
-          }`}
+          className={`
+            w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium
+            py-3 px-4 rounded-lg flex items-center justify-center space-x-2
+            transition-all duration-200
+            ${isFormDisabled ? "opacity-50 cursor-not-allowed" : "hover:from-indigo-700 hover:to-purple-700"}
+          `}
         >
           {loading ? (
             <>
@@ -189,17 +209,16 @@ export default function SignInForm() {
             </>
           )}
         </button>
+
         <div className="text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className={`text-indigo-600 dark:text-indigo-400 font-semibold ${
-                isFormDisabled
-                  ? "pointer-events-none opacity-75 cursor-not-allowed"
-                  : "hover:text-indigo-500 dark:hover:text-indigo-300"
-              }`}
-              tabIndex={isFormDisabled ? -1 : 0}
+              className={`
+                text-indigo-600 dark:text-indigo-400 font-medium
+                ${isFormDisabled ? "opacity-75 cursor-not-allowed" : "hover:text-indigo-500 dark:hover:text-indigo-300"}
+              `}
             >
               Sign up
             </Link>
