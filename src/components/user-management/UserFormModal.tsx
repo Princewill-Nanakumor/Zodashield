@@ -20,14 +20,6 @@ import { NameFields } from "./NameFields";
 import { EmailField } from "./EmailField";
 import { PasswordField } from "./PasswordField";
 
-console.log({
-  CountrySelect,
-  PhoneNumberInput,
-  NameFields,
-  EmailField,
-  PasswordField,
-});
-
 interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -63,15 +55,6 @@ export function UserFormModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // --- DARK MODE STATE ---
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    }
-  }, [isOpen]);
-  // -----------------------
 
   useEffect(() => {
     if (isOpen) {
@@ -171,7 +154,6 @@ export function UserFormModal({
       onClose();
     } catch (error: unknown) {
       setIsLoading(false);
-      // ... your error handling as before ...
       if (typeof error === "string") {
         try {
           const parsed = JSON.parse(error);
@@ -214,9 +196,7 @@ export function UserFormModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      className={`fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50${isDark ? " dark" : ""}`}
-    >
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}

@@ -4,7 +4,6 @@ import { Mail, Phone, Edit, Save, X, User, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import "../../app/styles/phone-input-dark.css";
 import {
   DropdownIndicator,
   Select,
@@ -63,33 +62,49 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({
         : "focus:outline-none",
     ].join(" "),
 }) => {
-  // For country select
-  const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
-    countryOptions.find(
-      (opt) =>
-        opt.label === (isEditing ? editedProfile.country : profile.country)
-    ) || null
-  );
-  // For phone input
-  const [phone, setPhone] = useState(
-    isEditing ? editedProfile.phoneNumber || "" : profile.phoneNumber || ""
-  );
   // For dark mode
   const [isDark, setIsDark] = useState(false);
 
+  // Get initial country from profile or editedProfile
+  const initialCountry =
+    countryOptions.find(
+      (opt) =>
+        opt.label === (isEditing ? editedProfile.country : profile.country)
+    ) || null;
+
+  // State for phone and country
+  const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
+    initialCountry
+  );
+  const [phone, setPhone] = useState(
+    isEditing
+      ? editedProfile.phoneNumber || initialCountry?.phoneCode || ""
+      : profile.phoneNumber || initialCountry?.phoneCode || ""
+  );
+
+  // Effect to handle dark mode detection
   useEffect(() => {
-    setSelectedCountry(
-      countryOptions.find(
-        (opt) =>
-          opt.label === (isEditing ? editedProfile.country : profile.country)
-      ) || null
-    );
-    setPhone(
-      isEditing ? editedProfile.phoneNumber || "" : profile.phoneNumber || ""
-    );
     if (typeof window !== "undefined") {
       setIsDark(document.documentElement.classList.contains("dark"));
     }
+  }, []);
+
+  // Effect to sync state when switching between edit/view modes
+  useEffect(() => {
+    const currentCountry =
+      countryOptions.find(
+        (opt) =>
+          opt.label === (isEditing ? editedProfile.country : profile.country)
+      ) || null;
+
+    setSelectedCountry(currentCountry);
+
+    // Only update phone if we have a valid value or need to set default country code
+    const currentPhone = isEditing
+      ? editedProfile.phoneNumber || currentCountry?.phoneCode || ""
+      : profile.phoneNumber || currentCountry?.phoneCode || "";
+
+    setPhone(currentPhone);
   }, [
     isEditing,
     editedProfile.country,
@@ -99,11 +114,16 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({
   ]);
 
   const handleCountryChange = (option: SelectOption | null) => {
+    if (!option) return;
+
     setSelectedCountry(option);
-    onInputChange("country", option?.label || "");
-    if (option) {
-      setPhone(option.phoneCode);
-      onInputChange("phoneNumber", option.phoneCode);
+    onInputChange("country", option.label);
+
+    // Only update phone if it's empty or matches previous country code
+    if (!phone || phone === selectedCountry?.phoneCode) {
+      const newPhone = option.phoneCode;
+      setPhone(newPhone);
+      onInputChange("phoneNumber", newPhone);
     }
   };
 
@@ -146,22 +166,14 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({
     }
   };
 
-  // Always show the flag in the phone input, even when not editing
-  const phoneInputCountry =
-    selectedCountry?.value?.toLowerCase() ||
-    countryOptions
-      .find(
-        (opt) =>
-          opt.label === (isEditing ? editedProfile.country : profile.country)
-      )
-      ?.value?.toLowerCase() ||
-    "us";
+  // Calculate phoneInputCountry more reliably
+  const phoneInputCountry = selectedCountry?.value?.toLowerCase() || "us";
 
   return (
     <div className={`min-h-screen ${className}`}>
       <div className="container mx-auto px-4 py-8 rounded-lg border">
         {/* Header */}
-        <div className="flex flex-col md:flex-row  items-start md:items-center mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold dark:text-white text-gray-900 mb-2">
               Your Profile
@@ -195,7 +207,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({
                   <div className="flex gap-2">
                     <Button
                       onClick={onSave}
-                      className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 text-white"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Save
