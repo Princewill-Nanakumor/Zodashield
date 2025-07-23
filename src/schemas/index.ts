@@ -111,8 +111,9 @@ export const SignUpSchema = z
     phoneNumber: z
       .string()
       .nonempty({ message: "Phone number is required" })
-      .regex(/^\+?[1-9]\d{1,14}$/, {
-        message: "Invalid phone number format",
+      .refine((val) => /^\+?[1-9]\d{7,14}$/.test(val), {
+        message:
+          "Phone number must be at least 8 digits (excluding country code)",
       }),
     email: z
       .string()
@@ -130,11 +131,9 @@ export const SignUpSchema = z
       .refine((val) => /[!@#$%^&*(),.?":{}|<>]/.test(val), {
         message: "Password must contain at least one special character",
       }),
-    confirmPassword: z
-      .string()
-      .min(6, {
-        message: "Confirm Password must be at least 6 characters long",
-      }),
+    confirmPassword: z.string().min(6, {
+      message: "Confirm Password must be at least 6 characters long",
+    }),
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
