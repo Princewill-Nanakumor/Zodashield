@@ -38,7 +38,14 @@ export async function POST(req: Request) {
     });
 
     // Input validation
-    if (!firstName || !lastName || !email || !password || !country) {
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !password ||
+      !country ||
+      !phoneNumber
+    ) {
       console.log("❌ Missing required fields");
       return NextResponse.json(
         { message: "All required fields must be provided" },
@@ -63,14 +70,10 @@ export async function POST(req: Request) {
     const userCount = await User.countDocuments();
     const isFirstUser = userCount === 0;
 
-    console.log("📊 User count in database:", userCount);
-    console.log("👑 Is first user:", isFirstUser);
-
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
     console.log("🔐 Password hashed successfully");
 
-    // Create user with ADMIN role for ALL users who sign up
     const userData: UserData = {
       firstName,
       lastName,
@@ -78,7 +81,7 @@ export async function POST(req: Request) {
       password: hashedPassword,
       phoneNumber: phoneNumber || "",
       country,
-      role: "ADMIN", // ALL users become ADMIN
+      role: "ADMIN",
       status: "ACTIVE",
       permissions: [
         "ASSIGN_LEADS",
@@ -93,21 +96,13 @@ export async function POST(req: Request) {
       verificationTokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     };
 
-    // Set adminId based on whether it's the first user
     if (isFirstUser) {
-      console.log("👑 First user - no adminId set");
     } else {
-      userData.createdBy = null; // This will be set by admin when creating users
+      userData.createdBy = null;
       console.log("📝 Setting createdBy to null for subsequent users");
     }
 
     const user = await User.create(userData);
-    console.log("✅ User created successfully:", {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      permissions: user.permissions,
-    });
 
     // Send verification email
     try {

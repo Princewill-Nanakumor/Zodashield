@@ -1,11 +1,12 @@
-// src/components/dashboardComponents/UserFormDataManager.tsx
 import { useState, useEffect } from "react";
-import { UserFormData } from "@/schemas/UserFormSchema";
+import { UserFormCreateData, UserFormEditData } from "@/schemas/UserFormSchema";
 
 interface ValidationError {
   field: string;
   message: string;
 }
+
+type UserFormData = UserFormCreateData | UserFormEditData;
 
 interface UseUserFormDataProps {
   isOpen: boolean;
@@ -92,5 +93,6 @@ export const useUserFormData = ({
     handlePermissionChange,
     setErrorsFromValidation,
     getFieldError,
+    setFormData,
   };
 };

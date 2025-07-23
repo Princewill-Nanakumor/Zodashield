@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { UserFormSchema, UserFormData } from "@/schemas/UserFormSchema";
+import {
+  UserFormCreateSchema,
+  UserFormEditSchema,
+  UserFormCreateData,
+  UserFormEditData,
+} from "@/schemas/UserFormSchema";
 import { z } from "zod";
 
 interface ValidationError {
@@ -7,12 +12,15 @@ interface ValidationError {
   message: string;
 }
 
+type UserFormData = UserFormCreateData | UserFormEditData;
+
 interface UseUserFormSubmissionProps {
   formData: UserFormData;
   setErrorsFromValidation: (errors: ValidationError[]) => void;
   setGeneralError: (error: string | null) => void;
   onSubmit: (userData: UserFormData) => Promise<void>;
   onClose: () => void;
+  mode: "create" | "edit";
 }
 
 export const useUserFormSubmission = ({
@@ -21,28 +29,27 @@ export const useUserFormSubmission = ({
   setGeneralError,
   onSubmit,
   onClose,
+  mode,
 }: UseUserFormSubmissionProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const validateForm = (): boolean => {
     try {
-      // Use the zod schema to validate
-      UserFormSchema.parse(formData);
+      if (mode === "create") {
+        UserFormCreateSchema.parse(formData);
+      } else {
+        UserFormEditSchema.parse(formData);
+      }
       setErrorsFromValidation([]);
       return true;
     } catch (error) {
-      // Type guard to check if it's a ZodError
       if (error instanceof z.ZodError) {
-        // Convert zod errors to our ValidationError format
         const validationErrors: ValidationError[] = error.errors.map((err) => ({
           field: err.path[0] as string,
           message: err.message,
         }));
-
         setErrorsFromValidation(validationErrors);
       } else {
-        // Handle other types of errors
-        console.error("Validation error:", error);
         setErrorsFromValidation([]);
       }
       return false;
@@ -60,18 +67,17 @@ export const useUserFormSubmission = ({
     setGeneralError(null);
 
     try {
-      console.log("Modal: Calling onSubmit...");
       await onSubmit(formData);
-      console.log("Modal: onSubmit completed successfully");
       onClose();
     } catch (error: unknown) {
-      console.error("Modal: Error submitting form:", error);
-      // Display the error to the user
       if (error instanceof Error) {
-        console.log("Modal: Setting general error:", error.message);
-        setGeneralError(error.message);
+        // If the error is about email, set as field error
+        if (error.message.toLowerCase().includes("email")) {
+          setErrorsFromValidation([{ field: "email", message: error.message }]);
+        } else {
+          setGeneralError(error.message);
+        }
       } else {
-        console.log("Modal: Setting generic error");
         setGeneralError("An unexpected error occurred");
       }
     } finally {

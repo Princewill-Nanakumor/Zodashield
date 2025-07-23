@@ -59,10 +59,10 @@ export function UserCRUDOperations({
   const handleCreateUser = useCallback(
     async (userData: UserFormData): Promise<User> => {
       if (!session?.user?.id) {
-        throw new Error("User session not found. Please log in again.");
+        // General error
+        throw { message: "User session not found. Please log in again." };
       }
 
-      console.log("Making API call to create user...");
       const response = await fetch("/api/users", {
         method: "POST",
         headers: {
@@ -77,26 +77,28 @@ export function UserCRUDOperations({
       });
 
       const data = await response.json();
-      console.log("API response:", response.status, data);
 
       if (!response.ok) {
-        let errorMessage = "Something went wrong while creating the user.";
-
+        // Field error for duplicate email
         if (response.status === 409) {
-          errorMessage =
-            data.message || "This email address is already in use.";
-        } else if (response.status === 400) {
-          errorMessage = data.message || "Invalid user data.";
-        } else if (response.status === 401) {
-          errorMessage = "You are not authorized to create users.";
-        } else {
-          errorMessage = data.message || errorMessage;
+          throw {
+            field: "email",
+            message: data.message || "This email address is already in use.",
+          };
         }
-
-        throw new Error(errorMessage);
+        // General error for other cases
+        if (response.status === 400) {
+          throw { message: data.message || "Invalid user data." };
+        }
+        if (response.status === 401) {
+          throw { message: "You are not authorized to create users." };
+        }
+        throw {
+          message:
+            data.message || "Something went wrong while creating the user.",
+        };
       }
 
-      // Only show success toast here
       toast({
         title: "Success",
         description: "User created successfully",

@@ -1,17 +1,142 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { COUNTRIES } from "./UserFormConstants";
-import { UserFormData, UserFormSchema } from "@/schemas/UserFormSchema";
+import {
+  User,
+  Mail,
+  Lock,
+  Phone,
+  Eye,
+  EyeOff,
+  X,
+  AlertCircle,
+} from "lucide-react";
+import {
+  UserFormCreateSchema,
+  UserFormEditSchema,
+  UserFormCreateData,
+  UserFormEditData,
+} from "@/schemas/UserFormSchema";
 import { z } from "zod";
-import { User, Mail, Lock, Phone, Globe, Eye, EyeOff, X } from "lucide-react";
-// import { UserRoleStatusPermissions } from "./RoleStatusPermissions";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import "../../app/styles/phone-input-dark.css";
+import {
+  Select,
+  countryOptions,
+  CustomOption,
+  CustomSingleValue,
+  SelectOption,
+  DropdownIndicator,
+} from "../authComponents/SelectedCountry";
+import { CustomPlaceholder } from "../authComponents/GlobeplaceHolder";
+import { StylesConfig, GroupBase } from "react-select";
+
+export const customStyles: StylesConfig<
+  SelectOption,
+  false,
+  GroupBase<SelectOption>
+> = {
+  control: (provided, state) => ({
+    ...provided,
+    minHeight: "40px",
+    height: "40px",
+    borderRadius: "0.5rem",
+    borderColor: state.isFocused ? "#6366f1" : "#d1d5db",
+    borderWidth: "1px",
+    boxShadow: state.isFocused ? "0 0 0 1px #6366f1" : "none",
+    backgroundColor: state.isDisabled ? "#f3f4f6" : "#fff",
+    fontSize: "1rem",
+    paddingLeft: "0.75rem",
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    "&:hover": {
+      borderColor: state.isFocused ? "#6366f1" : "#d1d5db",
+    },
+  }),
+  valueContainer: (provided) => ({
+    ...provided,
+    minHeight: "40px",
+    height: "40px",
+    padding: "0 8px",
+    display: "flex",
+    alignItems: "center",
+  }),
+  input: (provided) => ({
+    ...provided,
+    margin: 0,
+    padding: 0,
+    alignSelf: "center",
+  }),
+  menu: (provided) => ({
+    ...provided,
+    zIndex: 9999,
+    fontSize: "1rem",
+    width: "100%",
+    minWidth: "220px",
+    marginTop: "4px",
+  }),
+  menuList: (provided) => ({
+    ...provided,
+    maxHeight: "220px",
+    overflowY: "auto",
+    paddingTop: 0,
+    paddingBottom: 0,
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    fontSize: "1rem",
+    backgroundColor: state.isSelected
+      ? "#6366f1"
+      : state.isFocused
+        ? "#f3f4f6"
+        : "#fff",
+    color: state.isSelected ? "#fff" : "#111827",
+    padding: "8px 14px",
+    cursor: "pointer",
+    lineHeight: 1.4,
+    wordBreak: "break-word",
+  }),
+  singleValue: (provided) => ({
+    ...provided,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: "calc(100% - 40px)",
+    margin: 0,
+    padding: 0,
+    position: "relative",
+    transform: "none",
+    top: 0,
+    left: 0,
+  }),
+  placeholder: (provided) => ({
+    ...provided,
+    color: "#6b7280",
+    fontSize: "1rem",
+    margin: 0,
+  }),
+  indicatorSeparator: () => ({
+    display: "none",
+  }),
+  dropdownIndicator: (provided) => ({
+    ...provided,
+    color: "#6b7280",
+    paddingRight: "0.75rem",
+    paddingLeft: "0.5rem",
+    svg: {
+      width: "18px",
+      height: "18px",
+    },
+  }),
+};
 
 interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (userData: UserFormData) => Promise<void>;
-  initialData?: UserFormData;
+  onSubmit: (userData: UserFormCreateData | UserFormEditData) => Promise<void>;
+  initialData?: UserFormEditData;
   mode: "create" | "edit";
 }
 
@@ -23,7 +148,9 @@ export function UserFormModal({
   mode,
 }: UserFormModalProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState<UserFormData>({
+  const [formData, setFormData] = useState<
+    UserFormCreateData | UserFormEditData
+  >({
     firstName: "",
     lastName: "",
     email: "",
@@ -34,15 +161,21 @@ export function UserFormModal({
     status: "ACTIVE",
     permissions: [],
   });
+  const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
+    null
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Reset form when modal opens/closes or initialData changes
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setFormData(initialData);
+        setSelectedCountry(
+          countryOptions.find((opt) => opt.label === initialData.country) ||
+            null
+        );
       } else {
         setFormData({
           firstName: "",
@@ -55,6 +188,7 @@ export function UserFormModal({
           status: "ACTIVE",
           permissions: [],
         });
+        setSelectedCountry(null);
       }
       setErrors({});
       setGeneralError(null);
@@ -62,36 +196,43 @@ export function UserFormModal({
   }, [isOpen, initialData]);
 
   const handleInputChange = (
-    field: keyof UserFormData,
+    field: keyof (UserFormCreateData & UserFormEditData),
     value: string | string[]
   ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
         [field]: "",
       }));
     }
-    // Clear general error when user starts typing
     if (generalError) {
       setGeneralError(null);
     }
   };
 
-  // const handlePermissionChange = (permission: string, checked: boolean) => {
-  //   const newPermissions = checked
-  //     ? [...formData.permissions, permission]
-  //     : formData.permissions.filter((p: string) => p !== permission);
-  //   handleInputChange("permissions", newPermissions);
-  // };
+  const handleCountryChange = (option: SelectOption | null) => {
+    setSelectedCountry(option);
+    handleInputChange("country", option?.label || "");
+    if (option) {
+      handleInputChange("phoneNumber", option.phoneCode);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    handleInputChange("phoneNumber", value);
+  };
 
   const validateForm = (): boolean => {
     try {
-      UserFormSchema.parse(formData);
+      if (mode === "create") {
+        UserFormCreateSchema.parse(formData);
+      } else {
+        UserFormEditSchema.parse(formData);
+      }
       setErrors({});
       return true;
     } catch (error) {
@@ -110,37 +251,42 @@ export function UserFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    // Prevent double submission
-    if (isLoading) {
-      return;
-    }
+    if (!validateForm()) return;
+    if (isLoading) return;
 
     setIsLoading(true);
     setGeneralError(null);
+
     try {
       await onSubmit(formData);
-      onClose();
+      onClose(); // Only close on successful submission
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        // Check if this is an email conflict error
-        if (error.message.toLowerCase().includes("email")) {
-          setErrors({
-            ...errors,
-            email: error.message,
-          });
-        } else {
-          setGeneralError(error.message);
-        }
+      setIsLoading(false);
+
+      // Type guard for custom error object
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "field" in error &&
+        "message" in error &&
+        typeof (error as { field: unknown }).field === "string" &&
+        typeof (error as { message: unknown }).message === "string"
+      ) {
+        setErrors({
+          ...errors,
+          [(error as { field: string }).field]: (error as { message: string })
+            .message,
+        });
+      } else if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message: unknown }).message === "string"
+      ) {
+        setGeneralError((error as { message: string }).message);
       } else {
         setGeneralError("An unexpected error occurred");
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -150,7 +296,7 @@ export function UserFormModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -164,23 +310,10 @@ export function UserFormModal({
             </button>
           </div>
 
-          {/* General Error Display */}
           {generalError && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
               <div className="flex items-center">
-                <svg
-                  className="h-4 w-4 text-red-500 dark:text-red-400 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2" />
                 <p className="text-sm text-red-600 dark:text-red-400">
                   {generalError}
                 </p>
@@ -191,15 +324,9 @@ export function UserFormModal({
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label
-                  htmlFor="firstName"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                >
-                  First Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <div>
+                <div className="relative flex items-center">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
                     id="firstName"
                     type="text"
@@ -207,30 +334,25 @@ export function UserFormModal({
                     onChange={(e) =>
                       handleInputChange("firstName", e.target.value)
                     }
-                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
+                    className={`pl-10 h-10 w-full px-3 rounded-lg border text-sm ${
                       getFieldError("firstName")
-                        ? "border-red-500 dark:border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                    }`}
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
+                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
                     placeholder="First Name"
+                    disabled={isLoading}
                   />
                 </div>
                 {getFieldError("firstName") && (
-                  <p className="text-xs text-red-500 dark:text-red-400">
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
                     {getFieldError("firstName")}
                   </p>
                 )}
               </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="lastName"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                >
-                  Last Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <div>
+                <div className="relative flex items-center">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
                     id="lastName"
                     type="text"
@@ -238,16 +360,18 @@ export function UserFormModal({
                     onChange={(e) =>
                       handleInputChange("lastName", e.target.value)
                     }
-                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
+                    className={`pl-10 h-10 w-full px-3 rounded-lg border text-sm ${
                       getFieldError("lastName")
-                        ? "border-red-500 dark:border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                    }`}
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
+                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
                     placeholder="Last Name"
+                    disabled={isLoading}
                   />
                 </div>
                 {getFieldError("lastName") && (
-                  <p className="text-xs text-red-500 dark:text-red-400">
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
                     {getFieldError("lastName")}
                   </p>
                 )}
@@ -255,30 +379,27 @@ export function UserFormModal({
             </div>
 
             {/* Email Field */}
-            <div className="space-y-2">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+            <div>
+              <div className="relative flex items-center">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 <input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
+                  className={`pl-10 h-10 w-full px-3 rounded-lg border text-sm ${
                     getFieldError("email")
-                      ? "border-red-500 dark:border-red-400"
-                      : "border-gray-300 dark:border-gray-600"
-                  }`}
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
+                  } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
                   placeholder="Email Address"
+                  disabled={isLoading}
+                  autoComplete="email"
                 />
               </div>
               {getFieldError("email") && (
-                <p className="text-xs text-red-500 dark:text-red-400">
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3 w-3" />
                   {getFieldError("email")}
                 </p>
               )}
@@ -286,15 +407,9 @@ export function UserFormModal({
 
             {/* Password Field (only for create mode) */}
             {mode === "create" && (
-              <div className="space-y-2">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <div>
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -302,17 +417,19 @@ export function UserFormModal({
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className={`w-full pl-10 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
+                    className={`pl-10 pr-10 h-10 w-full px-3 rounded-lg border text-sm ${
                       getFieldError("password")
-                        ? "border-red-500 dark:border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                    }`}
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
+                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
                     placeholder="Password"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -322,95 +439,81 @@ export function UserFormModal({
                   </button>
                 </div>
                 {getFieldError("password") && (
-                  <p className="text-xs text-red-500 dark:text-red-400">
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
                     {getFieldError("password")}
                   </p>
                 )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Minimum 8 characters required
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Minimum 8 characters, 1 uppercase, 1 number, 1 special
+                  character
                 </p>
               </div>
             )}
 
             {/* Phone and Country Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label
-                  htmlFor="phoneNumber"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                >
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                  <input
-                    id="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      handleInputChange("phoneNumber", e.target.value)
-                    }
-                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 ${
-                      getFieldError("phoneNumber")
-                        ? "border-red-500 dark:border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                    }`}
-                    placeholder="Phone Number"
-                  />
-                </div>
-                {getFieldError("phoneNumber") && (
-                  <p className="text-xs text-red-500 dark:text-red-400">
-                    {getFieldError("phoneNumber")}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="country"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                >
-                  Country
-                </label>
-                <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                  <select
-                    id="country"
-                    value={formData.country}
-                    onChange={(e) =>
-                      handleInputChange("country", e.target.value)
-                    }
-                    className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                      getFieldError("country")
-                        ? "border-red-500 dark:border-red-400"
-                        : "border-gray-300 dark:border-gray-600"
-                    }`}
-                  >
-                    <option value="">Select country</option>
-                    {COUNTRIES.map((country) => (
-                      <option key={country.value} value={country.value}>
-                        {country.label}
-                      </option>
-                    ))}
-                  </select>
+              {/* Country */}
+              <div>
+                <div className="relative flex items-center w-full">
+                  <div className="w-full">
+                    <Select
+                      options={countryOptions}
+                      styles={customStyles}
+                      components={{
+                        Option: CustomOption,
+                        SingleValue: CustomSingleValue,
+                        DropdownIndicator,
+                        Placeholder: CustomPlaceholder,
+                      }}
+                      placeholder="Select Country"
+                      value={selectedCountry}
+                      onChange={handleCountryChange}
+                      isDisabled={isLoading}
+                      classNamePrefix="react-select"
+                      menuPlacement="top"
+                    />
+                  </div>
                 </div>
                 {getFieldError("country") && (
-                  <p className="text-xs text-red-500 dark:text-red-400">
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
                     {getFieldError("country")}
                   </p>
                 )}
               </div>
+              {/* Phone */}
+              <div>
+                <div className="relative flex items-center w-full">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
+                  <PhoneInput
+                    country={selectedCountry?.value?.toLowerCase() || "us"}
+                    value={formData.phoneNumber}
+                    onChange={handlePhoneChange}
+                    inputClass={`!pl-10 !h-10 !w-full !rounded-lg !text-sm !border ${
+                      getFieldError("phoneNumber")
+                        ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500 focus:!ring-2"
+                        : "!border-gray-300 dark:!border-gray-600 focus:!ring-indigo-500 focus:!ring-2"
+                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:border-transparent transition-colors`}
+                    buttonClass="hidden"
+                    containerClass="!w-full"
+                    disabled={isLoading}
+                    placeholder="Phone Number"
+                    disableDropdown={true}
+                    inputProps={{
+                      name: "phoneNumber",
+                      required: true,
+                    }}
+                  />
+                </div>
+                {getFieldError("phoneNumber") && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {getFieldError("phoneNumber")}
+                  </p>
+                )}
+              </div>
             </div>
-
-            {/* Role, Status, and Permissions Component
-            <UserRoleStatusPermissions
-              formData={formData}
-              errors={errors}
-              onRoleChange={(value) => handleInputChange("role", value)}
-              onStatusChange={(value) => handleInputChange("status", value)}
-              onPermissionChange={handlePermissionChange}
-              disabled={isLoading}
-            /> */}
 
             {/* Submit Buttons */}
             <div className="flex justify-end space-x-3 pt-4">
@@ -418,13 +521,14 @@ export function UserFormModal({
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading
                   ? "Creating..."

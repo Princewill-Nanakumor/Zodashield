@@ -105,18 +105,19 @@ export const LoginSchema = z.object({
 
 export const SignUpSchema = z
   .object({
-    firstName: z.string().min(1, { message: "First name is required" }),
-    lastName: z.string().min(1, { message: "Last name is required" }),
-    country: z.string().min(1, { message: "Country is required" }),
+    firstName: z.string().nonempty({ message: "First name is required" }),
+    lastName: z.string().nonempty({ message: "Last name is required" }),
+    country: z.string().nonempty({ message: "Country is required" }),
     phoneNumber: z
       .string()
+      .nonempty({ message: "Phone number is required" })
       .regex(/^\+?[1-9]\d{1,14}$/, {
         message: "Invalid phone number format",
-      })
-      .min(1, { message: "Phone number is required" }),
-    email: z.string().email({
-      message: "Email is required",
-    }),
+      }),
+    email: z
+      .string()
+      .nonempty({ message: "Email is required" })
+      .email({ message: "Invalid email address" }),
     password: z
       .string()
       .min(6, { message: "Password must be at least 6 characters long" })
@@ -129,9 +130,11 @@ export const SignUpSchema = z
       .refine((val) => /[!@#$%^&*(),.?":{}|<>]/.test(val), {
         message: "Password must contain at least one special character",
       }),
-    confirmPassword: z.string().min(6, {
-      message: "Confirm Password must be at least 6 characters long",
-    }),
+    confirmPassword: z
+      .string()
+      .min(6, {
+        message: "Confirm Password must be at least 6 characters long",
+      }),
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
