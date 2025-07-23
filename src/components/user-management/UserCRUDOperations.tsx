@@ -1,4 +1,3 @@
-// src/components/user-management/UserCRUDOperations.tsx
 "use client";
 
 import { useCallback } from "react";
@@ -47,7 +46,7 @@ interface UserCRUDOperationsProps {
 
 export function UserCRUDOperations({
   onUserCreated,
-
+  onUserUpdated, // Added this line
   onUserDeleted,
   onRefreshUsers,
   children,
@@ -117,6 +116,8 @@ export function UserCRUDOperations({
   const handleUpdateUser = useCallback(
     async (userData: UserFormData, userId: string): Promise<User> => {
       try {
+        console.log("[Frontend] Sending update request:", { userId, userData });
+
         const response = await fetch(`/api/users`, {
           method: "PUT",
           headers: {
@@ -129,41 +130,72 @@ export function UserCRUDOperations({
           }),
         });
 
+        console.log("[Frontend] Response status:", response.status);
         const data = await response.json();
+        console.log("[Frontend] Response data:", data);
 
         if (!response.ok) {
-          // Throw structured error from API
-          if (data.error) {
-            console.log("Throwing error from API:", data.error);
+          // Check if the API returned a structured error
+          if (data.error && typeof data.error === "object") {
+            console.log("API returned structured error:", data.error);
             throw data.error;
           }
+
+          // Check if the API returned a simple error message
+          if (data.error && typeof data.error === "string") {
+            throw { message: data.error };
+          }
+
+          // Check if the API returned a message field
+          if (data.message) {
+            throw { message: data.message };
+          }
+
           // Fallback error
-          throw {
-            message: data.message || "Failed to update user",
-          };
+          throw { message: "Failed to update user" };
         }
 
-        // If your backend returns { data: userResponse, ... }
-        if (data.data) return data.data;
-        // If your backend returns { user: userResponse, ... }
-        if (data.user) return data.user;
+        // Success case - your API returns { success: true, data: userData }
+        if (data.success && data.data) {
+          // Add success toast
+          toast({
+            title: "Success",
+            description: "User updated successfully",
+            variant: "success",
+          });
+
+          await queryClient.invalidateQueries({ queryKey: ["users"] });
+          await onRefreshUsers();
+          onUserUpdated?.(data.data);
+
+          return data.data;
+        }
+
+        // Fallback if structure is different
+        if (data.user) {
+          toast({
+            title: "Success",
+            description: "User updated successfully",
+            variant: "success",
+          });
+
+          await queryClient.invalidateQueries({ queryKey: ["users"] });
+          await onRefreshUsers();
+          onUserUpdated?.(data.user);
+
+          return data.user;
+        }
 
         throw { message: "No user data returned from server." };
       } catch (error) {
-        // Only log, do not stringify for throwing
-        if (typeof error === "object" && error !== null) {
-          console.error("Update user error:", error);
-          throw error;
-        }
-        throw {
-          message:
-            typeof error === "string"
-              ? error
-              : "Failed to update user. Please try again.",
-        };
+        // Log the actual error for debugging
+        console.error("Update user error details:", error);
+
+        // Re-throw the error as is (don't stringify it)
+        throw error;
       }
     },
-    []
+    [toast, queryClient, onRefreshUsers, onUserUpdated]
   );
 
   const handleDeleteUser = useCallback(

@@ -210,8 +210,17 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
+    console.log("[PUT /api/users] Starting request");
+
     const session = await getServerSession(authOptions);
+    console.log(
+      "[PUT /api/users] Session:",
+      session?.user?.id,
+      session?.user?.role
+    );
+
     if (!session?.user?.role || session.user.role !== "ADMIN") {
+      console.log("[PUT /api/users] Unauthorized - not admin");
       return NextResponse.json(
         { success: false, error: { message: "Unauthorized" } },
         { status: 401 }
@@ -230,7 +239,10 @@ export async function PUT(request: Request) {
       status?: string;
     };
 
+    console.log("[PUT /api/users] Request data:", requestData);
+
     if (!requestData.id || !mongoose.Types.ObjectId.isValid(requestData.id)) {
+      console.log("[PUT /api/users] Invalid user ID:", requestData.id);
       return NextResponse.json(
         {
           success: false,
@@ -246,6 +258,9 @@ export async function PUT(request: Request) {
 
     const userId = new mongoose.Types.ObjectId(requestData.id);
     const adminId = new mongoose.Types.ObjectId(session.user.id);
+
+    console.log("[PUT /api/users] User ID:", userId.toString());
+    console.log("[PUT /api/users] Admin ID:", adminId.toString());
 
     const updateFields: UserUpdateFields = {};
     if (requestData.firstName !== undefined)
@@ -263,8 +278,11 @@ export async function PUT(request: Request) {
     if (requestData.status !== undefined)
       updateFields.status = requestData.status;
 
+    console.log("[PUT /api/users] Update fields:", updateFields);
+
     // Prevent admin from changing their own role/status
     if (userId.equals(adminId)) {
+      console.log("[PUT /api/users] Admin trying to update themselves");
       if (updateFields.role !== undefined && updateFields.role !== "ADMIN") {
         return NextResponse.json(
           {
@@ -296,6 +314,7 @@ export async function PUT(request: Request) {
     }
 
     if (!mongoose.connection?.db) {
+      console.log("[PUT /api/users] Database connection not available");
       return NextResponse.json(
         {
           success: false,
@@ -309,15 +328,21 @@ export async function PUT(request: Request) {
     }
 
     const db = mongoose.connection.db;
+    console.log("[PUT /api/users] Database connection available");
 
     // Check for duplicate email before update
     if (updateFields.email !== undefined) {
+      console.log(
+        "[PUT /api/users] Checking for duplicate email:",
+        updateFields.email
+      );
       const existingUser = await db.collection("users").findOne({
         email: updateFields.email,
         _id: { $ne: userId },
       });
 
       if (existingUser) {
+        console.log("[PUT /api/users] Duplicate email found");
         return NextResponse.json(
           {
             success: false,
@@ -332,6 +357,7 @@ export async function PUT(request: Request) {
       }
     }
 
+    console.log("[PUT /api/users] Performing update");
     const updateResult = await db.collection("users").findOneAndUpdate(
       {
         _id: userId,
@@ -349,12 +375,17 @@ export async function PUT(request: Request) {
       }
     );
 
-    if (!updateResult || !updateResult.value) {
+    console.log("[PUT /api/users] Update result:", updateResult);
+
+    // FIXED: Check if updateResult exists (not updateResult.value)
+    if (!updateResult) {
+      console.log("[PUT /api/users] No update result, checking if user exists");
       const existingUser = await db
         .collection("users")
         .findOne({ _id: userId }, { projection: { adminId: 1 } });
 
       if (!existingUser) {
+        console.log("[PUT /api/users] User not found");
         return NextResponse.json(
           {
             success: false,
@@ -368,6 +399,9 @@ export async function PUT(request: Request) {
       }
 
       if (existingUser.adminId && !existingUser.adminId.equals(adminId)) {
+        console.log(
+          "[PUT /api/users] Unauthorized update - user belongs to another admin"
+        );
         return NextResponse.json(
           {
             success: false,
@@ -380,6 +414,7 @@ export async function PUT(request: Request) {
         );
       }
 
+      console.log("[PUT /api/users] Update failed for unknown reason");
       return NextResponse.json(
         {
           success: false,
@@ -392,7 +427,12 @@ export async function PUT(request: Request) {
       );
     }
 
-    const updatedUser = updateResult.value;
+    // FIXED: Use updateResult directly (not updateResult.value)
+    const updatedUser = updateResult;
+    console.log(
+      "[PUT /api/users] User updated successfully:",
+      updatedUser._id.toString()
+    );
 
     const userResponse = {
       id: updatedUser._id.toString(),
@@ -409,6 +449,7 @@ export async function PUT(request: Request) {
       lastLogin: updatedUser.lastLogin?.toISOString() ?? null,
     };
 
+    console.log("[PUT /api/users] Returning success response");
     return NextResponse.json({
       success: true,
       data: userResponse,

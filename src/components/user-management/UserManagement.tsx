@@ -162,14 +162,11 @@ export default function UsersManagement({
                 onSubmit={async (userData) => {
                   try {
                     if (selectedUser) {
-                      const updatedUser = await handleUpdateUser(
-                        userData,
-                        selectedUser.id
-                      );
-                      handleUserUpdated(updatedUser);
+                      // Remove the duplicate handleUserUpdated call here
+                      await handleUpdateUser(userData, selectedUser.id);
                     } else {
-                      const newUser = await handleCreateUser(userData);
-                      handleUserCreated(newUser);
+                      // Remove the duplicate handleUserCreated call here
+                      await handleCreateUser(userData);
                     }
                   } catch (error) {
                     console.error("Error in form submission:", error);
