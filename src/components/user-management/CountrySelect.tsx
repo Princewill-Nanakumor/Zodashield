@@ -9,6 +9,7 @@ import {
 } from "../authComponents/SelectedCountry";
 import { CustomPlaceholder } from "../authComponents/GlobeplaceHolder";
 import { AlertCircle } from "lucide-react";
+import { customStyles } from "./selectStyles";
 
 interface CountrySelectProps {
   value: SelectOption | null;
@@ -29,7 +30,7 @@ export function CountrySelect({
         <div className="w-full">
           <Select
             options={countryOptions}
-            styles={{}}
+            styles={customStyles}
             components={{
               Option: CustomOption,
               SingleValue: CustomSingleValue,
