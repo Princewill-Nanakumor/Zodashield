@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Shield, CheckCircle } from "lucide-react";
-import { ROLES, PERMISSIONS } from "./UserFormConstants";
+import { ROLES, PERMISSIONS } from "../user-management/UserFormConstants";
 
 interface UserRoleStatusPermissionsProps {
   formData: {

@@ -1,136 +1,28 @@
 "use client";
-
 import { useState, useEffect } from "react";
-import {
-  User,
-  Mail,
-  Lock,
-  Phone,
-  Eye,
-  EyeOff,
-  X,
-  AlertCircle,
-} from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
+import { z } from "zod";
+import "react-phone-input-2/lib/style.css";
+import "../../app/styles/phone-input-dark.css";
+import { CountrySelect } from "./CountrySelect";
+import { PhoneNumberInput } from "./PhoneNumberInput";
+
+// Schemas
 import {
   UserFormCreateSchema,
   UserFormEditSchema,
   UserFormCreateData,
   UserFormEditData,
 } from "@/schemas/UserFormSchema";
-import { z } from "zod";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
-import "../../app/styles/phone-input-dark.css";
-import {
-  Select,
-  countryOptions,
-  CustomOption,
-  CustomSingleValue,
-  SelectOption,
-  DropdownIndicator,
-} from "../authComponents/SelectedCountry";
-import { CustomPlaceholder } from "../authComponents/GlobeplaceHolder";
-import { StylesConfig, GroupBase } from "react-select";
 
-export const customStyles: StylesConfig<
+// Components
+import {
+  countryOptions,
   SelectOption,
-  false,
-  GroupBase<SelectOption>
-> = {
-  control: (provided, state) => ({
-    ...provided,
-    minHeight: "40px",
-    height: "40px",
-    borderRadius: "0.5rem",
-    borderColor: state.isFocused ? "#6366f1" : "#d1d5db",
-    borderWidth: "1px",
-    boxShadow: state.isFocused ? "0 0 0 1px #6366f1" : "none",
-    backgroundColor: state.isDisabled ? "#f3f4f6" : "#fff",
-    fontSize: "1rem",
-    paddingLeft: "0.75rem",
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    "&:hover": {
-      borderColor: state.isFocused ? "#6366f1" : "#d1d5db",
-    },
-  }),
-  valueContainer: (provided) => ({
-    ...provided,
-    minHeight: "40px",
-    height: "40px",
-    padding: "0 8px",
-    display: "flex",
-    alignItems: "center",
-  }),
-  input: (provided) => ({
-    ...provided,
-    margin: 0,
-    padding: 0,
-    alignSelf: "center",
-  }),
-  menu: (provided) => ({
-    ...provided,
-    zIndex: 9999,
-    fontSize: "1rem",
-    width: "100%",
-    minWidth: "220px",
-    marginTop: "4px",
-  }),
-  menuList: (provided) => ({
-    ...provided,
-    maxHeight: "180px",
-    overflowY: "auto",
-    paddingTop: 0,
-    paddingBottom: 0,
-  }),
-  option: (provided, state) => ({
-    ...provided,
-    fontSize: "1rem",
-    backgroundColor: state.isSelected
-      ? "#6366f1"
-      : state.isFocused
-        ? "#f3f4f6"
-        : "#fff",
-    color: state.isSelected ? "#fff" : "#111827",
-    padding: "8px 14px",
-    cursor: "pointer",
-    lineHeight: 1.4,
-    wordBreak: "break-word",
-  }),
-  singleValue: (provided) => ({
-    ...provided,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    maxWidth: "calc(100% - 40px)",
-    margin: 0,
-    padding: 0,
-    position: "relative",
-    transform: "none",
-    top: 0,
-    left: 0,
-  }),
-  placeholder: (provided) => ({
-    ...provided,
-    color: "#6b7280",
-    fontSize: "1rem",
-    margin: 0,
-  }),
-  indicatorSeparator: () => ({
-    display: "none",
-  }),
-  dropdownIndicator: (provided) => ({
-    ...provided,
-    color: "#6b7280",
-    paddingRight: "0.75rem",
-    paddingLeft: "0.5rem",
-    svg: {
-      width: "18px",
-      height: "18px",
-    },
-  }),
-};
+} from "../authComponents/SelectedCountry";
+import { NameFields } from "./NameFields";
+import { EmailField } from "./EmailField";
+import { PasswordField } from "./PasswordField";
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -147,7 +39,7 @@ export function UserFormModal({
   initialData,
   mode,
 }: UserFormModalProps) {
-  const [showPassword, setShowPassword] = useState(false);
+  // State
   const [formData, setFormData] = useState<
     UserFormCreateData | UserFormEditData
   >({
@@ -161,6 +53,7 @@ export function UserFormModal({
     status: "ACTIVE",
     permissions: [],
   });
+
   const [selectedCountry, setSelectedCountry] = useState<SelectOption | null>(
     null
   );
@@ -168,6 +61,7 @@ export function UserFormModal({
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Effects
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
@@ -196,6 +90,7 @@ export function UserFormModal({
     }
   }, [isOpen, initialData]);
 
+  // Handlers
   const handleInputChange = (
     field: keyof (UserFormCreateData & UserFormEditData),
     value: string | string[]
@@ -204,12 +99,14 @@ export function UserFormModal({
       ...prev,
       [field]: value,
     }));
+
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
         [field]: "",
       }));
     }
+
     if (generalError) {
       setGeneralError(null);
     }
@@ -227,6 +124,7 @@ export function UserFormModal({
     handleInputChange("phoneNumber", value);
   };
 
+  // Validation
   const validateForm = (): boolean => {
     try {
       if (mode === "create") {
@@ -250,6 +148,7 @@ export function UserFormModal({
     }
   };
 
+  // Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -260,11 +159,9 @@ export function UserFormModal({
 
     try {
       await onSubmit(formData);
-      onClose(); // Only close on successful submission
+      onClose();
     } catch (error: unknown) {
       setIsLoading(false);
-
-      // Type guard for custom error object
       if (
         typeof error === "object" &&
         error !== null &&
@@ -291,6 +188,7 @@ export function UserFormModal({
     }
   };
 
+  // Helper function
   const getFieldError = (field: string) => errors[field] || "";
 
   if (!isOpen) return null;
@@ -299,6 +197,7 @@ export function UserFormModal({
     <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
+          {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {mode === "create" ? "Add New User" : "Edit User"}
@@ -311,6 +210,7 @@ export function UserFormModal({
             </button>
           </div>
 
+          {/* General Error */}
           {generalError && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
               <div className="flex items-center">
@@ -322,200 +222,49 @@ export function UserFormModal({
             </div>
           )}
 
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="relative flex items-center">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                  <input
-                    id="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      handleInputChange("firstName", e.target.value)
-                    }
-                    className={`pl-10 h-10 w-full px-3 rounded-lg border text-sm ${
-                      getFieldError("firstName")
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
-                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
-                    placeholder="First Name"
-                    disabled={isLoading}
-                  />
-                </div>
-                {getFieldError("firstName") && (
-                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {getFieldError("firstName")}
-                  </p>
-                )}
-              </div>
-              <div>
-                <div className="relative flex items-center">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                  <input
-                    id="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      handleInputChange("lastName", e.target.value)
-                    }
-                    className={`pl-10 h-10 w-full px-3 rounded-lg border text-sm ${
-                      getFieldError("lastName")
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
-                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
-                    placeholder="Last Name"
-                    disabled={isLoading}
-                  />
-                </div>
-                {getFieldError("lastName") && (
-                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {getFieldError("lastName")}
-                  </p>
-                )}
-              </div>
-            </div>
+            <NameFields
+              errors={errors}
+              formData={formData}
+              isLoading={isLoading}
+              handleInputChange={handleInputChange}
+              getFieldError={getFieldError}
+            />
 
-            {/* Email Field */}
-            <div>
-              <div className="relative flex items-center">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                <input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className={`pl-10 h-10 w-full px-3 rounded-lg border text-sm ${
-                    getFieldError("email")
-                      ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
-                  } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
-                  placeholder="Email Address"
-                  disabled={isLoading}
-                  autoComplete="email"
-                />
-              </div>
-              {getFieldError("email") && (
-                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {getFieldError("email")}
-                </p>
-              )}
-            </div>
+            <EmailField
+              value={formData.email}
+              error={getFieldError("email")}
+              isLoading={isLoading}
+              onChange={(value) => handleInputChange("email", value)}
+            />
 
             {mode === "create" && (
-              <div>
-                <div className="relative flex items-center">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password || ""}
-                    onChange={(e) =>
-                      handleInputChange("password", e.target.value)
-                    }
-                    className={`pl-10 pr-10 h-10 w-full px-3 rounded-lg border text-sm ${
-                      getFieldError("password")
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
-                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
-                    placeholder="Password"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                {getFieldError("password") && (
-                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {getFieldError("password")}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Minimum 8 characters, 1 uppercase, 1 number, 1 special
-                  character
-                </p>
-              </div>
+              <PasswordField
+                value={formData.password || ""}
+                error={getFieldError("password")}
+                isLoading={isLoading}
+                onChange={(value) => handleInputChange("password", value)}
+              />
             )}
 
-            {/* Phone and Country Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Country */}
-              <div>
-                <div className="relative flex items-center w-full">
-                  <div className="w-full">
-                    <Select
-                      options={countryOptions}
-                      styles={customStyles}
-                      components={{
-                        Option: CustomOption,
-                        SingleValue: CustomSingleValue,
-                        DropdownIndicator,
-                        Placeholder: CustomPlaceholder,
-                      }}
-                      placeholder="Select Country"
-                      value={selectedCountry}
-                      onChange={handleCountryChange}
-                      isDisabled={isLoading}
-                      classNamePrefix="react-select"
-                      menuPlacement="top"
-                    />
-                  </div>
-                </div>
-                {getFieldError("country") && (
-                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {getFieldError("country")}
-                  </p>
-                )}
-              </div>
-              {/* Phone */}
-              <div>
-                <div className="relative flex items-center w-full">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
-                  <PhoneInput
-                    country={selectedCountry?.value?.toLowerCase() || "us"}
-                    value={formData.phoneNumber}
-                    onChange={handlePhoneChange}
-                    inputClass={`!pl-10 !h-10 !w-full !rounded-lg !text-sm !border ${
-                      getFieldError("phoneNumber")
-                        ? "!border-red-500 focus:!border-red-500 focus:!ring-red-500 focus:!ring-2"
-                        : "!border-gray-300 dark:!border-gray-600 focus:!ring-indigo-500 focus:!ring-2"
-                    } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:border-transparent transition-colors`}
-                    buttonClass="hidden"
-                    containerClass="!w-full"
-                    disabled={isLoading}
-                    placeholder="Phone Number"
-                    disableDropdown={true}
-                    inputProps={{
-                      name: "phoneNumber",
-                      required: true,
-                    }}
-                  />
-                </div>
-                {getFieldError("phoneNumber") && (
-                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {getFieldError("phoneNumber")}
-                  </p>
-                )}
-              </div>
+              <CountrySelect
+                value={selectedCountry}
+                error={getFieldError("country")}
+                isLoading={isLoading}
+                onChange={handleCountryChange}
+              />
+              <PhoneNumberInput
+                value={formData.phoneNumber}
+                error={getFieldError("phoneNumber")}
+                isLoading={isLoading}
+                country={selectedCountry?.value?.toLowerCase() || "us"}
+                onChange={handlePhoneChange}
+              />
             </div>
 
-            {/* Submit Buttons */}
+            {/* Form Actions */}
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
