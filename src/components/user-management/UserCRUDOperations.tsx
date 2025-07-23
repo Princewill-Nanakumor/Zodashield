@@ -47,7 +47,7 @@ interface UserCRUDOperationsProps {
 
 export function UserCRUDOperations({
   onUserCreated,
-  onUserUpdated,
+
   onUserDeleted,
   onRefreshUsers,
   children,
@@ -129,50 +129,41 @@ export function UserCRUDOperations({
           }),
         });
 
-        const errorData = await response.json();
+        const data = await response.json();
 
         if (!response.ok) {
-          let errorMessage = "Failed to update user.";
-          if (response.status === 409) {
-            errorMessage =
-              errorData.message ||
-              "This email address is already in use. Please use a different email.";
-          } else if (response.status === 400) {
-            errorMessage =
-              errorData.message ||
-              "Invalid user data. Please check your inputs and try again.";
-          } else {
-            errorMessage = errorData.message || errorMessage;
+          // Throw structured error from API
+          if (data.error) {
+            console.log("Throwing error from API:", data.error);
+            throw data.error;
           }
-          throw new Error(errorMessage);
+          // Fallback error
+          throw {
+            message: data.message || "Failed to update user",
+          };
         }
 
-        // Invalidate and refetch users query
-        await queryClient.invalidateQueries({ queryKey: ["users"] });
+        // If your backend returns { data: userResponse, ... }
+        if (data.data) return data.data;
+        // If your backend returns { user: userResponse, ... }
+        if (data.user) return data.user;
 
-        onRefreshUsers();
-        toast({
-          title: "Success",
-          description: "User updated successfully",
-          variant: "success",
-        });
-
-        const updatedUser = errorData.user; // The response data contains the updated user
-        onUserUpdated?.(updatedUser);
-
-        return updatedUser; // Return the updated user
+        throw { message: "No user data returned from server." };
       } catch (error) {
-        console.error("Error updating user:", error);
-        toast({
-          title: "Error",
-          description:
-            error instanceof Error ? error.message : "Failed to update user",
-          variant: "destructive",
-        });
-        throw error;
+        // Only log, do not stringify for throwing
+        if (typeof error === "object" && error !== null) {
+          console.error("Update user error:", error);
+          throw error;
+        }
+        throw {
+          message:
+            typeof error === "string"
+              ? error
+              : "Failed to update user. Please try again.",
+        };
       }
     },
-    [toast, queryClient, onRefreshUsers, onUserUpdated]
+    []
   );
 
   const handleDeleteUser = useCallback(

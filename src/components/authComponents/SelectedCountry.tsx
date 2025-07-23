@@ -58,7 +58,7 @@ export const customStyles: StylesConfig<SelectOption, false> = {
       cursor: "pointer",
       transition: "all 0.2s ease",
       [`@media (min-width: 768px)`]: {
-        height: "47px", // for medium and larger screens
+        height: "47px",
       },
       "&:hover": {
         borderColor: state.isFocused

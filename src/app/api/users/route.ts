@@ -211,181 +211,244 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    console.log("Session:", session);
-
-    if (!session || !session.user || session.user.role !== "ADMIN") {
-      console.log("Unauthorized access attempt");
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.role || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: { message: "Unauthorized" } },
+        { status: 401 }
+      );
     }
 
-    const {
-      id,
-      firstName,
-      lastName,
-      email,
-      phoneNumber,
-      country,
-      role,
-      permissions,
-      status,
-    } = await request.json();
+    const requestData = (await request.json()) as {
+      id: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phoneNumber?: string;
+      country?: string;
+      role?: string;
+      permissions?: string[];
+      status?: string;
+    };
 
-    console.log("Request body:", {
-      id,
-      firstName,
-      lastName,
-      email,
-      phoneNumber,
-      country,
-      role,
-      permissions,
-      status,
-    });
-
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      console.log("Invalid user ID:", id);
-      return NextResponse.json({ message: "Invalid user ID" }, { status: 400 });
+    if (!requestData.id || !mongoose.Types.ObjectId.isValid(requestData.id)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            field: "id",
+            message: "Invalid user ID",
+            code: "INVALID_ID",
+          },
+        },
+        { status: 400 }
+      );
     }
 
-    const userId = new mongoose.Types.ObjectId(id);
+    const userId = new mongoose.Types.ObjectId(requestData.id);
     const adminId = new mongoose.Types.ObjectId(session.user.id);
 
     const updateFields: UserUpdateFields = {};
-    if (firstName !== undefined) updateFields.firstName = firstName;
-    if (lastName !== undefined) updateFields.lastName = lastName;
-    if (email !== undefined) updateFields.email = email;
-    if (phoneNumber !== undefined) updateFields.phoneNumber = phoneNumber;
-    if (country !== undefined) updateFields.country = country;
-    if (role !== undefined) updateFields.role = role;
-    if (permissions !== undefined) updateFields.permissions = permissions;
-    if (status !== undefined) updateFields.status = status;
+    if (requestData.firstName !== undefined)
+      updateFields.firstName = requestData.firstName;
+    if (requestData.lastName !== undefined)
+      updateFields.lastName = requestData.lastName;
+    if (requestData.email !== undefined) updateFields.email = requestData.email;
+    if (requestData.phoneNumber !== undefined)
+      updateFields.phoneNumber = requestData.phoneNumber;
+    if (requestData.country !== undefined)
+      updateFields.country = requestData.country;
+    if (requestData.role !== undefined) updateFields.role = requestData.role;
+    if (requestData.permissions !== undefined)
+      updateFields.permissions = requestData.permissions;
+    if (requestData.status !== undefined)
+      updateFields.status = requestData.status;
 
     // Prevent admin from changing their own role/status
     if (userId.equals(adminId)) {
-      if (role !== undefined && role !== "ADMIN") {
-        console.log("Admin tried to change their own role");
+      if (updateFields.role !== undefined && updateFields.role !== "ADMIN") {
         return NextResponse.json(
           {
-            message:
-              "Administrators cannot change their own role to non-admin.",
+            success: false,
+            error: {
+              message:
+                "Administrators cannot change their own role to non-admin.",
+              code: "SELF_ROLE_CHANGE",
+            },
           },
           { status: 403 }
         );
       }
-      if (status !== undefined && status !== "active") {
-        console.log("Admin tried to change their own status");
+      if (
+        updateFields.status !== undefined &&
+        updateFields.status !== "ACTIVE"
+      ) {
         return NextResponse.json(
-          { message: "Administrators cannot change their own status." },
+          {
+            success: false,
+            error: {
+              message: "Administrators cannot change their own status.",
+              code: "SELF_STATUS_CHANGE",
+            },
+          },
           { status: 403 }
         );
       }
     }
 
-    const db = mongoose.connection.db;
-    if (!db) {
-      console.log("Database connection not available");
+    if (!mongoose.connection?.db) {
       return NextResponse.json(
-        { message: "Database connection not available" },
+        {
+          success: false,
+          error: {
+            message: "Database connection not available",
+            code: "DB_CONNECTION_ERROR",
+          },
+        },
         { status: 500 }
       );
     }
 
-    // Main update query
-    console.log("Update query:", {
-      _id: userId,
-      $or: [
-        { adminId: adminId },
-        { adminId: { $exists: false } },
-        { _id: adminId },
-      ],
-    });
-    console.log("Update fields:", updateFields);
+    const db = mongoose.connection.db;
 
-    const adminScopedUpdateResult = await db
-      .collection("users")
-      .findOneAndUpdate(
-        {
-          _id: userId,
-          $or: [
-            { adminId: adminId },
-            { adminId: { $exists: false } },
-            { _id: adminId },
-          ],
-        },
-        { $set: updateFields },
-        { returnDocument: "after", projection: { password: 0 } }
-      );
+    // Check for duplicate email before update
+    if (updateFields.email !== undefined) {
+      const existingUser = await db.collection("users").findOne({
+        email: updateFields.email,
+        _id: { $ne: userId },
+      });
 
-    console.log("adminScopedUpdateResult:", adminScopedUpdateResult);
+      if (existingUser) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              field: "email",
+              message: "A user with this email already exists.",
+              code: "DUPLICATE_EMAIL",
+            },
+          },
+          { status: 409 }
+        );
+      }
+    }
 
-    let updatedUser;
-    if (adminScopedUpdateResult && adminScopedUpdateResult.value) {
-      updatedUser = adminScopedUpdateResult.value;
-      console.log("User updated (v4+):", updatedUser);
-    } else if (adminScopedUpdateResult) {
-      updatedUser = adminScopedUpdateResult;
-      console.log("User updated (v3):", updatedUser);
-    } else {
-      // Check if the user exists at all
+    const updateResult = await db.collection("users").findOneAndUpdate(
+      {
+        _id: userId,
+        $or: [
+          { adminId: adminId },
+          { adminId: { $exists: false } },
+          { _id: adminId },
+        ],
+      },
+      { $set: updateFields },
+      {
+        returnDocument: "after",
+        projection: { password: 0 },
+        upsert: false,
+      }
+    );
+
+    if (!updateResult || !updateResult.value) {
       const existingUser = await db
         .collection("users")
         .findOne({ _id: userId }, { projection: { adminId: 1 } });
 
-      console.log("existingUser:", existingUser);
-
       if (!existingUser) {
-        console.log("User not found");
         return NextResponse.json(
-          { message: "User not found." },
+          {
+            success: false,
+            error: {
+              message: "User not found.",
+              code: "USER_NOT_FOUND",
+            },
+          },
           { status: 404 }
         );
       }
 
       if (existingUser.adminId && !existingUser.adminId.equals(adminId)) {
-        console.log("User belongs to another admin");
         return NextResponse.json(
           {
-            message:
-              "Forbidden: Cannot update user belonging to another admin.",
+            success: false,
+            error: {
+              message: "Cannot update user belonging to another admin.",
+              code: "UNAUTHORIZED_UPDATE",
+            },
           },
           { status: 403 }
         );
       }
 
-      console.log("Failed to update user for unknown reason");
       return NextResponse.json(
-        { message: "Failed to update user." },
+        {
+          success: false,
+          error: {
+            message: "Failed to update user.",
+            code: "UPDATE_FAILED",
+          },
+        },
         { status: 500 }
       );
     }
 
-    // Transform user for frontend
+    const updatedUser = updateResult.value;
+
     const userResponse = {
       id: updatedUser._id.toString(),
       firstName: updatedUser.firstName,
       lastName: updatedUser.lastName,
       email: updatedUser.email,
-      phoneNumber: updatedUser.phoneNumber,
-      country: updatedUser.country,
+      phoneNumber: updatedUser.phoneNumber ?? "",
+      country: updatedUser.country ?? "",
       role: updatedUser.role,
       status: updatedUser.status,
-      permissions: updatedUser.permissions,
+      permissions: updatedUser.permissions ?? [],
       createdBy: updatedUser.createdBy?.toString?.() ?? "",
-      createdAt: updatedUser.createdAt,
-      lastLogin: updatedUser.lastLogin,
+      createdAt: updatedUser.createdAt.toISOString(),
+      lastLogin: updatedUser.lastLogin?.toISOString() ?? null,
     };
 
-    console.log("Returning user:", userResponse);
-
     return NextResponse.json({
+      success: true,
+      data: userResponse,
       message: "User updated successfully",
-      user: userResponse,
     });
   } catch (error: unknown) {
-    console.error("Error in PUT /api/users/[id]:", error);
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ message }, { status: 500 });
+    console.error("[PUT /api/users] Unexpected error:", error);
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: number }).code === 11000
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            field: "email",
+            message: "A user with this email already exists.",
+            code: "DUPLICATE_EMAIL",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred",
+          code: "INTERNAL_SERVER_ERROR",
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 

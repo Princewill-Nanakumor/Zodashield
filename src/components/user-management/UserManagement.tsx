@@ -173,6 +173,7 @@ export default function UsersManagement({
                     }
                   } catch (error) {
                     console.error("Error in form submission:", error);
+                    throw error;
                   }
                 }}
                 initialData={

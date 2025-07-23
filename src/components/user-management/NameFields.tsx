@@ -3,7 +3,6 @@ import { User, AlertCircle } from "lucide-react";
 
 interface NameFieldsProps {
   formData: { firstName: string; lastName: string };
-  errors: Record<string, string>;
   isLoading: boolean;
   handleInputChange: (field: "firstName" | "lastName", value: string) => void;
   getFieldError: (field: string) => string;

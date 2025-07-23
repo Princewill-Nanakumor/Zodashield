@@ -148,7 +148,6 @@ export function UserFormModal({
     }
   };
 
-  // Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -156,12 +155,27 @@ export function UserFormModal({
 
     setIsLoading(true);
     setGeneralError(null);
+    setErrors({});
 
     try {
       await onSubmit(formData);
       onClose();
     } catch (error: unknown) {
       setIsLoading(false);
+      console.log("Modal caught error:", error);
+
+      // If error is a stringified object, parse it
+      if (typeof error === "string") {
+        try {
+          const parsed = JSON.parse(error);
+          if (parsed && typeof parsed === "object") error = parsed;
+        } catch {
+          setGeneralError(error as string);
+          return;
+        }
+      }
+
+      // If error is an object with field and message, set field error
       if (
         typeof error === "object" &&
         error !== null &&
@@ -170,21 +184,27 @@ export function UserFormModal({
         typeof (error as { field: unknown }).field === "string" &&
         typeof (error as { message: unknown }).message === "string"
       ) {
-        setErrors({
-          ...errors,
+        setErrors((prev) => ({
+          ...prev,
           [(error as { field: string }).field]: (error as { message: string })
             .message,
-        });
-      } else if (
+        }));
+        return;
+      }
+
+      // If error is an object with just message, set general error
+      if (
         typeof error === "object" &&
         error !== null &&
         "message" in error &&
         typeof (error as { message: unknown }).message === "string"
       ) {
         setGeneralError((error as { message: string }).message);
-      } else {
-        setGeneralError("An unexpected error occurred");
+        return;
       }
+
+      // Fallback: always pass a string
+      setGeneralError("An unexpected error occurred");
     }
   };
 
@@ -225,7 +245,6 @@ export function UserFormModal({
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <NameFields
-              errors={errors}
               formData={formData}
               isLoading={isLoading}
               handleInputChange={handleInputChange}
