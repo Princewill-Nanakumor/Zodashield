@@ -1,16 +1,14 @@
 "use client";
-
 import { useSession } from "next-auth/react";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "lucide-react";
-import { UserFormModal } from "@/components/dashboardComponents/UserFormModal";
-import { PasswordResetModal } from "./PasswordRestModal";
+import { PlusIcon, Shield } from "lucide-react";
+import { UserFormModal } from "./UserFormModal";
+import { PasswordResetModal } from "../dashboardComponents/PasswordRestModal";
 import { UserDataManager } from "../user-management/UserDataManager";
 import { UserCRUDOperations } from "@/components/user-management/UserCRUDOperations";
 import { UserTableDisplay } from "@/components/user-management/UserTableDisplay";
 import { AuthGuard } from "@/components/user-management/AuthGuard";
-import { Shield } from "lucide-react";
 
 interface User {
   id: string;
@@ -52,48 +50,43 @@ export default function UsersManagement({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUserForPassword, setSelectedUserForPassword] =
     useState<User | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Only trigger refresh when needed
-  const triggerRefresh = useCallback(() => {
-    setRefreshTrigger((prev) => prev + 1);
-  }, []);
 
   const handleUserCreated = useCallback(
     (user: User) => {
-      if (onUserCreated) onUserCreated(user);
-      triggerRefresh();
+      onUserCreated?.(user);
+      setUsers((prev) => {
+        const filtered = prev.filter((u) => u.id !== user.id);
+        return [user, ...filtered];
+      });
       setShowModal(false);
       setSelectedUser(null);
     },
-    [onUserCreated, triggerRefresh]
+    [onUserCreated]
   );
 
   const handleUserUpdated = useCallback(
     (user: User) => {
-      if (onUserUpdated) onUserUpdated(user);
-      triggerRefresh();
+      onUserUpdated?.(user);
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
       setShowModal(false);
       setSelectedUser(null);
     },
-    [onUserUpdated, triggerRefresh]
+    [onUserUpdated]
   );
 
   const handleUserDeleted = useCallback(
     (userId: string) => {
-      if (onUserDeleted) onUserDeleted(userId);
-      triggerRefresh();
+      onUserDeleted?.(userId);
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
     },
-    [onUserDeleted, triggerRefresh]
+    [onUserDeleted]
   );
 
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="relative w-16 h-16 flex items-center justify-center">
-          {/* Rotating border */}
           <div className="absolute inset-0 border-4 border-transparent border-t-blue-400 border-r-purple-500 rounded-full animate-spin w-16 h-16"></div>
-
           <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600">
             <Shield size={28} className="text-white" />
           </div>
@@ -104,16 +97,12 @@ export default function UsersManagement({
 
   return (
     <AuthGuard>
-      <UserDataManager
-        onUsersLoaded={setUsers}
-        onLoadingChange={setLoading}
-        refreshTrigger={refreshTrigger}
-      >
+      <UserDataManager onUsersLoaded={setUsers} onLoadingChange={setLoading}>
         <UserCRUDOperations
           onUserCreated={handleUserCreated}
           onUserUpdated={handleUserUpdated}
           onUserDeleted={handleUserDeleted}
-          onRefreshUsers={triggerRefresh}
+          onRefreshUsers={() => {}}
         >
           {({
             handleCreateUser,

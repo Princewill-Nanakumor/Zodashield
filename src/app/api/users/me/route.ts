@@ -1,5 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm/src/app/api/users/me/route.ts
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -10,7 +8,7 @@ import mongoose from "mongoose";
 interface UserQuery {
   email: string;
   adminId?: string;
-  role?: "ADMIN";
+  role?: string;
 }
 
 export async function GET() {
@@ -28,24 +26,28 @@ export async function GET() {
       throw new Error("Database connection not available");
     }
 
-    // Build query based on user role
     const query: UserQuery = { email: session.user.email };
-
-    // For multi-tenancy: AGENT users need to include adminId in query
-    if (session.user.role === "AGENT" && session.user.adminId) {
-      query.adminId = session.user.adminId;
+    if (session.user.role === "AGENT") {
+      if (session.user.adminId) {
+        query.adminId = session.user.adminId;
+      }
     } else if (session.user.role === "ADMIN") {
-      // ADMIN users don't have adminId, so we don't include it
       query.role = "ADMIN";
     }
 
-    const user = await db.collection("users").findOne(query);
+    // Try to find the user
+    let user = await db.collection("users").findOne(query);
+
+    if (!user && session.user.role === "AGENT") {
+      user = await db
+        .collection("users")
+        .findOne({ email: session.user.email });
+    }
 
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    // Transform to match your frontend interface
     const userProfile = {
       id: user._id.toString(),
       firstName: user.firstName || "",
@@ -57,8 +59,12 @@ export async function GET() {
       status: user.status || "ACTIVE",
       permissions: user.permissions || [],
       createdBy: user.createdBy?.toString() || "",
-      createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
-      lastLogin: user.lastLogin?.toISOString(),
+      createdAt: user.createdAt
+        ? new Date(user.createdAt).toISOString()
+        : new Date().toISOString(),
+      lastLogin: user.lastLogin
+        ? new Date(user.lastLogin).toISOString()
+        : undefined,
     };
 
     return NextResponse.json(userProfile);

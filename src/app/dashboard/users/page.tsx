@@ -1,7 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import UsersManagement from "@/components/dashboardComponents/UserManagement";
+
+import UsersManagement from "@/components/user-management/UserManagement";
 
 // Create a client
 const queryClient = new QueryClient({

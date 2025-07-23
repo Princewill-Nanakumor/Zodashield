@@ -157,7 +157,7 @@ export function UserCRUDOperations({
           variant: "success",
         });
 
-        const updatedUser = errorData; // The response data contains the updated user
+        const updatedUser = errorData.user; // The response data contains the updated user
         onUserUpdated?.(updatedUser);
 
         return updatedUser; // Return the updated user

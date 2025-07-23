@@ -6,6 +6,16 @@ import mongoose from "mongoose";
 import { withDatabase, executeDbOperation } from "@/libs/dbConfig";
 import { authOptions } from "@/libs/auth";
 
+type UserUpdateFields = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  country?: string;
+  role?: string;
+  permissions?: string[];
+  status?: string;
+};
 // Define interfaces for better type safety
 interface UserDocument {
   _id: mongoose.Types.ObjectId;
@@ -117,6 +127,7 @@ export async function POST(request: Request) {
           email: createdUser.email,
           role: createdUser.role,
           status: createdUser.status,
+          createdAt: createdUser.createdAt.toISOString(),
         },
       };
     }, "Error creating user");
@@ -183,8 +194,8 @@ export async function GET() {
         role: user.role,
         status: user.status,
         permissions: user.permissions,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin,
+        createdAt: user.createdAt ? user.createdAt.toISOString() : undefined,
+        lastLogin: user.lastLogin ? user.lastLogin.toISOString() : undefined,
       }));
     });
 
@@ -200,8 +211,10 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions);
+    console.log("Session:", session);
 
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || !session.user || session.user.role !== "ADMIN") {
+      console.log("Unauthorized access attempt");
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
@@ -217,46 +230,161 @@ export async function PUT(request: Request) {
       status,
     } = await request.json();
 
-    const result = await executeDbOperation(async () => {
-      const db = mongoose.connection.db;
-      if (!db) throw new Error("Database connection not available");
+    console.log("Request body:", {
+      id,
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      country,
+      role,
+      permissions,
+      status,
+    });
 
-      const updatedUser = (await db.collection("users").findOneAndUpdate(
-        {
-          _id: new mongoose.Types.ObjectId(id),
-          adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy filter
-        },
-        {
-          $set: {
-            firstName,
-            lastName,
-            email,
-            phoneNumber,
-            country,
-            role,
-            permissions,
-            status,
-            updatedAt: new Date(),
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      console.log("Invalid user ID:", id);
+      return NextResponse.json({ message: "Invalid user ID" }, { status: 400 });
+    }
+
+    const userId = new mongoose.Types.ObjectId(id);
+    const adminId = new mongoose.Types.ObjectId(session.user.id);
+
+    const updateFields: UserUpdateFields = {};
+    if (firstName !== undefined) updateFields.firstName = firstName;
+    if (lastName !== undefined) updateFields.lastName = lastName;
+    if (email !== undefined) updateFields.email = email;
+    if (phoneNumber !== undefined) updateFields.phoneNumber = phoneNumber;
+    if (country !== undefined) updateFields.country = country;
+    if (role !== undefined) updateFields.role = role;
+    if (permissions !== undefined) updateFields.permissions = permissions;
+    if (status !== undefined) updateFields.status = status;
+
+    // Prevent admin from changing their own role/status
+    if (userId.equals(adminId)) {
+      if (role !== undefined && role !== "ADMIN") {
+        console.log("Admin tried to change their own role");
+        return NextResponse.json(
+          {
+            message:
+              "Administrators cannot change their own role to non-admin.",
           },
-        },
-        { returnDocument: "after", projection: { password: 0 } }
-      )) as UserDocument | null;
+          { status: 403 }
+        );
+      }
+      if (status !== undefined && status !== "active") {
+        console.log("Admin tried to change their own status");
+        return NextResponse.json(
+          { message: "Administrators cannot change their own status." },
+          { status: 403 }
+        );
+      }
+    }
 
-      if (!updatedUser) {
-        throw new Error("User not found");
+    const db = mongoose.connection.db;
+    if (!db) {
+      console.log("Database connection not available");
+      return NextResponse.json(
+        { message: "Database connection not available" },
+        { status: 500 }
+      );
+    }
+
+    // Main update query
+    console.log("Update query:", {
+      _id: userId,
+      $or: [
+        { adminId: adminId },
+        { adminId: { $exists: false } },
+        { _id: adminId },
+      ],
+    });
+    console.log("Update fields:", updateFields);
+
+    const adminScopedUpdateResult = await db
+      .collection("users")
+      .findOneAndUpdate(
+        {
+          _id: userId,
+          $or: [
+            { adminId: adminId },
+            { adminId: { $exists: false } },
+            { _id: adminId },
+          ],
+        },
+        { $set: updateFields },
+        { returnDocument: "after", projection: { password: 0 } }
+      );
+
+    console.log("adminScopedUpdateResult:", adminScopedUpdateResult);
+
+    let updatedUser;
+    if (adminScopedUpdateResult && adminScopedUpdateResult.value) {
+      updatedUser = adminScopedUpdateResult.value;
+      console.log("User updated (v4+):", updatedUser);
+    } else if (adminScopedUpdateResult) {
+      updatedUser = adminScopedUpdateResult;
+      console.log("User updated (v3):", updatedUser);
+    } else {
+      // Check if the user exists at all
+      const existingUser = await db
+        .collection("users")
+        .findOne({ _id: userId }, { projection: { adminId: 1 } });
+
+      console.log("existingUser:", existingUser);
+
+      if (!existingUser) {
+        console.log("User not found");
+        return NextResponse.json(
+          { message: "User not found." },
+          { status: 404 }
+        );
       }
 
-      return {
-        message: "User updated successfully",
-        user: updatedUser,
-      };
-    }, "Error updating user");
+      if (existingUser.adminId && !existingUser.adminId.equals(adminId)) {
+        console.log("User belongs to another admin");
+        return NextResponse.json(
+          {
+            message:
+              "Forbidden: Cannot update user belonging to another admin.",
+          },
+          { status: 403 }
+        );
+      }
 
-    return NextResponse.json(result);
+      console.log("Failed to update user for unknown reason");
+      return NextResponse.json(
+        { message: "Failed to update user." },
+        { status: 500 }
+      );
+    }
+
+    // Transform user for frontend
+    const userResponse = {
+      id: updatedUser._id.toString(),
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      email: updatedUser.email,
+      phoneNumber: updatedUser.phoneNumber,
+      country: updatedUser.country,
+      role: updatedUser.role,
+      status: updatedUser.status,
+      permissions: updatedUser.permissions,
+      createdBy: updatedUser.createdBy?.toString?.() ?? "",
+      createdAt: updatedUser.createdAt,
+      lastLogin: updatedUser.lastLogin,
+    };
+
+    console.log("Returning user:", userResponse);
+
+    return NextResponse.json({
+      message: "User updated successfully",
+      user: userResponse,
+    });
   } catch (error: unknown) {
-    console.error("Error updating user:", error);
+    console.error("Error in PUT /api/users/[id]:", error);
     const message =
-      error instanceof Error ? error.message : "Error updating user";
+      error instanceof Error ? error.message : "An unexpected error occurred";
     return NextResponse.json({ message }, { status: 500 });
   }
 }

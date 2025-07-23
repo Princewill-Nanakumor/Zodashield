@@ -1,4 +1,3 @@
-// src/components/user-management/UserDataManager.tsx
 "use client";
 
 import { useCallback, useEffect } from "react";
@@ -23,14 +22,12 @@ interface User {
 interface UserDataManagerProps {
   onUsersLoaded: (users: User[]) => void;
   onLoadingChange: (loading: boolean) => void;
-  refreshTrigger?: number;
   children: React.ReactNode;
 }
 
 export function UserDataManager({
   onUsersLoaded,
   onLoadingChange,
-  refreshTrigger = 0,
   children,
 }: UserDataManagerProps) {
   const { data: session } = useSession();
@@ -57,17 +54,7 @@ export function UserDataManager({
       console.error("Error fetching users:", error);
       toast({
         title: "Error",
-        description: (
-          <>
-            Failed to fetch users.
-            <button
-              onClick={fetchUsers}
-              className="ml-2 underline text-blue-600"
-            >
-              Retry
-            </button>
-          </>
-        ),
+        description: "Failed to fetch users.",
         variant: "destructive",
       });
       onUsersLoaded([]);
@@ -81,24 +68,6 @@ export function UserDataManager({
     if (session?.user?.role === "ADMIN") {
       fetchUsers();
     }
-  }, [fetchUsers, session]);
-
-  // Refetch users when refreshTrigger changes (for manual refresh)
-  useEffect(() => {
-    if (session?.user?.role === "ADMIN" && refreshTrigger > 0) {
-      fetchUsers();
-    }
-  }, [refreshTrigger, fetchUsers, session]);
-
-  // Refetch users when window regains focus (to recover from timeouts)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (session?.user?.role === "ADMIN") {
-        fetchUsers();
-      }
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
   }, [fetchUsers, session]);
 
   return <>{children}</>;

@@ -79,7 +79,7 @@ export const customStyles: StylesConfig<
   }),
   menuList: (provided) => ({
     ...provided,
-    maxHeight: "220px",
+    maxHeight: "180px",
     overflowY: "auto",
     paddingTop: 0,
     paddingBottom: 0,
@@ -192,6 +192,7 @@ export function UserFormModal({
       }
       setErrors({});
       setGeneralError(null);
+      setIsLoading(false);
     }
   }, [isOpen, initialData]);
 
@@ -405,7 +406,6 @@ export function UserFormModal({
               )}
             </div>
 
-            {/* Password Field (only for create mode) */}
             {mode === "create" && (
               <div>
                 <div className="relative flex items-center">
