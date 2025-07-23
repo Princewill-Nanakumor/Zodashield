@@ -1,7 +1,9 @@
 // src/components/user-management/PhoneNumberInput.tsx
+
 import { Phone, AlertCircle } from "lucide-react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { useState, useEffect } from "react";
 
 interface PhoneNumberInputProps {
   value: string;
@@ -11,6 +13,7 @@ interface PhoneNumberInputProps {
   onChange: (value: string) => void;
 }
 
+// NAMED EXPORT: Use `import { PhoneNumberInput } from "./PhoneNumberInput";`
 export function PhoneNumberInput({
   value,
   error,
@@ -18,9 +21,19 @@ export function PhoneNumberInput({
   country,
   onChange,
 }: PhoneNumberInputProps) {
+  // Detect dark mode
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    }
+  }, []);
+
   return (
     <div>
-      <div className="relative flex items-center w-full">
+      <div
+        className={`phone-input-container${isDark ? " dark" : ""} relative flex items-center w-full`}
+      >
         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
         <PhoneInput
           country={country}

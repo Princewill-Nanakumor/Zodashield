@@ -6,16 +6,12 @@ import "react-phone-input-2/lib/style.css";
 import "../../app/styles/phone-input-dark.css";
 import { CountrySelect } from "./CountrySelect";
 import { PhoneNumberInput } from "./PhoneNumberInput";
-
-// Schemas
 import {
   UserFormCreateSchema,
   UserFormEditSchema,
   UserFormCreateData,
   UserFormEditData,
 } from "@/schemas/UserFormSchema";
-
-// Components
 import {
   countryOptions,
   SelectOption,
@@ -23,6 +19,14 @@ import {
 import { NameFields } from "./NameFields";
 import { EmailField } from "./EmailField";
 import { PasswordField } from "./PasswordField";
+
+console.log({
+  CountrySelect,
+  PhoneNumberInput,
+  NameFields,
+  EmailField,
+  PasswordField,
+});
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -39,7 +43,6 @@ export function UserFormModal({
   initialData,
   mode,
 }: UserFormModalProps) {
-  // State
   const [formData, setFormData] = useState<
     UserFormCreateData | UserFormEditData
   >({
@@ -61,7 +64,15 @@ export function UserFormModal({
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Effects
+  // --- DARK MODE STATE ---
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    }
+  }, [isOpen]);
+  // -----------------------
+
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
@@ -90,7 +101,6 @@ export function UserFormModal({
     }
   }, [isOpen, initialData]);
 
-  // Handlers
   const handleInputChange = (
     field: keyof (UserFormCreateData & UserFormEditData),
     value: string | string[]
@@ -124,7 +134,6 @@ export function UserFormModal({
     handleInputChange("phoneNumber", value);
   };
 
-  // Validation
   const validateForm = (): boolean => {
     try {
       if (mode === "create") {
@@ -162,9 +171,7 @@ export function UserFormModal({
       onClose();
     } catch (error: unknown) {
       setIsLoading(false);
-      console.log("Modal caught error:", error);
-
-      // If error is a stringified object, parse it
+      // ... your error handling as before ...
       if (typeof error === "string") {
         try {
           const parsed = JSON.parse(error);
@@ -174,8 +181,6 @@ export function UserFormModal({
           return;
         }
       }
-
-      // If error is an object with field and message, set field error
       if (
         typeof error === "object" &&
         error !== null &&
@@ -191,8 +196,6 @@ export function UserFormModal({
         }));
         return;
       }
-
-      // If error is an object with just message, set general error
       if (
         typeof error === "object" &&
         error !== null &&
@@ -202,19 +205,18 @@ export function UserFormModal({
         setGeneralError((error as { message: string }).message);
         return;
       }
-
-      // Fallback: always pass a string
       setGeneralError("An unexpected error occurred");
     }
   };
 
-  // Helper function
   const getFieldError = (field: string) => errors[field] || "";
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+    <div
+      className={`fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50${isDark ? " dark" : ""}`}
+    >
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}

@@ -1,4 +1,5 @@
-// src/components/user-management/CountrySelect.tsx
+// /Users/safeconnection/Downloads/drivecrm/src/components/user-management/CountrySelect.tsx
+
 import {
   Select,
   countryOptions,
@@ -7,9 +8,12 @@ import {
   SelectOption,
   DropdownIndicator,
 } from "../authComponents/SelectedCountry";
+
 import { CustomPlaceholder } from "../authComponents/GlobeplaceHolder";
 import { AlertCircle } from "lucide-react";
 import { customStyles } from "./selectStyles";
+import { useState, useEffect } from "react";
+import "react-phone-input-2/lib/style.css";
 
 interface CountrySelectProps {
   value: SelectOption | null;
@@ -24,13 +28,23 @@ export function CountrySelect({
   isLoading,
   onChange,
 }: CountrySelectProps) {
+  // Detect dark mode
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    }
+  }, []);
+
   return (
     <div>
-      <div className="relative flex items-center w-full">
+      <div
+        className={`country-select-container${isDark ? " dark" : ""} relative flex items-center w-full`}
+      >
         <div className="w-full">
           <Select
             options={countryOptions}
-            styles={customStyles}
+            styles={customStyles(isDark)}
             components={{
               Option: CustomOption,
               SingleValue: CustomSingleValue,
