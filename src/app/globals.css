@@ -2,6 +2,58 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.PhoneInputCountry {
+  display: none !important;
+}
+
+.PhoneInputCountrySelect {
+  display: none !important;
+}
+
+.PhoneInputCountrySelectArrow {
+  display: none !important;
+}
+
+.PhoneInputCountryIcon {
+  display: none !important;
+}
+
+.PhoneInputCountryIconImg {
+  display: none !important;
+}
+
+/* Ensure the input field itself has no internal styling */
+.PhoneInputInput {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Override PhoneInput focus styles */
+.PhoneInput:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.PhoneInput:focus-within .PhoneInputInput {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Remove any default focus styles from PhoneInput */
+.PhoneInput:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.PhoneInputInput:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
 body {
   overscroll-behavior: none;
 }

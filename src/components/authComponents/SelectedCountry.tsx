@@ -1,3 +1,5 @@
+// /Users/safeconnection/Downloads/drivecrm/src/components/authComponents/SelectedCountry.tsx
+
 import Select, {
   StylesConfig,
   OptionProps,
@@ -39,7 +41,7 @@ export const customStyles: StylesConfig<SelectOption, false> = {
       minHeight: "40px",
       height: "40px",
       borderRadius: "0.75rem",
-      borderWidth: state.isFocused ? "2px" : "1px",
+      borderWidth: state.isFocused ? "1px" : "2px",
       borderStyle: "solid",
       borderColor: state.isFocused
         ? dark
@@ -56,7 +58,6 @@ export const customStyles: StylesConfig<SelectOption, false> = {
       outline: "none",
       width: "100%",
       cursor: "pointer",
-      transition: "all 0.2s ease",
       [`@media (min-width: 768px)`]: {
         height: "47px",
       },

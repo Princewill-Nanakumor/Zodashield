@@ -2,23 +2,25 @@
 import { useState, useEffect } from "react";
 import { X, AlertCircle } from "lucide-react";
 import { z } from "zod";
-import "react-phone-input-2/lib/style.css";
-import "../../app/styles/phone-input-dark.css";
-import { CountrySelect } from "./CountrySelect";
-import { PhoneNumberInput } from "./PhoneNumberInput";
+import PhoneInput, { Country } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import {
+  Select,
+  countryOptions,
+  SelectOption,
+  CustomOption,
+  CustomSingleValue,
+} from "./CountrySelect";
 import {
   UserFormCreateSchema,
   UserFormEditSchema,
   UserFormCreateData,
   UserFormEditData,
 } from "@/schemas/UserFormSchema";
-import {
-  countryOptions,
-  SelectOption,
-} from "../authComponents/SelectedCountry";
 import { NameFields } from "./NameFields";
 import { EmailField } from "./EmailField";
 import { PasswordField } from "./PasswordField";
+import { StylesConfig } from "react-select";
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -59,11 +61,15 @@ export function UserFormModal({
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        setFormData(initialData);
-        setSelectedCountry(
-          countryOptions.find((opt) => opt.label === initialData.country) ||
-            null
+        let phoneNumber = initialData.phoneNumber || "";
+        if (phoneNumber && !phoneNumber.startsWith("+")) {
+          phoneNumber = "+" + phoneNumber;
+        }
+        setFormData({ ...initialData, phoneNumber });
+        const countryOption = countryOptions.find(
+          (opt) => opt.label === initialData.country
         );
+        setSelectedCountry(countryOption || null);
       } else {
         setFormData({
           firstName: "",
@@ -108,13 +114,12 @@ export function UserFormModal({
   const handleCountryChange = (option: SelectOption | null) => {
     setSelectedCountry(option);
     handleInputChange("country", option?.label || "");
-    if (option) {
-      handleInputChange("phoneNumber", option.phoneCode);
-    }
   };
 
-  const handlePhoneChange = (value: string) => {
-    handleInputChange("phoneNumber", value);
+  const handlePhoneChange = (value?: string) => {
+    if (!value || value.startsWith("+")) {
+      handleInputChange("phoneNumber", value || "");
+    }
   };
 
   const validateForm = (): boolean => {
@@ -193,6 +198,161 @@ export function UserFormModal({
 
   const getFieldError = (field: string) => errors[field] || "";
 
+  const getCountrySelectStyles = (): StylesConfig<SelectOption, false> => {
+    const hasError = !!getFieldError("country");
+
+    // Check if dark mode is active
+    const isDarkMode =
+      typeof window !== "undefined" &&
+      document.documentElement.classList.contains("dark");
+
+    return {
+      container: (provided) => ({
+        ...provided,
+        width: "100%",
+        minWidth: 0,
+      }),
+      control: (base, state) => ({
+        ...base,
+        minHeight: "38px",
+        height: "38px",
+        borderRadius: "0.5rem",
+        borderWidth: "1px",
+        borderStyle: "solid",
+        borderColor: hasError
+          ? "#EF4444"
+          : state.isFocused
+            ? "#6366F1" // indigo-500
+            : isDarkMode
+              ? "#4B5563"
+              : "#D1D5DB", // gray-600 for dark, gray-300 for light
+        backgroundColor: isDarkMode ? "rgb(55 65 81)" : "#FFFFFF", // dark:bg-gray-700 or white
+        color: isDarkMode ? "#F3F4F6" : "#111827", // gray-100 for dark, gray-900 for light
+        fontSize: "0.875rem",
+        fontFamily: "inherit",
+        outline: "none",
+        width: "100%",
+        cursor: "pointer",
+        transition: "none",
+        boxShadow:
+          hasError && state.isFocused
+            ? "0 0 0 1px #EF4444" // red focus ring when error and focused
+            : !hasError && state.isFocused
+              ? "0 0 0 1px #6366F1" // indigo focus ring when no error and focused
+              : "none",
+        "&:hover": {
+          borderColor: hasError
+            ? "#EF4444"
+            : state.isFocused
+              ? "#6366F1"
+              : isDarkMode
+                ? "#4B5563"
+                : "#D1D5DB",
+        },
+      }),
+      valueContainer: (provided) => ({
+        ...provided,
+        height: "40px",
+        padding: "0 0.75rem",
+        display: "flex",
+        alignItems: "center",
+        minWidth: 0,
+      }),
+      singleValue: (provided) => ({
+        ...provided,
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        fontSize: "0.875rem",
+        fontFamily: "inherit",
+        color: isDarkMode ? "#F3F4F6" : "#111827", // gray-100 for dark, gray-900 for light
+        marginLeft: 0,
+        minWidth: 0,
+        maxWidth: "100%",
+      }),
+      input: (provided) => ({
+        ...provided,
+        margin: 0,
+        padding: 0,
+        fontFamily: "inherit",
+        color: isDarkMode ? "#F3F4F6" : "#111827", // gray-100 for dark, gray-900 for light
+        minWidth: 0,
+      }),
+      placeholder: (provided) => ({
+        ...provided,
+        color: isDarkMode ? "#9CA3AF" : "#6B7280", // gray-400 for dark, gray-500 for light
+        fontFamily: "inherit",
+        marginLeft: 0,
+        minWidth: 0,
+        fontSize: "0.875rem",
+      }),
+      option: (provided, state) => ({
+        ...provided,
+        display: "flex",
+        alignItems: "center",
+        padding: "8px 12px",
+        fontSize: "0.875rem",
+        fontFamily: "inherit",
+        backgroundColor: state.isSelected
+          ? isDarkMode
+            ? "#312E81"
+            : "#EEF2FF" // indigo-900 for dark, indigo-50 for light
+          : state.isFocused
+            ? isDarkMode
+              ? "#374151"
+              : "#F3F4F6" // gray-700 for dark, gray-100 for light
+            : isDarkMode
+              ? "#1F2937"
+              : "#FFFFFF", // gray-800 for dark, white for light
+        color: isDarkMode ? "#F3F4F6" : "#111827", // gray-100 for dark, gray-900 for light
+        cursor: state.isDisabled ? "not-allowed" : "pointer",
+        opacity: state.isDisabled ? 0.5 : 1,
+        "&:active": {
+          backgroundColor: isDarkMode ? "#312E81" : "#EEF2FF",
+        },
+      }),
+      menu: (provided) => ({
+        ...provided,
+        fontFamily: "inherit",
+        backgroundColor: isDarkMode ? "#1F2937" : "#FFFFFF", // gray-800 for dark, white for light
+        color: isDarkMode ? "#F3F4F6" : "#111827", // gray-100 for dark, gray-900 for light
+        borderRadius: "0.5rem",
+        border: isDarkMode ? "1px solid #374151" : "1px solid #E5E7EB", // gray-700 for dark, gray-200 for light
+        boxShadow: isDarkMode
+          ? "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)"
+          : "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        marginTop: "4px",
+        zIndex: 9999,
+        minWidth: 0,
+      }),
+      menuList: (provided) => ({
+        ...provided,
+        padding: "2px",
+        maxHeight: "120px",
+        minWidth: 0,
+        "::-webkit-scrollbar": {
+          width: "6px",
+        },
+        "::-webkit-scrollbar-track": {
+          background: isDarkMode ? "#374151" : "#F3F4F6",
+          borderRadius: "3px",
+        },
+        "::-webkit-scrollbar-thumb": {
+          background: isDarkMode ? "#818CF8" : "#9CA3AF",
+          borderRadius: "3px",
+        },
+      }),
+      dropdownIndicator: (provided) => ({
+        ...provided,
+        padding: "0 8px",
+        color: isDarkMode ? "#9CA3AF" : "#6B7280", // gray-400 for dark, gray-500 for light
+      }),
+      indicatorSeparator: () => ({
+        display: "none",
+      }),
+    };
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -250,19 +410,85 @@ export function UserFormModal({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CountrySelect
-                value={selectedCountry}
-                error={getFieldError("country")}
-                isLoading={isLoading}
-                onChange={handleCountryChange}
-              />
-              <PhoneNumberInput
-                value={formData.phoneNumber}
-                error={getFieldError("phoneNumber")}
-                isLoading={isLoading}
-                country={selectedCountry?.value?.toLowerCase() || "us"}
-                onChange={handlePhoneChange}
-              />
+              {/* Country Select */}
+              <div className="space-y-2">
+                <Select
+                  value={selectedCountry}
+                  onChange={handleCountryChange}
+                  options={countryOptions}
+                  placeholder="Select a country"
+                  isDisabled={isLoading}
+                  isClearable
+                  styles={getCountrySelectStyles()}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  components={{
+                    Option: CustomOption,
+                    SingleValue: CustomSingleValue,
+                  }}
+                  menuPlacement="top"
+                />
+                {getFieldError("country") && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {getFieldError("country")}
+                  </p>
+                )}
+              </div>
+
+              {/* Phone Input */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <div
+                    className={`
+                      w-full px-3 py-2 rounded-lg border text-sm flex items-center
+                      ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
+                      ${
+                        getFieldError("phoneNumber")
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
+                      }
+                      bg-white dark:bg-gray-700 
+                      text-gray-900 dark:text-white
+                      focus-within:outline-none focus-within:ring-2 focus-within:border-transparent transition-colors
+                    `}
+                  >
+                    {/* Phone Icon */}
+                    <svg
+                      className="w-4 h-4 text-gray-400 dark:text-gray-500 mr-3 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                      />
+                    </svg>
+
+                    <PhoneInput
+                      international
+                      countryCallingCodeEditable={false}
+                      defaultCountry={
+                        selectedCountry?.value as Country | undefined
+                      }
+                      value={formData.phoneNumber}
+                      onChange={handlePhoneChange}
+                      disabled={isLoading}
+                      placeholder="Enter phone number"
+                      className="!border-none !bg-transparent !p-0 !m-0 !w-full"
+                    />
+                  </div>
+                  {getFieldError("phoneNumber") && (
+                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {getFieldError("phoneNumber")}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Form Actions */}
