@@ -43,6 +43,17 @@ const StatusModal = ({
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Check if modal should be open on page load
+  useEffect(() => {
+    const shouldOpenModal = localStorage.getItem("statusModalOpen");
+    if (shouldOpenModal === "true" && !isOpen) {
+      // Trigger the modal to open by calling onClose with a custom event
+      // We'll need to modify the parent component to handle this
+      const event = new CustomEvent("openStatusModal");
+      window.dispatchEvent(event);
+    }
+  }, [isOpen]);
+
   const fetchStatuses = useCallback(async () => {
     try {
       const response = await fetch("/api/statuses");
@@ -123,6 +134,14 @@ const StatusModal = ({
 
       resetForm();
       onStatusCreated?.();
+
+      // Set flag to keep modal open after refresh
+      localStorage.setItem("statusModalOpen", "true");
+
+      // Add delay before page refresh so user can see the success message
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error
@@ -181,6 +200,14 @@ const StatusModal = ({
         });
 
         setStatuses((prev) => prev.filter((status) => status._id !== statusId));
+
+        // Set flag to keep modal open after refresh
+        localStorage.setItem("statusModalOpen", "true");
+
+        // Add delay before page refresh so user can see the success message
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } catch (err: unknown) {
         console.error("Error deleting status:", err);
         toast({
@@ -199,8 +226,14 @@ const StatusModal = ({
     setEditingId(null);
   };
 
+  // Clear the localStorage flag when modal is closed
+  const handleClose = () => {
+    localStorage.removeItem("statusModalOpen");
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-gray-900 dark:text-gray-100">
@@ -226,7 +259,7 @@ const StatusModal = ({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Color
+                Select Color
               </label>
               <div className="flex gap-2">
                 <Input
@@ -257,10 +290,14 @@ const StatusModal = ({
                   Cancel Edit
                 </Button>
               )}
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={handleClose}>
                 Close
               </Button>
-              <Button type="submit" disabled={isCreating}>
+              <Button
+                type="submit"
+                disabled={isCreating}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
+              >
                 {isCreating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -276,50 +313,70 @@ const StatusModal = ({
           </form>
           {/* Existing Statuses */}
           <div className="space-y-4">
-            <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
-              Existing Statuses
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                Existing Statuses
+              </h3>
+              <span className="text-xs  text-black dark:text-gray-400 font-medium  bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                {statuses.length}{" "}
+                {statuses.length === 1 ? "status" : "statuses"}
+              </span>
+            </div>
             {loading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-400" />
               </div>
             ) : (
-              <div className="grid gap-2">
-                {statuses.map((status) => (
-                  <div
-                    key={status._id}
-                    className="flex items-center justify-between p-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-4 h-4 rounded"
-                        style={{ backgroundColor: status.color }}
-                      />
-                      <span className="text-gray-800 dark:text-gray-200">
-                        {status.name}
-                      </span>
-                      <code className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm text-gray-600 dark:text-gray-300">
-                        {status.color}
-                      </code>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(status)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(status._id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
+              <div
+                className={`grid gap-2 ${
+                  statuses.length > 5 ? "max-h-64 overflow-y-auto pr-2" : ""
+                }`}
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#9CA3AF #F3F4F6",
+                }}
+              >
+                {statuses.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                    No statuses found. Create your first status above.
                   </div>
-                ))}
+                ) : (
+                  statuses.map((status) => (
+                    <div
+                      key={status._id}
+                      className="flex items-center justify-between p-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: status.color }}
+                        />
+                        <span className="text-gray-800 dark:text-gray-200">
+                          {status.name}
+                        </span>
+                        <code className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm text-gray-600 dark:text-gray-300">
+                          {status.color}
+                        </code>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(status)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(status._id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
