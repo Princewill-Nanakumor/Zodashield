@@ -54,6 +54,19 @@
   border: none !important;
 }
 
+/* Ensure the wrapper div shows the indigo focus ring */
+.phone-input-wrapper:focus-within {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #6366f1 !important;
+  border-color: #6366f1 !important;
+}
+
+/* When there's an error, show red focus ring */
+.phone-input-wrapper.error:focus-within {
+  box-shadow: 0 0 0 2px #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
 body {
   overscroll-behavior: none;
 }
