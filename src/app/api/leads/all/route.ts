@@ -194,7 +194,7 @@ export async function GET() {
         if (lead.assignedTo) {
           // Try to get user details using the user map
           assignedToUser = await getAssignedToUser(
-            db,
+            db as unknown as Db,
             lead.assignedTo,
             userMap
           );

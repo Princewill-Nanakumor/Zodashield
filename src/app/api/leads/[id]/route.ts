@@ -82,7 +82,10 @@ export async function GET(
     }
 
     // Populate assignedTo with user details
-    const assignedToUser = await getAssignedToUser(db, lead.assignedTo);
+    const assignedToUser = await getAssignedToUser(
+      db as unknown as Db,
+      lead.assignedTo
+    );
 
     const transformedLead = {
       _id: lead._id.toString(),
@@ -202,7 +205,10 @@ export async function PUT(
     }
 
     // Populate assignedTo with user details for the response
-    const assignedToUser = await getAssignedToUser(db, result.value.assignedTo);
+    const assignedToUser = await getAssignedToUser(
+      db as unknown as Db,
+      result.value.assignedTo
+    );
 
     const transformedLead = {
       _id: result.value._id.toString(),
