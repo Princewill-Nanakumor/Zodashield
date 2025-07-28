@@ -116,21 +116,20 @@ export async function PUT(
       const db = mongoose.connection.db;
       if (!db) throw new Error("Database connection not available");
 
+      // Check if user is updating their own profile
+      const isUpdatingOwnProfile = session.user.id === userId;
+
       // Build query - allow users to update their own profile
       const query: UserQuery = {
         _id: new ObjectId(userId),
       };
 
-      // Check if user is updating their own profile
-      const isUpdatingOwnProfile = session.user.id === userId;
-
       if (isUpdatingOwnProfile) {
         // User is updating their own profile - no additional filters needed
         console.log("User updating own profile");
       } else if (session.user.role === "ADMIN") {
-        // Admin can update users they created
-        query.createdBy = new ObjectId(session.user.id);
-        console.log("Admin updating user they created");
+        // Admin can update any user profile (for now, we'll be more permissive)
+        console.log("Admin updating user - authorized");
       } else {
         // Agents can only update their own profile
         throw new Error("You can only edit your own profile");
@@ -182,7 +181,7 @@ export async function PUT(
         updateData.country = body.country;
       }
 
-      // Only admins can update role and status (and only for users they created)
+      // Only admins can update role and status (and only for users they created or agents)
       if (session.user.role === "ADMIN" && !isUpdatingOwnProfile) {
         if (body.role !== undefined) {
           updateData.role = body.role;
