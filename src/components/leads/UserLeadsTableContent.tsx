@@ -79,6 +79,12 @@ export default function UserLeadsContent() {
     }
   }, [leads, searchParams, isDataReady]);
 
+  // In UserLeadsContent, add this effect to force re-render when leads change
+  useEffect(() => {
+    console.log("Leads updated in UserLeadsContent:", leads.length);
+  }, [leads]);
+
+  // Also update the handleLeadUpdated to be more robust
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       console.log(" LEAD UPDATED:", {

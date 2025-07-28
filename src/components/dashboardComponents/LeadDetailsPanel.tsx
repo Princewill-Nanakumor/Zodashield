@@ -8,11 +8,6 @@ import { DetailsSection } from "../leads/leadDetailsPanel/DetailsSection";
 import LeadStatus from "../leads/leadDetailsPanel/LeadStatus";
 import CommentsAndActivities from "../leads/leadDetailsPanel/CommentsAndActivities";
 import AdsImageSlider from "../ads/AdsImageSlider";
-import {
-  useSelectedLead,
-  useUpdateLeadOptimistically,
-  useRevertLeadUpdate,
-} from "@/stores/leadsStore";
 
 interface LeadDetailsPanelProps {
   lead: Lead | null;
@@ -33,20 +28,13 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
   hasPrevious,
   hasNext,
 }) => {
-  const updateLeadOptimistically = useUpdateLeadOptimistically();
-  const revertLeadUpdate = useRevertLeadUpdate();
-  const selectedLead = useSelectedLead();
-
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({
     details: true,
     contact: true,
-    ads: true, // Add ads section
+    ads: true,
   });
-
-  // Use store's selectedLead if available, otherwise fall back to prop
-  const currentLead = selectedLead || lead;
 
   // Store the latest onLeadUpdated function in a ref
   const onLeadUpdatedRef = useRef(onLeadUpdated);
@@ -59,30 +47,18 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     }));
   }, []);
 
-  const handleLeadUpdated = useCallback(
-    async (updatedLead: Lead) => {
-      try {
-        // Optimistic update to store
-        updateLeadOptimistically(updatedLead._id, updatedLead);
-
-        // Call the parent's onLeadUpdated
-        return await onLeadUpdatedRef.current(updatedLead);
-      } catch (error) {
-        console.error("Error in handleLeadUpdated:", error);
-
-        // Revert optimistic update on error
-        if (currentLead) {
-          revertLeadUpdate(updatedLead._id, currentLead);
-        }
-
-        return false;
-      }
-    },
-    [updateLeadOptimistically, revertLeadUpdate, currentLead]
-  );
+  const handleLeadUpdated = useCallback(async (updatedLead: Lead) => {
+    try {
+      // Call the parent's onLeadUpdated directly
+      return await onLeadUpdatedRef.current(updatedLead);
+    } catch (error) {
+      console.error("Error in handleLeadUpdated:", error);
+      return false;
+    }
+  }, []);
 
   // Don't render anything if no lead or not open
-  if (!currentLead?._id || !isOpen) {
+  if (!lead?._id || !isOpen) {
     return null;
   }
 
@@ -99,16 +75,16 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     >
       <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
         <LeadHeader
-          lead={currentLead}
+          lead={lead}
           onClose={onClose}
           onNavigate={onNavigate}
           hasPrevious={hasPrevious}
           hasNext={hasNext}
         />
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <LeadStatus lead={currentLead} />
+          <LeadStatus lead={lead} onLeadUpdated={handleLeadUpdated} />
           <ContactSection
-            lead={currentLead}
+            lead={lead}
             isExpanded={expandedSections.contact}
             onToggle={() => toggleSection("contact")}
           />
@@ -117,7 +93,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
             onToggle={() => toggleSection("ads")}
           />
           <DetailsSection
-            lead={currentLead}
+            lead={lead}
             isExpanded={expandedSections.details}
             onToggle={() => toggleSection("details")}
           />
@@ -125,9 +101,9 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
       </div>
       <div className="flex-1 bg-white dark:bg-gray-800">
         <CommentsAndActivities
-          lead={currentLead}
+          lead={lead}
           onLeadUpdated={handleLeadUpdated}
-          key={currentLead._id}
+          key={lead._id}
         />
       </div>
     </div>

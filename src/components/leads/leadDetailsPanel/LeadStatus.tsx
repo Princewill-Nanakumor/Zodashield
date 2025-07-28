@@ -10,12 +10,12 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { useUpdateLeadOptimistically } from "@/stores/leadsStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStatuses } from "@/context/StatusContext";
 
 interface LeadStatusProps {
   lead: Lead;
+  onLeadUpdated?: (updatedLead: Lead) => Promise<boolean>;
 }
 
 // Helper to add alpha to hex color
@@ -27,9 +27,8 @@ function hexWithAlpha(hex: string, alpha: string) {
   return hex + alpha;
 }
 
-const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
+const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
   const { toast } = useToast();
-  const updateLeadOptimistically = useUpdateLeadOptimistically();
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>(lead.status);
   const queryClient = useQueryClient();
@@ -96,10 +95,12 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
         const updatedLead = await response.json();
         setCurrentStatus(updatedLead.status);
 
-        // Update store optimistically
-        updateLeadOptimistically(lead._id, updatedLead);
+        // Notify parent component of the update
+        if (onLeadUpdated) {
+          await onLeadUpdated(updatedLead);
+        }
 
-        // Invalidate queries to refresh the table
+        // Invalidate queries to refresh the table and statuses
         await Promise.all([
           queryClient.invalidateQueries({
             queryKey: ["statuses"],
@@ -107,6 +108,10 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
           }),
           queryClient.invalidateQueries({
             queryKey: ["leads"],
+            exact: false,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["user-leads"],
             exact: false,
           }),
         ]);
@@ -136,7 +141,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
         setIsUpdating(false);
       }
     },
-    [lead._id, currentStatus, updateLeadOptimistically, queryClient, toast]
+    [lead._id, currentStatus, onLeadUpdated, queryClient, toast]
   );
 
   // Find the current status object by ID (not name)
@@ -205,7 +210,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead }) => {
                 return (
                   <SelectItem
                     key={status._id}
-                    value={status._id} // Use status._id as the value
+                    value={status._id}
                     className="my-1 rounded-md transition-colors font-medium cursor-pointer"
                     style={{
                       backgroundColor: itemBg,
