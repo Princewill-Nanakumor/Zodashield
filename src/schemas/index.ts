@@ -112,10 +112,17 @@ export const SignUpSchema = z
     phoneNumber: z
       .string()
       .nonempty({ message: "Phone number is required" })
-      .refine((val) => /^\+?[1-9]\d{7,14}$/.test(val), {
-        message:
-          "Phone number must be at least 8 digits (excluding country code)",
-      }),
+      .refine(
+        (val) => {
+          // Remove spaces and check if it matches the pattern
+          const cleanNumber = val.replace(/\s/g, "");
+          return /^\+?[1-9]\d{7,14}$/.test(cleanNumber);
+        },
+        {
+          message:
+            "Phone number must be at least 8 digits (excluding country code)",
+        }
+      ),
     email: z
       .string()
       .nonempty({ message: "Email is required" })
