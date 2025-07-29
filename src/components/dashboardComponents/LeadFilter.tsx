@@ -1,3 +1,4 @@
+// src/components/dashboardComponents/LeadsFilter.tsx
 "use client";
 
 import { useState, Suspense } from "react";
@@ -10,6 +11,7 @@ const FilterSkeleton = () => (
   <div className="flex items-center gap-3 animate-pulse">
     <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
     <div className="w-[200px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+    <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
   </div>
 );
 
@@ -59,6 +61,33 @@ const CountryFilter = ({
   </select>
 );
 
+// Simple Status Filter Component
+const StatusFilter = ({
+  value,
+  onChange,
+  statuses,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  statuses: string[];
+  disabled: boolean;
+}) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    disabled={disabled}
+    className="w-[180px] h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+  >
+    <option value="all">All Statuses</option>
+    {statuses.map((status) => (
+      <option key={status} value={status}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </option>
+    ))}
+  </select>
+);
+
 interface LeadsFilterControlsProps {
   selectedLeads: Lead[];
   hasAssignedLeads: boolean;
@@ -68,7 +97,10 @@ interface LeadsFilterControlsProps {
   onUnassign: () => void;
   filterByCountry: string;
   onCountryFilterChange: (country: string) => void;
+  filterByStatus: string;
+  onStatusFilterChange: (status: string) => void;
   availableCountries: string[];
+  availableStatuses: string[];
   isLoading: boolean;
   filterByUser: string;
   onFilterChange: (value: string) => void;
@@ -85,7 +117,10 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   onUnassign,
   filterByCountry,
   onCountryFilterChange,
+  filterByStatus,
+  onStatusFilterChange,
   availableCountries,
+  availableStatuses,
   isLoading,
   filterByUser,
   onFilterChange,
@@ -120,6 +155,14 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
                 value={filterByCountry}
                 onChange={onCountryFilterChange}
                 countries={availableCountries}
+                disabled={isLoading}
+              />
+
+              {/* Simple Status Filter */}
+              <StatusFilter
+                value={filterByStatus}
+                onChange={onStatusFilterChange}
+                statuses={availableStatuses}
                 disabled={isLoading}
               />
 

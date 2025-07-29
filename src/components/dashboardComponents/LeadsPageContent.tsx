@@ -1,3 +1,4 @@
+// src/components/dashboardComponents/LeadsPageContent.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -14,10 +15,11 @@ import {
   getAssignedUserId,
   filterLeadsByUser,
   filterLeadsByCountry,
+  filterLeadsByStatus,
   searchLeads,
   getAssignedLeadsCount,
   getAvailableCountries,
-} from "@/utils/LeadsUtils";
+} from "../../utils/LeadsUtils";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
   TableSkeleton,
@@ -49,12 +51,14 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // Get initial country filter from URL
+  // Get initial filters from URL
   const initialCountry = searchParams.get("country") || "all";
+  const initialStatus = searchParams.get("status") || "all";
 
   const {
     leads,
     users,
+    statuses,
     isLoadingLeads,
     isLoadingUsers,
     assignLeads,
@@ -71,6 +75,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     isUnassignDialogOpen: false,
     selectedUser: "",
     filterByCountry: initialCountry,
+    filterByStatus: initialStatus,
     searchQuery: searchQuery,
   });
 
@@ -87,7 +92,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           });
 
           if (response.status === 401) {
-            console.log("Session expired, refreshing...");
             await update();
           }
         } catch (error) {
@@ -112,10 +116,16 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
 
-  // Sync filterByCountry with URL changes (e.g. user edits URL)
+  // Sync filters with URL changes
   useEffect(() => {
     const urlCountry = searchParams.get("country") || "all";
-    setUiState((prev) => ({ ...prev, filterByCountry: urlCountry }));
+    const urlStatus = searchParams.get("status") || "all";
+
+    setUiState((prev) => ({
+      ...prev,
+      filterByCountry: urlCountry,
+      filterByStatus: urlStatus,
+    }));
   }, [searchParams]);
 
   useEffect(() => {
@@ -124,8 +134,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     }
   }, [isLoadingLeads, isLoadingUsers, setLayoutLoading]);
 
-  const handleLeadUpdate = useCallback(async (updatedLead: Lead) => {
-    console.log("Lead update requested:", updatedLead._id);
+  const handleLeadUpdate = useCallback(async () => {
     return true;
   }, []);
 
@@ -133,18 +142,27 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     return getAvailableCountries(leads);
   }, [leads]);
 
-  // --- STABILIZED LEADS DATA ---
+  // Get available statuses
+  const availableStatuses = useMemo(() => {
+    return statuses.map((status) => status.name);
+  }, [statuses]);
+
+  // STABILIZED LEADS DATA
   const stableLeads = useMemo(() => {
-    if (!leads || leads.length === 0) return [];
+    if (!leads || leads.length === 0) {
+      return [];
+    }
 
     // Create a stable reference by sorting by _id
-    return [...leads].sort((a, b) => a._id.localeCompare(b._id));
+    const sorted = [...leads].sort((a, b) => a._id.localeCompare(b._id));
+    return sorted;
   }, [leads]);
 
+  // FILTERED LEADS
   const filteredLeads = useMemo(() => {
-    let filtered = stableLeads; // Use stableLeads instead of leads
+    let filtered = stableLeads;
 
-    // Apply search filter first
+    // Apply search filter
     if (uiState.searchQuery.trim()) {
       filtered = searchLeads(filtered, uiState.searchQuery);
     }
@@ -159,23 +177,45 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
     }
 
-    return filtered;
-  }, [stableLeads, uiState.searchQuery, filterByUser, uiState.filterByCountry]);
+    // Apply status filter
+    if (uiState.filterByStatus !== "all") {
+      // Transform statuses to match the expected type
+      const transformedStatuses = statuses.map((status) => ({
+        _id: status.id,
+        name: status.name,
+      }));
 
-  const counts = useMemo(
-    () => ({
+      // Call the filter function with statuses mapping
+      filtered = filterLeadsByStatus(
+        filtered,
+        uiState.filterByStatus,
+        transformedStatuses
+      );
+    }
+
+    return filtered;
+  }, [
+    stableLeads,
+    uiState.searchQuery,
+    filterByUser,
+    uiState.filterByCountry,
+    uiState.filterByStatus,
+    statuses,
+  ]);
+
+  const counts = useMemo(() => {
+    return {
       total: leads.length,
       filtered: filteredLeads.length,
       assigned: getAssignedLeadsCount(selectedLeads),
       countries: availableCountries.length,
-    }),
-    [
-      leads.length,
-      filteredLeads.length,
-      selectedLeads,
-      availableCountries.length,
-    ]
-  );
+    };
+  }, [
+    leads.length,
+    filteredLeads.length,
+    selectedLeads,
+    availableCountries.length,
+  ]);
 
   const shouldShowLoading = isLoadingLeads || isLoadingUsers;
   const showEmptyState =
@@ -234,7 +274,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     (country: string) => {
       setUiState((prev) => ({ ...prev, filterByCountry: country }));
 
-      // Reset page to 1 when user changes country filter
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
       if (country === "all") {
@@ -247,12 +286,28 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     [pathname, searchParams]
   );
 
+  // URL sync for status filter with page reset
+  const handleStatusFilterChange = useCallback(
+    (status: string) => {
+      setUiState((prev) => ({ ...prev, filterByStatus: status }));
+
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      params.set("page", "1");
+      if (status === "all") {
+        params.delete("status");
+      } else {
+        params.set("status", status);
+      }
+      window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
+    },
+    [pathname, searchParams]
+  );
+
   // Updated filter change handler with page reset
   const handleFilterChange = useCallback(
     (value: string) => {
       setFilterByUser(value);
 
-      // Reset page to 1 when user changes user filter
       const params = new URLSearchParams(window.location.search);
       params.set("page", "1");
       window.history.replaceState(
@@ -321,7 +376,10 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
         }
         filterByCountry={uiState.filterByCountry}
         onCountryFilterChange={handleCountryFilterChange}
+        filterByStatus={uiState.filterByStatus}
+        onStatusFilterChange={handleStatusFilterChange}
         availableCountries={availableCountries}
+        availableStatuses={availableStatuses}
         isLoading={isLoading}
         filterByUser={filterByUser}
         onFilterChange={handleFilterChange}
@@ -342,13 +400,14 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                 <EmptyState
                   filterByUser={filterByUser}
                   filterByCountry={uiState.filterByCountry}
+                  filterByStatus={uiState.filterByStatus}
                   users={users}
                 />
               </div>
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <LeadsTable
-                  key={`leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}`}
+                  key={`leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}-${uiState.filterByStatus}`}
                   leads={filteredLeads}
                   onLeadUpdated={handleLeadUpdate}
                   isLoading={isLoading}
@@ -358,6 +417,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                   searchQuery={uiState.searchQuery}
                   filterByUser={filterByUser}
                   filterByCountry={uiState.filterByCountry}
+                  filterByStatus={uiState.filterByStatus}
                 />
               </div>
             )}

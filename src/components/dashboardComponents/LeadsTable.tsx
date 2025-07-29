@@ -1,3 +1,4 @@
+// src/components/dashboardComponents/LeadsTable.tsx
 "use client";
 
 import { useMemo, useEffect, useState, useCallback, useRef } from "react";
@@ -37,6 +38,7 @@ interface LeadsTableProps {
   searchQuery?: string;
   filterByUser?: string;
   filterByCountry?: string;
+  filterByStatus?: string;
 }
 
 export default function LeadsTable({
@@ -49,6 +51,7 @@ export default function LeadsTable({
   searchQuery = "",
   filterByUser = "all",
   filterByCountry = "all",
+  filterByStatus = "all",
 }: LeadsTableProps) {
   // Store hooks (NOT for pagination)
   const selectedLead = useSelectedLead();
@@ -63,7 +66,7 @@ export default function LeadsTable({
   // URL and pagination state (LOCAL ONLY - no store)
   const searchParams = useSearchParams();
   const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(15); // Local pageSize
+  const [pageSize, setPageSize] = useState(15);
 
   // --- STABILIZED SORTING STATE ---
   const stableSorting = useMemo(() => {
@@ -77,27 +80,29 @@ export default function LeadsTable({
   console.log("LeadsTable render", {
     filterByUser,
     filterByCountry,
+    filterByStatus,
     sorting: stableSorting,
     pageIndex,
     pageSize,
     leadsCount: leads.length,
   });
 
-  // Debug log to see what's causing re-renders
+  // Debug log to see what's causing re-renders - FIXED DEPENDENCY ARRAY
   useEffect(() => {
     console.log("LeadsTable re-render triggered:", {
       leadsLength: leads.length,
-      leadsIds: leads.slice(0, 3).map((l) => l._id), // First 3 IDs
+      leadsIds: leads.slice(0, 3).map((l) => l._id),
       pageIndex,
       filterByUser,
       filterByCountry,
+      filterByStatus,
       reason: "props changed",
     });
-  }, [leads, pageIndex, filterByUser, filterByCountry]);
+  }, [leads, pageIndex, filterByUser, filterByCountry, filterByStatus]);
 
   // Sync pageIndex with URL on mount ONLY (not on every URL change)
   useEffect(() => {
-    if (isInitializedRef.current) return; // Only run once
+    if (isInitializedRef.current) return;
 
     const pageParam = searchParams.get("page");
     if (pageParam && !isNaN(Number(pageParam))) {
@@ -113,8 +118,6 @@ export default function LeadsTable({
   }, [searchParams]);
 
   // Preserve page position when leads change
-  // Preserve page position when leads change
-  // Preserve page position when leads change
   useEffect(() => {
     const currentPage = searchParams.get("page");
     if (currentPage && !isNaN(Number(currentPage))) {
@@ -128,9 +131,7 @@ export default function LeadsTable({
         setPageIndex(targetPage);
       }
     }
-    // Intentionally only depend on leads.length to avoid infinite loops
-    // when pageIndex or searchParams change
-  }, [leads.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [leads.length, searchParams, pageIndex]);
 
   // Update URL when page changes
   const handlePageChange = useCallback((page: number) => {
@@ -151,8 +152,9 @@ export default function LeadsTable({
       searchQuery,
       filterByUser,
       filterByCountry,
+      filterByStatus,
     });
-  }, [leads, searchQuery, filterByUser, filterByCountry]);
+  }, [leads, searchQuery, filterByUser, filterByCountry, filterByStatus]);
 
   // Use props selectedLeads if provided, otherwise use store
   const displaySelectedLeads =
@@ -169,7 +171,6 @@ export default function LeadsTable({
       (field, order) => {
         console.log("Sort change triggered:", { field, order });
         setSorting([{ id: field, desc: order === "desc" }]);
-        // Remove all page reset logic
       },
       [setSorting]
     ),
@@ -189,8 +190,6 @@ export default function LeadsTable({
       wouldBeEmpty: startIndex >= sortedLeads.length,
     });
 
-    // Don't automatically adjust the page - let the user handle it
-    // Just return the leads for the current page, even if it's empty
     return sortedLeads.slice(startIndex, endIndex);
   }, [sortedLeads, pageIndex, pageSize]);
 
@@ -236,8 +235,8 @@ export default function LeadsTable({
     sorting: stableSorting,
     rowSelection,
     setSorting,
-    setPageIndex: handlePageChange, // Use the URL-syncing handler
-    setPageSize, // Use local setPageSize
+    setPageIndex: handlePageChange,
+    setPageSize,
   });
 
   if (isLoading) {
@@ -266,7 +265,12 @@ export default function LeadsTable({
               searchQuery={searchQuery}
               filterByUser={filterByUser}
               filterByCountry={filterByCountry}
-              hasFilters={filterByUser !== "all" || filterByCountry !== "all"}
+              filterByStatus={filterByStatus}
+              hasFilters={
+                filterByUser !== "all" ||
+                filterByCountry !== "all" ||
+                filterByStatus !== "all"
+              }
               users={users}
             />
           ) : (

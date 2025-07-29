@@ -1,6 +1,8 @@
+// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/FilterControls.tsx
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusModal from "@/components/dashboardComponents/StatusModal";
@@ -26,27 +28,6 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
   isLoading = false,
 }) => {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-
-  // Check if modal should be open on page load
-  useEffect(() => {
-    const shouldOpenModal = localStorage.getItem("statusModalOpen");
-    if (shouldOpenModal === "true") {
-      setIsStatusModalOpen(true);
-      localStorage.removeItem("statusModalOpen"); // Clear the flag
-    }
-  }, []);
-
-  // Listen for custom event to open modal
-  useEffect(() => {
-    const handleOpenModal = () => {
-      setIsStatusModalOpen(true);
-    };
-
-    window.addEventListener("openStatusModal", handleOpenModal);
-    return () => {
-      window.removeEventListener("openStatusModal", handleOpenModal);
-    };
-  }, []);
 
   // Memoized dropdown users
   const dropdownUsers = users.filter((user) => user.status === "ACTIVE");

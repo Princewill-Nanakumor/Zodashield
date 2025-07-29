@@ -1,4 +1,11 @@
+// src/utils/LeadUtils.ts
 import { Lead } from "@/types/leads";
+
+// Constants for filter values
+export const FILTER_VALUES = {
+  ALL: "all",
+  UNASSIGNED: "unassigned",
+} as const;
 
 // Utility functions for lead filtering and processing
 export const getAssignedUserId = (
@@ -13,6 +20,81 @@ export const getAssignedUserId = (
     );
   }
   return null;
+};
+
+export const getAssignedUserName = (
+  assignedTo: Lead["assignedTo"]
+): string | null => {
+  if (!assignedTo) return null;
+  if (typeof assignedTo === "string") return assignedTo;
+  if (assignedTo && typeof assignedTo === "object") {
+    const assignedToObj = assignedTo as Record<string, unknown>;
+    const firstName = (assignedToObj.firstName as string) || "";
+    const lastName = (assignedToObj.lastName as string) || "";
+    return `${firstName} ${lastName}`.trim();
+  }
+  return null;
+};
+
+// In your leadUtils.ts:
+
+// In your LeadUtils.ts, update the filterLeadsByStatus function:
+
+export const filterLeadsByStatus = (
+  leads: Lead[],
+  statusFilter: string,
+  statuses: Array<{ _id: string; name: string }> = []
+): Lead[] => {
+  console.log("🔍 filterLeadsByStatus called:", {
+    statusFilter,
+    totalLeads: leads.length,
+    availableStatuses: statuses,
+    sampleLeads: leads.slice(0, 3).map((lead) => ({
+      id: lead._id,
+      status: lead.status,
+      statusType: typeof lead.status,
+    })),
+  });
+
+  if (!statusFilter || statusFilter === "all") {
+    console.log("🔍 No status filter, returning all leads");
+    return leads;
+  }
+
+  // Create a mapping from status ObjectID to status name
+  const statusIdToName: Record<string, string> = {};
+  statuses.forEach((status) => {
+    statusIdToName[status._id] = status.name;
+  });
+
+  console.log("🔍 Status ID to Name mapping:", statusIdToName);
+
+  const filtered = leads.filter((lead) => {
+    const leadStatusId = lead.status;
+    const leadStatusName = statusIdToName[leadStatusId];
+
+    console.log("🔍 Checking lead status:", {
+      leadId: lead._id,
+      leadStatusId,
+      leadStatusName,
+      statusFilter,
+      matches: leadStatusName === statusFilter,
+    });
+
+    return leadStatusName === statusFilter;
+  });
+
+  console.log("🔍 filterLeadsByStatus result:", {
+    statusFilter,
+    filteredCount: filtered.length,
+    sampleFiltered: filtered.slice(0, 3).map((lead) => ({
+      id: lead._id,
+      status: lead.status,
+      statusName: statusIdToName[lead.status],
+    })),
+  });
+
+  return filtered;
 };
 
 export const filterLeadsByUser = (
@@ -99,4 +181,33 @@ export const getAvailableCountries = (leads: Lead[]): string[] => {
     }
   });
   return Array.from(countrySet).sort();
+};
+
+// Check if user is current assignee
+export const isCurrentAssignee = (lead: Lead, userId: string): boolean => {
+  return getAssignedUserId(lead.assignedTo) === userId;
+};
+
+// Validate session user with proper typing
+export const validateSessionUser = (
+  session: unknown
+): session is { user: { role: string; id: string } } => {
+  return (
+    typeof session === "object" &&
+    session !== null &&
+    "user" in session &&
+    typeof (session as { user: unknown }).user === "object" &&
+    (session as { user: { role?: unknown; id?: unknown } }).user !== null &&
+    "role" in (session as { user: { role?: unknown; id?: unknown } }).user &&
+    "id" in (session as { user: { role?: unknown; id?: unknown } }).user &&
+    typeof (session as { user: { role: unknown; id: unknown } }).user.role ===
+      "string" &&
+    typeof (session as { user: { role: unknown; id: unknown } }).user.id ===
+      "string"
+  );
+};
+
+// Check if user has admin role
+export const isAdminUser = (session: unknown): boolean => {
+  return validateSessionUser(session) && session.user.role === "ADMIN";
 };

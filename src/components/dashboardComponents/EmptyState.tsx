@@ -6,12 +6,14 @@ import { User } from "@/types/user.types";
 interface EmptyStateProps {
   filterByUser: string;
   filterByCountry: string;
+  filterByStatus: string;
   users: User[];
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
   filterByUser,
   filterByCountry,
+  filterByStatus, // Add this to destructuring
   users,
 }) => {
   const getFilterDescription = () => {
@@ -34,6 +36,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       filters.push(`leads from ${filterByCountry}`);
     }
 
+    if (filterByStatus !== "all") {
+      filters.push(`leads with status "${filterByStatus}"`);
+    }
+
     if (filters.length === 0) {
       return "leads in the system";
     }
@@ -44,6 +50,11 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   const handleRefresh = () => {
     window.location.reload();
   };
+
+  const hasAnyFilters =
+    filterByUser !== "all" ||
+    filterByCountry !== "all" ||
+    filterByStatus !== "all";
 
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6">
@@ -57,7 +68,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         </h3>
 
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md">
-          {filterByUser === "all" && filterByCountry === "all"
+          {!hasAnyFilters
             ? "There are currently no leads in the system. New leads will appear here once they are added."
             : `No ${getFilterDescription()} match your current filters. Try adjusting your filters or check back later.`}
         </p>
@@ -71,7 +82,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             Refresh
           </button>
 
-          {(filterByUser !== "all" || filterByCountry !== "all") && (
+          {hasAnyFilters && (
             <button
               onClick={() => {
                 // Reset filters - you'll need to implement this
