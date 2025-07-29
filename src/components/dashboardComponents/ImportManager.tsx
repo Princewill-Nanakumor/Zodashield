@@ -4,11 +4,10 @@
 import { Loader2 } from "lucide-react";
 import FileUploadSection from "@/components/dashboardComponents/FileUploadSection";
 import { HelpSection } from "../importPageComponents/HelpSection";
-import { ImportTabs } from "@/components/dashboardComponents/ImportTabs";
-import { ImportContent } from "@/components/dashboardComponents/ImportContent";
-
-// EXTRACTED COMPONENTS
+import { ImportTabs } from "../importPageComponents/ImportTabs";
+import { ImportContent } from "../importPageComponents/ImportContent";
 import { UsageLimitsDisplay } from "@/components/importPageComponents/UsageLimitsDisplay";
+import { UsageLimitsSkeleton } from "@/components/importPageComponents/UsageLimitsSkeleton";
 import { ImportHistorySection } from "@/components/importPageComponents/ImportHistorySection";
 import { ImportModalWrapper } from "@/components/importPageComponents/ImportModalWrapper";
 
@@ -39,8 +38,8 @@ export const ImportManager = () => {
     handleDeleteImport,
   } = useImportManager();
 
-  // Show loading spinner when session is loading or during initial data fetch
-  if (status === "loading" || isInitialLoading) {
+  // Show loading spinner only when session is loading
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center h-screen w-full">
         <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
@@ -55,10 +54,19 @@ export const ImportManager = () => {
       <div className="flex-1 flex flex-col">
         <div className="bg-white dark:text-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <ImportContent />
-          <ImportTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          {/* Usage Limits Display */}
-          {usageData && <UsageLimitsDisplay usageData={usageData} />}
+          {/* Usage Limits Display - Above the tabs */}
+          {activeTab === "new" && (
+            <div>
+              {isInitialLoading ? (
+                <UsageLimitsSkeleton />
+              ) : usageData ? (
+                <UsageLimitsDisplay usageData={usageData} />
+              ) : null}
+            </div>
+          )}
+
+          <ImportTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
           <FileUploadSection
             activeTab={activeTab}

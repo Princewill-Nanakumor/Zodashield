@@ -28,7 +28,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Mark email as verified
     user.emailVerified = true;
     user.verificationToken = undefined;
     user.verificationExpires = undefined;

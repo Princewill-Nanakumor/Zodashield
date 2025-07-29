@@ -13,7 +13,7 @@ interface UsageData {
 
 export function UsageLimitsDisplay({ usageData }: { usageData: UsageData }) {
   return (
-    <Card className="mx-6 mt-6 border-gray-200 dark:border-gray-700">
+    <Card className="mx-6 mt-6 bg-gray-50 border-gray-200 dark:border-gray-700 dark:bg-gray-900 mb-5">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center space-x-2 text-sm">
           <FileText className="h-4 w-4" />

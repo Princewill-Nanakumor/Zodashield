@@ -94,7 +94,6 @@ export function UserDataManager({
     }
   }, [onUsageDataLoaded]);
 
-  // Fetch users and usage data on mount and when session changes
   useEffect(() => {
     if (session?.user?.role === "ADMIN") {
       fetchUsers();

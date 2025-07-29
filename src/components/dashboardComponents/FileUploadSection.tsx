@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { ImportHistoryItem } from "@/types/import";
 import { RequiredFieldsModal } from "../importPageComponents/RequireFieldModal";
-import { ImportHistory } from "../importPageComponents/ImportHistory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Upload, XCircle } from "lucide-react";
@@ -38,8 +37,6 @@ export const FileUploadSection = ({
   isLoading,
   successMessage,
   handleFileUpload,
-  importHistory,
-  onDelete,
   usageData,
 }: FileUploadSectionProps) => {
   const [showRequiredFields, setShowRequiredFields] = useState(false);
@@ -58,153 +55,146 @@ export const FileUploadSection = ({
 
   const isDisabled = Boolean(isLoading || (usageData && !usageData.canImport));
 
+  // Only render the file upload section when activeTab is "new"
+  if (activeTab !== "new") {
+    return null;
+  }
+
   return (
-    <div className="p-6">
-      {activeTab === "new" && (
-        <div>
-          {/* Usage Limit Warning */}
-          {usageData && !usageData.canImport && (
-            <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>Import Limit Reached</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-red-700 dark:text-red-300">
-                    You have reached your import limit. Upgrade your
-                    subscription to import more leads.
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <Badge
-                      variant="outline"
-                      className="text-red-600 dark:text-red-400"
-                    >
-                      {usageData.currentLeads}/{usageData.maxLeads} Leads
-                    </Badge>
-                  </div>
-                  <Button
-                    onClick={() => (window.location.href = "/subscription")}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    Upgrade Plan
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-100">
-              Before You Import:
-            </h3>
-            <ul className="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300 space-y-1">
-              <li>Ensure your file is in Excel (.xlsx) or CSV format</li>
-              <li>
-                Required columns: First Name, Last Name or Full Name, Email
-                Address, Phone Number, Country
-              </li>
-              <li>Headers must be case-sensitive and match exactly</li>
-              <li>
-                <button
-                  onClick={() => setShowRequiredFields(true)}
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+    <div className="px-6 pb-6">
+      {/* Usage Limit Warning */}
+      {usageData && !usageData.canImport && (
+        <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Import Limit Reached</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-red-700 dark:text-red-300">
+                You have reached your import limit. Upgrade your subscription to
+                import more leads.
+              </p>
+              <div className="flex items-center space-x-2">
+                <Badge
+                  variant="outline"
+                  className="text-red-600 dark:text-red-400"
                 >
-                  View detailed requirements
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div className="flex items-center justify-center w-full">
-            <label
-              htmlFor="file-upload"
-              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 transition-colors
-      ${
-        isDisabled
-          ? "pointer-events-none opacity-60"
-          : "hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
-      }`}
-            >
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                {isDisabled ? (
-                  <XCircle className="w-8 h-8 mb-4 text-gray-400 dark:text-gray-500" />
-                ) : (
-                  <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                )}
-                <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold">
-                    {isDisabled ? "Import Disabled" : "Click to upload"}
-                  </span>{" "}
-                  or drag and drop
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Excel or CSV files
-                </p>
-                {usageData && !usageData.canImport && (
-                  <p className="text-xs text-red-500 mt-2">
-                    Import limit reached
-                  </p>
-                )}
-                {usageData &&
-                  usageData.canImport &&
-                  usageData.maxLeads !== -1 && (
-                    <p className="text-xs text-blue-500 mt-1">
-                      You can import up to {usageData.remainingLeads} more leads
-                    </p>
-                  )}
+                  {usageData.currentLeads}/{usageData.maxLeads} Leads
+                </Badge>
               </div>
-            </label>
-
-            <input
-              id="file-upload"
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".xlsx,.xls,.csv,.txt"
-              onChange={handleFileUpload}
-              disabled={isDisabled}
-              onClick={(e) => {
-                // Prevent the click from bubbling up
-                e.stopPropagation();
-              }}
-            />
-          </div>
-
-          {/* Show loading bar instead of text */}
-          {isLoading && (
-            <div className="mt-4 w-full">
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full animate-loading-bar"
-                  style={{ width: "100%" }}
-                ></div>
-              </div>
-              <div className="text-center text-blue-600 dark:text-blue-400 text-xs mt-2">
-                Importing, please wait...
-              </div>
-              <style jsx>{`
-                @keyframes loading-bar {
-                  0% {
-                    transform: translateX(-100%);
-                  }
-                  100% {
-                    transform: translateX(100%);
-                  }
-                }
-                .animate-loading-bar {
-                  animation: loading-bar 1.2s linear infinite;
-                }
-              `}</style>
+              <Button
+                onClick={() => (window.location.href = "/subscription")}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Upgrade Plan
+              </Button>
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {activeTab === "history" && (
-        <ImportHistory imports={importHistory} onDelete={onDelete} />
+      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6 border border-gray-200 dark:border-gray-700 mt-4">
+        <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-100">
+          Before You Import:
+        </h3>
+        <ul className="list-disc pl-5 text-sm text-gray-600 dark:text-gray-300 space-y-1">
+          <li>Ensure your file is in Excel (.xlsx) or CSV format</li>
+          <li>
+            Required columns: First Name, Last Name or Full Name, Email Address,
+            Phone Number, Country
+          </li>
+          <li>Headers must be case-sensitive and match exactly</li>
+          <li>
+            <button
+              onClick={() => setShowRequiredFields(true)}
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+            >
+              View detailed requirements
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div className="flex items-center justify-center w-full">
+        <label
+          htmlFor="file-upload"
+          className={`flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 transition-colors
+${
+  isDisabled
+    ? "pointer-events-none opacity-60"
+    : "hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
+}`}
+        >
+          <div className="flex flex-col items-center justify-center px-6 py-8">
+            {isDisabled ? (
+              <XCircle className="w-8 h-8 mb-4 text-gray-400 dark:text-gray-500" />
+            ) : (
+              <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
+            )}
+            <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+              <span className="font-semibold">
+                {isDisabled ? "Import Disabled" : "Click to upload"}
+              </span>{" "}
+              or drag and drop
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Excel or CSV files
+            </p>
+            {usageData && !usageData.canImport && (
+              <p className="text-xs text-red-500 mt-2">Import limit reached</p>
+            )}
+            {usageData && usageData.canImport && usageData.maxLeads !== -1 && (
+              <p className="text-xs text-blue-500 mt-1">
+                You can import up to {usageData.remainingLeads} more leads
+              </p>
+            )}
+          </div>
+        </label>
+
+        <input
+          id="file-upload"
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept=".xlsx,.xls,.csv,.txt"
+          onChange={handleFileUpload}
+          disabled={isDisabled}
+          onClick={(e) => {
+            // Prevent the click from bubbling up
+            e.stopPropagation();
+          }}
+        />
+      </div>
+
+      {/* Show loading bar instead of text */}
+      {isLoading && (
+        <div className="mt-4 w-full">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+            <div
+              className="bg-blue-600 h-2.5 rounded-full animate-loading-bar"
+              style={{ width: "100%" }}
+            ></div>
+          </div>
+          <div className="text-center text-blue-600 dark:text-blue-400 text-xs mt-2">
+            Importing, please wait...
+          </div>
+          <style jsx>{`
+            @keyframes loading-bar {
+              0% {
+                transform: translateX(-100%);
+              }
+              100% {
+                transform: translateX(100%);
+              }
+            }
+            .animate-loading-bar {
+              animation: loading-bar 1.2s linear infinite;
+            }
+          `}</style>
+        </div>
       )}
 
       <RequiredFieldsModal

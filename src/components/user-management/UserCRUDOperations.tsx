@@ -146,7 +146,6 @@ export function UserCRUDOperations({
         console.log("[Frontend] Response data:", data);
 
         if (!response.ok) {
-          // Check if the API returned a structured error
           if (data.error && typeof data.error === "object") {
             console.log("API returned structured error:", data.error);
             throw data.error;
@@ -165,8 +164,6 @@ export function UserCRUDOperations({
           // Fallback error
           throw { message: "Failed to update user" };
         }
-
-        // Success case - your API returns { success: true, data: userData }
         if (data.success && data.data) {
           toast({
             title: "Success",
