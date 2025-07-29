@@ -90,12 +90,6 @@ export function UserDropdownMenu({
                     ? userProfile.email
                     : ""}
               </p>
-              <div className="flex items-center mt-1">
-                <span className="block h-2 w-2 rounded-full bg-green-400 mr-1" />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Online
-                </p>
-              </div>
               {isAdmin && (
                 <div className="mt-1">
                   <BalanceDisplay

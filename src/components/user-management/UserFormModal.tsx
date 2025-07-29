@@ -1,6 +1,7 @@
+// src/components/user-management/UserFormModal.tsx
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { X, AlertCircle, Globe } from "lucide-react";
+import { X, AlertCircle, Globe, AlertTriangle } from "lucide-react";
 import { Country } from "react-phone-number-input";
 import {
   Select,
@@ -21,6 +22,16 @@ import { PasswordField } from "./PasswordField";
 import { useFormValidation } from "@/hooks/useFormValidation";
 import { getCountrySelectStyles } from "./CountrySelectStyles";
 import { PhoneInputField } from "./PhoneInputField";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+interface UsageData {
+  currentUsers: number;
+  maxUsers: number;
+  remainingUsers: number;
+  canAddTeamMember: boolean;
+}
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -28,6 +39,7 @@ interface UserFormModalProps {
   onSubmit: (userData: UserFormCreateData | UserFormEditData) => Promise<void>;
   initialData?: UserFormEditData;
   mode: "create" | "edit";
+  usageData?: UsageData | null;
 }
 
 export function UserFormModal({
@@ -36,6 +48,7 @@ export function UserFormModal({
   onSubmit,
   initialData,
   mode,
+  usageData,
 }: UserFormModalProps) {
   const [formData, setFormData] = useState<
     UserFormCreateData | UserFormEditData
@@ -130,6 +143,15 @@ export function UserFormModal({
     if (!validateForm(formData)) return;
     if (isLoading) return;
 
+    // Check usage limits for create mode
+    if (mode === "create" && usageData && !usageData.canAddTeamMember) {
+      handleError({
+        message:
+          "You have reached your team member limit. Please upgrade your subscription to add more team members.",
+      });
+      return;
+    }
+
     setIsLoading(true);
     clearErrors();
 
@@ -160,6 +182,40 @@ export function UserFormModal({
               <X className="h-6 w-6" />
             </button>
           </div>
+
+          {/* Usage Limit Warning for Create Mode */}
+          {mode === "create" && usageData && !usageData.canAddTeamMember && (
+            <Card className="mb-4 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span>Team Member Limit Reached</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-red-700 dark:text-red-300">
+                    You have reached your team member limit. Upgrade your
+                    subscription to add more team members.
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Badge
+                      variant="outline"
+                      className="text-red-600 dark:text-red-400"
+                    >
+                      {usageData.currentUsers}/{usageData.maxUsers} Members
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => (window.location.href = "/subscription")}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Upgrade Plan
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* General Error */}
           {generalError && (
@@ -252,7 +308,14 @@ export function UserFormModal({
               </button>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={
+                  isLoading ||
+                  !!(
+                    mode === "create" &&
+                    usageData &&
+                    !usageData.canAddTeamMember
+                  )
+                }
                 className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading

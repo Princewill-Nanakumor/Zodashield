@@ -1,3 +1,4 @@
+// src/components/user-management/UserCRUDOperations.tsx
 "use client";
 
 import { useCallback } from "react";
@@ -46,7 +47,7 @@ interface UserCRUDOperationsProps {
 
 export function UserCRUDOperations({
   onUserCreated,
-  onUserUpdated, // Added this line
+  onUserUpdated,
   onUserDeleted,
   onRefreshUsers,
   children,
@@ -58,7 +59,6 @@ export function UserCRUDOperations({
   const handleCreateUser = useCallback(
     async (userData: UserFormData): Promise<User> => {
       if (!session?.user?.id) {
-        // General error
         throw { message: "User session not found. Please log in again." };
       }
 
@@ -78,6 +78,16 @@ export function UserCRUDOperations({
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle usage limit errors
+        if (response.status === 403 && data.upgradeRequired) {
+          throw {
+            message:
+              data.message ||
+              "Team member limit reached. Please upgrade your subscription.",
+            upgradeRequired: true,
+          };
+        }
+
         // Field error for duplicate email
         if (response.status === 409) {
           throw {
@@ -85,6 +95,7 @@ export function UserCRUDOperations({
             message: data.message || "This email address is already in use.",
           };
         }
+
         // General error for other cases
         if (response.status === 400) {
           throw { message: data.message || "Invalid user data." };
@@ -157,7 +168,6 @@ export function UserCRUDOperations({
 
         // Success case - your API returns { success: true, data: userData }
         if (data.success && data.data) {
-          // Add success toast
           toast({
             title: "Success",
             description: "User updated successfully",
@@ -188,10 +198,7 @@ export function UserCRUDOperations({
 
         throw { message: "No user data returned from server." };
       } catch (error) {
-        // Log the actual error for debugging
         console.error("Update user error details:", error);
-
-        // Re-throw the error as is (don't stringify it)
         throw error;
       }
     },
@@ -218,7 +225,6 @@ export function UserCRUDOperations({
           throw new Error(error.message || "Failed to delete user");
         }
 
-        // Invalidate and refetch users query
         await queryClient.invalidateQueries({ queryKey: ["users"] });
 
         onRefreshUsers();

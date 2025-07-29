@@ -3,7 +3,7 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-  function middleware(request) {
+  async function middleware(request) {
     const token = request.nextauth.token;
     const isAuth = !!token;
     const path = request.nextUrl.pathname;
@@ -15,6 +15,8 @@ export default withAuth(
     const isAdminManagementPage = path.startsWith(
       "/dashboard/admin-management"
     );
+    const isSubscriptionPage = path === "/subscription";
+    const isBillingPage = path === "/billing";
 
     const publicPages = [
       "/",
@@ -68,6 +70,88 @@ export default withAuth(
       return NextResponse.redirect(new URL("/signin", request.url));
     }
 
+    // ✅ Enhanced subscription check for ALL protected routes
+    if (
+      isAuth &&
+      !isSubscriptionPage &&
+      !isBillingPage &&
+      !isAuthPage &&
+      !isPublicPage &&
+      !isResetPasswordPage
+    ) {
+      try {
+        const response = await fetch(
+          `${request.nextUrl.origin}/api/subscription/status`,
+          {
+            headers: {
+              Cookie: request.headers.get("cookie") || "",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const subscriptionData = await response.json();
+
+          // 🛡️ Block access if trial expired or subscription inactive
+          if (
+            subscriptionData.subscriptionStatus === "expired" ||
+            subscriptionData.subscriptionStatus === "inactive"
+          ) {
+            return NextResponse.redirect(new URL("/subscription", request.url));
+          }
+
+          // 🛡️ Check if trial has actually ended
+          if (subscriptionData.trialEndsAt) {
+            const trialEndDate = new Date(subscriptionData.trialEndsAt);
+            const now = new Date();
+
+            if (
+              now > trialEndDate &&
+              subscriptionData.subscriptionStatus !== "active"
+            ) {
+              return NextResponse.redirect(
+                new URL("/subscription", request.url)
+              );
+            }
+          }
+
+          // 🛡️ Additional security: Check if user is on trial but trial has ended
+          if (
+            subscriptionData.subscriptionStatus === "trial" &&
+            subscriptionData.trialEndsAt
+          ) {
+            const trialEndDate = new Date(subscriptionData.trialEndsAt);
+            const now = new Date();
+
+            if (now > trialEndDate) {
+              return NextResponse.redirect(
+                new URL("/subscription", request.url)
+              );
+            }
+          }
+
+          // 🛡️ Block access if no valid subscription status
+          if (
+            !subscriptionData.subscriptionStatus ||
+            !["active", "trial"].includes(subscriptionData.subscriptionStatus)
+          ) {
+            return NextResponse.redirect(new URL("/subscription", request.url));
+          }
+        } else {
+          // 🛡️ If subscription check fails, redirect to subscription page for security
+          console.error("Subscription status check failed:", response.status);
+          return NextResponse.redirect(new URL("/subscription", request.url));
+        }
+      } catch (error) {
+        console.error(
+          "Error checking subscription status in middleware:",
+          error
+        );
+        // 🛡️ For security, redirect to subscription page if check fails
+        return NextResponse.redirect(new URL("/subscription", request.url));
+      }
+    }
+
     return NextResponse.next();
   },
   {
@@ -111,6 +195,8 @@ export const config = {
     "/signup",
     "/forgot-password",
     "/reset-password/:path*",
+    "/subscription",
+    "/billing",
     "/",
     "/about",
     "/contact",

@@ -16,6 +16,7 @@ type UserUpdateFields = {
   permissions?: string[];
   status?: string;
 };
+
 // Define interfaces for better type safety
 interface UserDocument {
   _id: mongoose.Types.ObjectId;
@@ -28,18 +29,25 @@ interface UserDocument {
   role: string;
   status: string;
   permissions?: string[];
-  adminId?: mongoose.Types.ObjectId; // For multi-tenancy
+  adminId?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
+  balance?: number;
+  isOnTrial?: boolean;
+  trialEndsAt?: Date;
+  currentPlan?: string;
+  subscriptionStatus?: "active" | "inactive" | "trial" | "expired";
+  maxLeads?: number;
+  maxUsers?: number;
 }
 
 interface LeadDocument {
   _id: mongoose.Types.ObjectId;
   assignedTo?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
-  adminId: mongoose.Types.ObjectId; // For multi-tenancy
+  adminId: mongoose.Types.ObjectId;
   firstName: string;
   lastName: string;
   email: string;
@@ -52,6 +60,12 @@ interface UserQuery {
   adminId?: mongoose.Types.ObjectId;
   role?: { $ne: string };
 }
+
+// Usage limits for trial users
+const TRIAL_LIMITS = {
+  maxLeads: 50,
+  maxUsers: 1,
+};
 
 export async function POST(request: Request) {
   try {
@@ -72,6 +86,64 @@ export async function POST(request: Request) {
       status,
       permissions,
     } = await request.json();
+
+    const adminUser = await withDatabase(async () => {
+      const db = mongoose.connection.db;
+      if (!db) throw new Error("Database connection not available");
+      return await db.collection("users").findOne({
+        _id: new mongoose.Types.ObjectId(session.user.id),
+      });
+    });
+
+    if (!adminUser) {
+      return NextResponse.json(
+        { message: "Admin user not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if admin can add more users
+    const isOnTrial =
+      adminUser.isOnTrial &&
+      adminUser.trialEndsAt &&
+      new Date() < new Date(adminUser.trialEndsAt);
+    const hasActiveSubscription = adminUser.subscriptionStatus === "active";
+    const maxUsers = adminUser.maxUsers || TRIAL_LIMITS.maxUsers;
+
+    if (!isOnTrial && !hasActiveSubscription) {
+      return NextResponse.json(
+        {
+          message:
+            "Trial expired. Please subscribe to continue adding team members.",
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Count current users for this admin
+    const currentUsers = await withDatabase(async () => {
+      const db = mongoose.connection.db;
+      if (!db) throw new Error("Database connection not available");
+      return await db.collection("users").countDocuments({
+        adminId: new mongoose.Types.ObjectId(session.user.id),
+      });
+    });
+
+    if (currentUsers >= maxUsers) {
+      return NextResponse.json(
+        {
+          message: "User limit reached",
+          details: {
+            currentUsers,
+            maxUsers,
+            remainingSlots: Math.max(0, maxUsers - currentUsers),
+          },
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
+    }
 
     // Check for existing user BEFORE using executeDbOperation
     const existingUser = await withDatabase(async () => {
@@ -128,6 +200,11 @@ export async function POST(request: Request) {
           role: createdUser.role,
           status: createdUser.status,
           createdAt: createdUser.createdAt.toISOString(),
+        },
+        usage: {
+          currentUsers: currentUsers + 1,
+          maxUsers,
+          remainingUsers: Math.max(0, maxUsers - (currentUsers + 1)),
         },
       };
     }, "Error creating user");

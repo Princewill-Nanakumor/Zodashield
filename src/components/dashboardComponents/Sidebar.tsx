@@ -16,6 +16,7 @@ import {
   ShieldUser,
   Shield,
   LucideIcon,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/libs/utils";
 
@@ -59,6 +60,12 @@ const mainNavItems: NavItem[] = [
     icon: CreditCard,
     href: "/dashboard/billing",
     label: "Billing",
+    adminOnly: true,
+  },
+  {
+    icon: Crown,
+    href: "/dashboard/subscription",
+    label: "Subscription",
     adminOnly: true,
   },
 ];

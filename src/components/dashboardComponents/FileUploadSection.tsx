@@ -1,8 +1,22 @@
+// src/components/dashboardComponents/FileUploadSection.tsx
+"use client";
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { ImportHistoryItem } from "@/types/import";
-import { RequiredFieldsModal } from "./RequireFieldModal";
-import { ImportHistory } from "@/components/dashboardComponents/ImportHistory";
+import { RequiredFieldsModal } from "../importPageComponents/RequireFieldModal";
+import { ImportHistory } from "../importPageComponents/ImportHistory";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, Upload, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface UsageData {
+  currentLeads: number;
+  maxLeads: number;
+  remainingLeads: number;
+  canImport: boolean;
+}
 
 interface FileUploadSectionProps {
   activeTab: string;
@@ -15,6 +29,7 @@ interface FileUploadSectionProps {
   onDelete: (id: string) => void;
   setShowModal: (show: boolean) => void;
   missingFields: string[];
+  usageData?: UsageData | null;
 }
 
 export const FileUploadSection = ({
@@ -25,6 +40,7 @@ export const FileUploadSection = ({
   handleFileUpload,
   importHistory,
   onDelete,
+  usageData,
 }: FileUploadSectionProps) => {
   const [showRequiredFields, setShowRequiredFields] = useState(false);
   const { toast } = useToast();
@@ -40,10 +56,46 @@ export const FileUploadSection = ({
     }
   }, [successMessage, toast]);
 
+  const isDisabled = Boolean(isLoading || (usageData && !usageData.canImport));
+
   return (
     <div className="p-6">
       {activeTab === "new" && (
         <div>
+          {/* Usage Limit Warning */}
+          {usageData && !usageData.canImport && (
+            <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span>Import Limit Reached</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-red-700 dark:text-red-300">
+                    You have reached your import limit. Upgrade your
+                    subscription to import more leads.
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Badge
+                      variant="outline"
+                      className="text-red-600 dark:text-red-400"
+                    >
+                      {usageData.currentLeads}/{usageData.maxLeads} Leads
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => (window.location.href = "/subscription")}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Upgrade Plan
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-6 border border-gray-200 dark:border-gray-700">
             <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-100">
               Before You Import:
@@ -68,43 +120,57 @@ export const FileUploadSection = ({
 
           <div className="flex items-center justify-center w-full">
             <label
-              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
-      ${isLoading ? "pointer-events-none opacity-60" : ""}`}
-              aria-disabled={isLoading}
+              htmlFor="file-upload"
+              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 transition-colors
+      ${
+        isDisabled
+          ? "pointer-events-none opacity-60"
+          : "hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
+      }`}
             >
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg
-                  className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 20 16"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                  />
-                </svg>
+                {isDisabled ? (
+                  <XCircle className="w-8 h-8 mb-4 text-gray-400 dark:text-gray-500" />
+                ) : (
+                  <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
+                )}
                 <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold">Click to upload</span> or drag
-                  and drop
+                  <span className="font-semibold">
+                    {isDisabled ? "Import Disabled" : "Click to upload"}
+                  </span>{" "}
+                  or drag and drop
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Excel or CSV files
                 </p>
+                {usageData && !usageData.canImport && (
+                  <p className="text-xs text-red-500 mt-2">
+                    Import limit reached
+                  </p>
+                )}
+                {usageData &&
+                  usageData.canImport &&
+                  usageData.maxLeads !== -1 && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      You can import up to {usageData.remainingLeads} more leads
+                    </p>
+                  )}
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".xlsx,.xls,.csv,.txt"
-                onChange={handleFileUpload}
-                disabled={isLoading}
-              />
             </label>
+
+            <input
+              id="file-upload"
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".xlsx,.xls,.csv,.txt"
+              onChange={handleFileUpload}
+              disabled={isDisabled}
+              onClick={(e) => {
+                // Prevent the click from bubbling up
+                e.stopPropagation();
+              }}
+            />
           </div>
 
           {/* Show loading bar instead of text */}

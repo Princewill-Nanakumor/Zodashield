@@ -1,3 +1,4 @@
+// src/app/api/imports/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { executeDbOperation } from "@/libs/dbConfig";
@@ -14,6 +15,12 @@ interface LeadsQuery {
   $or: Array<{ importId: string | mongoose.Types.ObjectId }>;
   adminId?: mongoose.Types.ObjectId;
 }
+
+// Usage limits for trial users
+const TRIAL_LIMITS = {
+  maxLeads: 50,
+  maxUsers: 1,
+};
 
 export async function GET() {
   return executeDbOperation(async () => {
@@ -94,6 +101,59 @@ export async function POST(request: Request) {
 
     console.log("✅ Database connection available");
 
+    // Check usage limits before allowing import
+    const adminId =
+      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
+    const adminObjectId = new mongoose.Types.ObjectId(adminId!);
+
+    // Get current lead count
+    const currentLeads = await mongoose.connection.db
+      .collection("leads")
+      .countDocuments({ adminId: adminObjectId });
+
+    // Get user subscription status
+    const user = await mongoose.connection.db
+      .collection("users")
+      .findOne({ _id: new mongoose.Types.ObjectId(session.user.id) });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check if user can import based on subscription/trial status
+    const isOnTrial =
+      user.isOnTrial &&
+      user.trialEndsAt &&
+      new Date() < new Date(user.trialEndsAt);
+    const hasActiveSubscription = user.subscriptionStatus === "active";
+    const maxLeads = user.maxLeads || TRIAL_LIMITS.maxLeads;
+
+    if (!isOnTrial && !hasActiveSubscription) {
+      return NextResponse.json(
+        {
+          error: "Trial expired. Please subscribe to continue importing leads.",
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    if (currentLeads + requestData.recordCount > maxLeads) {
+      return NextResponse.json(
+        {
+          error: "Import would exceed lead limit",
+          details: {
+            currentLeads,
+            maxLeads,
+            attemptingToImport: requestData.recordCount,
+            remainingSlots: Math.max(0, maxLeads - currentLeads),
+          },
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
+    }
+
     const importData = {
       fileName: requestData.fileName,
       recordCount: requestData.recordCount,
@@ -102,10 +162,7 @@ export async function POST(request: Request) {
       failureCount: requestData.failureCount || 0,
       timestamp: requestData.timestamp || Date.now(),
       uploadedBy: new mongoose.Types.ObjectId(session.user.id),
-      adminId:
-        session.user.role === "ADMIN"
-          ? new mongoose.Types.ObjectId(session.user.id)
-          : new mongoose.Types.ObjectId(session.user.adminId!),
+      adminId: adminObjectId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -145,6 +202,14 @@ export async function POST(request: Request) {
           ...createdImport,
         },
         message: "Import record created successfully",
+        usage: {
+          currentLeads: currentLeads + requestData.recordCount,
+          maxLeads,
+          remainingLeads: Math.max(
+            0,
+            maxLeads - (currentLeads + requestData.recordCount)
+          ),
+        },
       };
 
       console.log("✅ Returning success response:", response);

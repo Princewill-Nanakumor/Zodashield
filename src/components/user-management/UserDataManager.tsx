@@ -1,3 +1,4 @@
+// src/components/user-management/UserDataManager.tsx
 "use client";
 
 import { useCallback, useEffect } from "react";
@@ -19,15 +20,24 @@ interface User {
   lastLogin?: string;
 }
 
+interface UsageData {
+  currentUsers: number;
+  maxUsers: number;
+  remainingUsers: number;
+  canAddTeamMember: boolean;
+}
+
 interface UserDataManagerProps {
   onUsersLoaded: (users: User[]) => void;
   onLoadingChange: (loading: boolean) => void;
+  onUsageDataLoaded?: (usageData: UsageData | null) => void;
   children: React.ReactNode;
 }
 
 export function UserDataManager({
   onUsersLoaded,
   onLoadingChange,
+  onUsageDataLoaded,
   children,
 }: UserDataManagerProps) {
   const { data: session } = useSession();
@@ -63,12 +73,34 @@ export function UserDataManager({
     }
   }, [toast, onUsersLoaded, onLoadingChange]);
 
-  // Fetch users on mount and when session changes
+  const fetchUsageData = useCallback(async () => {
+    try {
+      const response = await fetch("/api/usage", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      onUsageDataLoaded?.(data);
+    } catch (error) {
+      console.error("Error fetching usage data:", error);
+      onUsageDataLoaded?.(null);
+    }
+  }, [onUsageDataLoaded]);
+
+  // Fetch users and usage data on mount and when session changes
   useEffect(() => {
     if (session?.user?.role === "ADMIN") {
       fetchUsers();
+      fetchUsageData();
     }
-  }, [fetchUsers, session]);
+  }, [fetchUsers, fetchUsageData, session]);
 
   return <>{children}</>;
 }

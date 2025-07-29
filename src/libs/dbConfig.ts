@@ -1,5 +1,4 @@
-// /Users/safeconnection/Downloads/drivecrm/src/libs/dbConfig.ts
-
+// src/libs/dbConfig.ts
 import mongoose from "mongoose";
 
 interface CachedConnection {
@@ -29,6 +28,10 @@ if (!MONGODB_URI) {
   );
 }
 
+// Ensure we're connecting to the correct database
+const MONGODB_URI_WITH_DB =
+  MONGODB_URI.replace(/\/$/, "") + "/your_default_db_name";
+
 const options: mongoose.ConnectOptions = {
   bufferCommands: true,
   autoIndex: true,
@@ -39,7 +42,7 @@ const options: mongoose.ConnectOptions = {
   family: 4,
   retryWrites: true,
   connectTimeoutMS: 30000,
-  dbName: process.env.MONGODB_DB || "your_default_db_name",
+  dbName: "your_default_db_name", // Explicitly set the database name
 };
 
 let listenersSet = false;
@@ -105,9 +108,9 @@ export const connectMongoDB = async (): Promise<typeof mongoose> => {
     }
 
     globalWithCache.mongooseCache.promise = mongoose
-      .connect(MONGODB_URI, options)
+      .connect(MONGODB_URI_WITH_DB, options)
       .then((mongooseInstance) => {
-        console.log("MongoDB connected successfully");
+        console.log("MongoDB connected successfully to your_default_db_name");
         globalWithCache.mongooseCache.conn = mongooseInstance;
         return mongooseInstance;
       })

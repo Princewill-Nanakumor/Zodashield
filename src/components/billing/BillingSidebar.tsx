@@ -31,7 +31,7 @@ export default function BillingSidebar({
   recentTransactions = [],
   onTransactionClick,
   isLoading = false,
-  hasUnconfirmedPayment = false, // Add this prop with default value
+  hasUnconfirmedPayment = false,
 }: BillingSidebarProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -95,7 +95,7 @@ export default function BillingSidebar({
         transactions={recentTransactions}
         onTransactionClick={onTransactionClick}
         isLoading={isLoading}
-        disabled={hasUnconfirmedPayment} // Pass the disabled state
+        disabled={hasUnconfirmedPayment}
       />
 
       {/* Support Component */}
