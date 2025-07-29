@@ -1,9 +1,11 @@
+// src/hooks/useLeads.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
 import { useLeadsStore } from "@/stores/leadsStore";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 
 interface ApiLead {
   _id?: string;
@@ -75,6 +77,14 @@ const apiCallWithSessionRefresh = async (
   }
 };
 
+// Helper function to check if error is unauthorized
+const isUnauthorizedError = (error: unknown): boolean => {
+  if (error && typeof error === "object" && "status" in error) {
+    return (error as { status?: number }).status === 401;
+  }
+  return false;
+};
+
 export const useLeads = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -89,7 +99,7 @@ export const useLeads = () => {
   } = useLeadsStore();
 
   // Fetch statuses with retry logic and session refresh
-  const { data: statuses = [] } = useQuery({
+  const { data: statuses = [], error: statusesError } = useQuery({
     queryKey: ["statuses"],
     queryFn: async (): Promise<
       Array<{ id: string; name: string; color?: string }>
@@ -130,6 +140,8 @@ export const useLeads = () => {
       }
     },
     retry: (failureCount, error) => {
+      // Don't retry on 401 (unauthorized)
+      if (isUnauthorizedError(error)) return false;
       if (
         failureCount < 3 &&
         error instanceof Error &&
@@ -146,7 +158,7 @@ export const useLeads = () => {
   });
 
   // Fetch users with retry logic and session refresh
-  const { data: users = [] } = useQuery({
+  const { data: users = [], error: usersError } = useQuery({
     queryKey: ["users"],
     queryFn: async (): Promise<User[]> => {
       setLoadingUsers(true);
@@ -193,6 +205,8 @@ export const useLeads = () => {
       }
     },
     retry: (failureCount, error) => {
+      // Don't retry on 401 (unauthorized)
+      if (isUnauthorizedError(error)) return false;
       if (
         failureCount < 3 &&
         error instanceof Error &&
@@ -209,7 +223,12 @@ export const useLeads = () => {
   });
 
   // Fetch leads with retry logic and session refresh
-  const { data: leads = [], isLoading: isLoadingLeads } = useQuery({
+  const {
+    data: leads = [],
+    isLoading: isLoadingLeads,
+    error: leadsError,
+    refetch: refetchLeads,
+  } = useQuery({
     queryKey: ["leads"],
     queryFn: async (): Promise<Lead[]> => {
       setLoadingLeads(true);
@@ -229,7 +248,7 @@ export const useLeads = () => {
         }
 
         const data: ApiLead[] = await response.json();
-        console.log("�� Raw API leads data:", {
+        console.log(" Raw API leads data:", {
           count: data.length,
           sample: data.slice(0, 2),
         });
@@ -263,7 +282,7 @@ export const useLeads = () => {
           } as Lead;
         });
 
-        console.log("�� Formatted leads:", {
+        console.log("✅ Formatted leads:", {
           count: formattedLeads.length,
           sample: formattedLeads.slice(0, 2),
         });
@@ -288,6 +307,8 @@ export const useLeads = () => {
       }
     },
     retry: (failureCount, error) => {
+      // Don't retry on 401 (unauthorized)
+      if (isUnauthorizedError(error)) return false;
       if (
         failureCount < 3 &&
         error instanceof Error &&
@@ -300,9 +321,30 @@ export const useLeads = () => {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 2 * 60 * 1000,
-    // Remove the users dependency - this was causing the issue!
     enabled: status === "authenticated",
   });
+
+  // Add error handling for all queries
+  useEffect(() => {
+    if (leadsError && isUnauthorizedError(leadsError)) {
+      console.log("Leads query unauthorized, redirecting to login...");
+      window.location.href = "/signin";
+    }
+  }, [leadsError]);
+
+  useEffect(() => {
+    if (usersError && isUnauthorizedError(usersError)) {
+      console.log("Users query unauthorized, redirecting to login...");
+      window.location.href = "/signin";
+    }
+  }, [usersError]);
+
+  useEffect(() => {
+    if (statusesError && isUnauthorizedError(statusesError)) {
+      console.log("Statuses query unauthorized, redirecting to login...");
+      window.location.href = "/signin";
+    }
+  }, [statusesError]);
 
   // Assignment mutation with optimistic updates and session refresh
   const assignLeadsMutation = useMutation({
@@ -544,5 +586,6 @@ export const useLeads = () => {
     unassignLeads: unassignLeadsMutation.mutateAsync,
     isAssigning: assignLeadsMutation.isPending,
     isUnassigning: unassignLeadsMutation.isPending,
+    refetchLeads,
   };
 };

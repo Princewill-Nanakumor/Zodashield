@@ -1,3 +1,4 @@
+// src/app/dashboard/all-leads/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -8,12 +9,16 @@ import LeadsPageContent from "@/components/dashboardComponents/LeadsPageContent"
 import { useSearchContext } from "@/context/SearchContext";
 import { Shield } from "lucide-react";
 
-// Create a client
+// Create a client with improved settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 1,
+      refetchOnWindowFocus: false, // 🔥 KEY CHANGE: Disable automatic refetch
+      refetchOnReconnect: true, // Keep this for network reconnection
+      refetchOnMount: true, // Keep this for component mounting
+      gcTime: 10 * 60 * 1000, // 10 minutes cache time (replaces cacheTime)
     },
   },
 });
