@@ -150,7 +150,19 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
         <div className="flex items-center gap-3">
           <ErrorBoundary fallback={<FilterSkeleton />}>
             <Suspense fallback={<FilterSkeleton />}>
+              <FilterControls
+                filterByUser={filterByUser}
+                onFilterChange={onFilterChange}
+                users={users}
+                isLoading={isLoadingUsers}
+              />
               {/* Simple Country Filter */}
+              <StatusFilter
+                value={filterByStatus}
+                onChange={onStatusFilterChange}
+                statuses={availableStatuses}
+                disabled={isLoading}
+              />
               <CountryFilter
                 value={filterByCountry}
                 onChange={onCountryFilterChange}
@@ -159,20 +171,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
               />
 
               {/* Simple Status Filter */}
-              <StatusFilter
-                value={filterByStatus}
-                onChange={onStatusFilterChange}
-                statuses={availableStatuses}
-                disabled={isLoading}
-              />
 
               {/* Simple User Filter */}
-              <FilterControls
-                filterByUser={filterByUser}
-                onFilterChange={onFilterChange}
-                users={users}
-                isLoading={isLoadingUsers}
-              />
             </Suspense>
           </ErrorBoundary>
         </div>
