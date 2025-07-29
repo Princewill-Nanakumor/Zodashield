@@ -1,3 +1,4 @@
+// src/components/dashboardComponents/StatusModal.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -47,8 +48,7 @@ const StatusModal = ({
   useEffect(() => {
     const shouldOpenModal = localStorage.getItem("statusModalOpen");
     if (shouldOpenModal === "true" && !isOpen) {
-      // Trigger the modal to open by calling onClose with a custom event
-      // We'll need to modify the parent component to handle this
+      // Trigger the modal to open by dispatching a custom event
       const event = new CustomEvent("openStatusModal");
       window.dispatchEvent(event);
     }

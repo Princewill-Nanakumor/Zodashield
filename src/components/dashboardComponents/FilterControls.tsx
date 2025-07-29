@@ -1,8 +1,7 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/FilterControls.tsx
-
+// src/components/dashboardComponents/FilterControls.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatusModal from "@/components/dashboardComponents/StatusModal";
@@ -32,8 +31,32 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
   // Memoized dropdown users
   const dropdownUsers = users.filter((user) => user.status === "ACTIVE");
 
+  // Listen for custom event to open modal after page refresh
+  useEffect(() => {
+    const handleOpenStatusModal = () => {
+      setIsStatusModalOpen(true);
+    };
+
+    window.addEventListener("openStatusModal", handleOpenStatusModal);
+
+    // Check if modal should be open on initial load
+    const shouldOpenModal = localStorage.getItem("statusModalOpen");
+    if (shouldOpenModal === "true") {
+      setIsStatusModalOpen(true);
+    }
+
+    return () => {
+      window.removeEventListener("openStatusModal", handleOpenStatusModal);
+    };
+  }, []);
+
   const handleFilterChange = (newFilter: string) => {
     onFilterChange(newFilter);
+  };
+
+  const handleStatusModalClose = () => {
+    setIsStatusModalOpen(false);
+    localStorage.removeItem("statusModalOpen");
   };
 
   return (
@@ -82,7 +105,7 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
 
       <StatusModal
         isOpen={isStatusModalOpen}
-        onClose={() => setIsStatusModalOpen(false)}
+        onClose={handleStatusModalClose}
       />
     </div>
   );
