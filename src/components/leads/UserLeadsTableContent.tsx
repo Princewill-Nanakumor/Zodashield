@@ -17,11 +17,23 @@ import {
 import { LeadDataManager } from "@/components/user-leads/LeadDataManager";
 import { FilterLogic } from "@/components/user-leads/FilterLogic";
 import { URLStateManager } from "../user-leads/URLStatemanager";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, Shield } from "lucide-react";
 
 const DEFAULT_PAGE_SIZE = 10;
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt";
 type SortOrder = "asc" | "desc";
+
+// Proper TypeScript interface for subscription data
+interface SubscriptionData {
+  isOnTrial: boolean;
+  trialEndsAt: string | null;
+  currentPlan: string | null;
+  subscriptionStatus: "active" | "inactive" | "trial" | "expired";
+  balance: number;
+}
 
 export default function UserLeadsContent() {
   const { status } = useSession();
@@ -37,6 +49,12 @@ export default function UserLeadsContent() {
   const [pageIndex, setPageIndex] = useState(0);
   const [filterByCountry, setFilterByCountry] = useState<string>("all");
 
+  // Subscription state
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [subscriptionData, setSubscriptionData] =
+    useState<SubscriptionData | null>(null);
+
   // Get sort parameters from URL or use defaults
   const [sortField, setSortField] = useState<SortField>(() => {
     const urlSortField = searchParams.get("sortField") as SortField;
@@ -46,6 +64,60 @@ export default function UserLeadsContent() {
     const urlSortOrder = searchParams.get("sortOrder") as SortOrder;
     return urlSortOrder || "asc";
   });
+
+  // Check subscription status on mount
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        setSubscriptionLoading(true);
+        const response = await fetch("/api/subscription/status", {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data: SubscriptionData = await response.json();
+          setSubscriptionData(data);
+
+          // Check if user has active subscription or is still in trial period
+          const now = new Date();
+          const trialEndDate = data.trialEndsAt
+            ? new Date(data.trialEndsAt)
+            : null;
+          const isTrialExpired = trialEndDate && now > trialEndDate;
+
+          // User has active subscription if:
+          // 1. They have a paid subscription (active)
+          // 2. They're in trial period and trial hasn't expired
+          const hasActiveSub =
+            data.subscriptionStatus === "active" ||
+            (data.subscriptionStatus === "trial" && !isTrialExpired);
+
+          setHasActiveSubscription(hasActiveSub);
+
+          console.log("Subscription check for user leads:", {
+            subscriptionStatus: data.subscriptionStatus,
+            isOnTrial: data.isOnTrial,
+            trialEndsAt: data.trialEndsAt,
+            trialEndDate: trialEndDate,
+            now: now,
+            isTrialExpired,
+            hasActiveSub,
+          });
+        } else {
+          setHasActiveSubscription(false);
+        }
+      } catch (error) {
+        console.error("Error checking subscription:", error);
+        setHasActiveSubscription(false);
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+
+    if (status === "authenticated") {
+      checkSubscription();
+    }
+  }, [status]);
 
   // Set data ready state when initial load completes
   useEffect(() => {
@@ -182,6 +254,58 @@ export default function UserLeadsContent() {
 
   if (status === "loading") {
     return <LoadingSpinner />;
+  }
+
+  // Show skeleton while checking subscription
+  if (subscriptionLoading) {
+    return (
+      <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-1">
+        <div className="w-full h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-6" />
+        <div className="w-full h-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-6" />
+        <div className="w-full h-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  // Show subscription required message if no active subscription
+  if (!hasActiveSubscription) {
+    return (
+      <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-1">
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
+                <AlertTriangle className="h-5 w-5" />
+                <span>Subscription Required</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2 text-red-700 dark:text-red-300">
+                <Shield className="h-4 w-4" />
+                <p>
+                  You need an active subscription to view and manage leads.
+                  {subscriptionData?.subscriptionStatus === "expired" ||
+                  (subscriptionData?.trialEndsAt &&
+                    new Date() > new Date(subscriptionData.trialEndsAt))
+                    ? " Your trial has expired."
+                    : " Please subscribe to continue."}
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() =>
+                    (window.location.href = "/dashboard/subscription")
+                  }
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Subscribe Now
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return (
