@@ -4,25 +4,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  UserCheck,
-  Activity,
-  Mail,
-  Phone,
-  Globe,
-  Shield,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  FileImage,
-  CreditCard,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AdminInfoCard from "./AdminInfoCard";
+import AdminStatsCards from "./AdminStatsCards";
 import SubscriptionDetails from "@/components/adminManagement/SubscriptionDetails";
 import AdsList from "@/components/adminManagement/AdsList";
 import ActivitiesList from "@/components/adminManagement/ActivitiesList";
@@ -113,7 +99,6 @@ export default function AdminDetailsContent() {
   const searchParams = useSearchParams();
   const adminId = params.Id as string;
 
-  // Get active tab from URL or default to "agents"
   const activeTab = searchParams.get("tab") || "agents";
 
   const [admin, setAdmin] = useState<AdminDetails | null>(null);
@@ -261,7 +246,6 @@ export default function AdminDetailsContent() {
 
   return (
     <div className="space-y-6 p-6 rounded-lg border">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button
@@ -284,162 +268,23 @@ export default function AdminDetailsContent() {
         </div>
       </div>
 
-      {/* Admin Info Card */}
-      <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span>Admin Information</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="text-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                  {admin.firstName[0]}
-                  {admin.lastName[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {admin.firstName} {admin.lastName}
-                </h3>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Badge className={getStatusColor(admin.status)}>
-                    {admin.status}
-                  </Badge>
-                  {subscription && (
-                    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-                      {subscription.plan}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
+      <AdminInfoCard
+        admin={admin}
+        subscription={subscription}
+        getStatusColor={getStatusColor}
+        formatLastLogin={formatLastLogin}
+      />
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {admin.email}
-                </span>
-              </div>
-              {admin.phoneNumber && (
-                <div className="flex items-center space-x-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {admin.phoneNumber}
-                  </span>
-                </div>
-              )}
-              {admin.country && (
-                <div className="flex items-center space-x-2">
-                  <Globe className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {admin.country}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Last login: {formatLastLogin(admin.lastLogin)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <AdminStatsCards
+        agentsCount={agents.length}
+        leadsCount={leads.length}
+        activitiesCount={activities.length}
+        adsCount={ads.length}
+        balance={admin.balance}
+        paymentsCount={payments.length}
+        formatBalance={formatBalance}
+      />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-              Total Agents
-            </CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {agents.length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-              Total Leads
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {leads.length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-              Recent Activities
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {activities.length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-              Total Ads
-            </CardTitle>
-            <FileImage className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {ads.length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-              Balance
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {formatBalance(admin.balance)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-              Payments
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {payments.length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs for detailed information */}
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
