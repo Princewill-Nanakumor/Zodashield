@@ -8,7 +8,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { Status } from "@/types/leads";
+import { Status } from "@/types/leads"; // Import the proper type
 import { useSession } from "next-auth/react";
 
 interface StatusContextType {
@@ -91,7 +91,7 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        const data = await response.json();
+        const data: Status[] = await response.json();
 
         // Add NEW status if it doesn't exist - FIX: Use "NEW" as both _id and name
         const hasNewStatus = data.some(
@@ -99,9 +99,12 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
         );
         if (!hasNewStatus) {
           data.unshift({
-            _id: "NEW",
-            name: "NEW", // Changed from "New" to "NEW" to match your leads
+            id: "NEW", // Use id as primary field
+            _id: "NEW", // Also include _id for compatibility
+            name: "NEW",
             color: "#3B82F6",
+            adminId: "system",
+            createdBy: "system",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });

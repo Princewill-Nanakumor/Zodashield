@@ -36,10 +36,7 @@ export const getAssignedUserName = (
   return null;
 };
 
-// In your leadUtils.ts:
-
-// In your LeadUtils.ts, update the filterLeadsByStatus function:
-
+// Updated filterLeadsByStatus function to handle both string and ObjectID statuses
 export const filterLeadsByStatus = (
   leads: Lead[],
   statusFilter: string,
@@ -48,7 +45,8 @@ export const filterLeadsByStatus = (
   console.log("🔍 filterLeadsByStatus called:", {
     statusFilter,
     totalLeads: leads.length,
-    availableStatuses: statuses,
+    availableStatuses: statuses.map((s) => s.name),
+    statusesData: statuses,
     sampleLeads: leads.slice(0, 3).map((lead) => ({
       id: lead._id,
       status: lead.status,
@@ -61,21 +59,49 @@ export const filterLeadsByStatus = (
     return leads;
   }
 
-  // Create a mapping from status ObjectID to status name
-  const statusIdToName: Record<string, string> = {};
+  // Create a mapping from status name to ObjectID for custom statuses
+  const statusNameToId: Record<string, string> = {};
   statuses.forEach((status) => {
-    statusIdToName[status._id] = status.name;
+    statusNameToId[status.name] = status._id;
   });
 
-  console.log("🔍 Status ID to Name mapping:", statusIdToName);
+  console.log("🔍 Status name to ID mapping:", statusNameToId);
 
+  // Since leads store status as string names, we can filter directly
   const filtered = leads.filter((lead) => {
-    const leadStatusId = lead.status;
-    const leadStatusName = statusIdToName[leadStatusId];
+    const leadStatus = lead.status;
+
+    // Handle different status formats
+    let leadStatusName: string;
+
+    // If lead status is a string
+    if (typeof leadStatus === "string") {
+      // Check if it's an ObjectID (24 character string)
+      if (leadStatus.length === 24) {
+        // This is likely an ObjectID, try to find the corresponding status name
+        const statusObj = statuses.find((s) => s._id === leadStatus);
+        leadStatusName = statusObj?.name || leadStatus;
+      } else {
+        // Regular string status name
+        leadStatusName = leadStatus;
+      }
+    }
+    // If lead status is an object with name property
+    else if (
+      leadStatus &&
+      typeof leadStatus === "object" &&
+      "name" in leadStatus
+    ) {
+      leadStatusName = (leadStatus as { name: string }).name;
+    }
+    // Fallback for any other type
+    else {
+      leadStatusName = String(leadStatus || "");
+    }
 
     console.log("🔍 Checking lead status:", {
       leadId: lead._id,
-      leadStatusId,
+      leadStatus,
       leadStatusName,
       statusFilter,
       matches: leadStatusName === statusFilter,
@@ -90,7 +116,6 @@ export const filterLeadsByStatus = (
     sampleFiltered: filtered.slice(0, 3).map((lead) => ({
       id: lead._id,
       status: lead.status,
-      statusName: statusIdToName[lead.status],
     })),
   });
 

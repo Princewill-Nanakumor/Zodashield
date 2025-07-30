@@ -39,6 +39,12 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    console.log("🔍 API DEBUG - Session:", {
+      userId: session.user.id,
+      role: session.user.role,
+      adminId: session.user.adminId,
+    });
+
     // Filter statuses by adminId for multi-tenancy
     const query: StatusQuery = {};
 
@@ -50,9 +56,13 @@ export async function GET() {
       query.adminId = new mongoose.Types.ObjectId(session.user.adminId);
     }
 
+    console.log("🔍 API DEBUG - Query:", query);
+
     const statuses = await withDbRetry(() =>
       Status.find(query).sort({ createdAt: 1 })
     );
+
+    console.log("🔍 API DEBUG - Found statuses:", statuses);
 
     // Set cache headers
     const headers = new Headers();

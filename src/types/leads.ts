@@ -112,11 +112,14 @@ export interface ILead {
 }
 
 export interface Status {
-  _id: string;
+  id: string;
+  _id?: string;
   name: string;
-  color: string;
-  createdAt: string;
-  updatedAt: string;
+  color?: string;
+  adminId?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Lead {

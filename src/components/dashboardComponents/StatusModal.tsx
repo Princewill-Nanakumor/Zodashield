@@ -14,12 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface Status {
-  _id: string;
-  name: string;
-  color: string;
-}
+import { Status } from "@/types/leads"; // Import the proper type
 
 interface StatusModalProps {
   isOpen: boolean;
@@ -164,9 +159,9 @@ const StatusModal = ({
   const handleEdit = (status: Status) => {
     setFormData({
       name: status.name,
-      color: status.color,
+      color: status.color || "#000000",
     });
-    setEditingId(status._id);
+    setEditingId(status.id || status._id || "");
     setIsEditing(true);
   };
 
@@ -366,10 +361,13 @@ const StatusModal = ({
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
+
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(status._id)}
+                          onClick={() =>
+                            handleDelete(status.id || status._id || "")
+                          }
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>

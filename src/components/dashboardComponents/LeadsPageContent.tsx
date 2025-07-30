@@ -15,7 +15,6 @@ import {
   getAssignedUserId,
   filterLeadsByUser,
   filterLeadsByCountry,
-  filterLeadsByStatus,
   searchLeads,
   getAssignedLeadsCount,
   getAvailableCountries,
@@ -78,6 +77,19 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     filterByStatus: initialStatus,
     searchQuery: searchQuery,
   });
+
+  // Debug statuses
+  useEffect(() => {
+    console.log("🔍 STATUSES DEBUG:", {
+      statusesLength: statuses.length,
+      statuses: statuses.map((s) => ({
+        id: s.id,
+        name: s.name,
+        color: s.color,
+      })),
+      isLoadingStatuses: isLoadingUsers, // Assuming this includes statuses loading
+    });
+  }, [statuses, isLoadingUsers]);
 
   // Session refresh logic
   useEffect(() => {
@@ -155,10 +167,10 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 
     // Create a stable reference by sorting by _id
     const sorted = [...leads].sort((a, b) => a._id.localeCompare(b._id));
+
     return sorted;
   }, [leads]);
 
-  // FILTERED LEADS
   const filteredLeads = useMemo(() => {
     let filtered = stableLeads;
 
@@ -177,20 +189,76 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
     }
 
-    // Apply status filter
+    // Apply status filter - with robust ObjectID to name mapping
     if (uiState.filterByStatus !== "all") {
-      // Transform statuses to match the expected type
-      const transformedStatuses = statuses.map((status) => ({
-        _id: status.id,
-        name: status.name,
-      }));
+      console.log("📈 Applying status filter:", uiState.filterByStatus);
 
-      // Call the filter function with statuses mapping
-      filtered = filterLeadsByStatus(
-        filtered,
-        uiState.filterByStatus,
-        transformedStatuses
+      // Create a robust mapping from status ObjectID to status name
+      const statusIdToName = statuses.reduce(
+        (acc, status) => {
+          // Only use id, since _id is not present in your data
+          if (status.id && status.name) {
+            acc[status.id] = status.name;
+          }
+          return acc;
+        },
+        {} as Record<string, string>
       );
+
+      console.log("🔍 STATUS MAPPING:", statusIdToName);
+
+      // Debug: Show what status values leads actually have
+      const uniqueStatuses = [...new Set(filtered.map((lead) => lead.status))];
+      console.log(" LEAD STATUS VALUES:", {
+        totalLeads: filtered.length,
+        uniqueStatuses: uniqueStatuses,
+        statusCounts: uniqueStatuses.reduce(
+          (acc, status) => {
+            acc[status] = filtered.filter(
+              (lead) => lead.status === status
+            ).length;
+            return acc;
+          },
+          {} as Record<string, number>
+        ),
+        mappedStatuses: uniqueStatuses.map((status) => ({
+          original: status,
+          mapped: statusIdToName[status] || status,
+        })),
+        sampleLeads: filtered.slice(0, 5).map((lead) => ({
+          id: lead._id,
+          status: lead.status,
+          statusName: statusIdToName[lead.status] || lead.status,
+          statusType: typeof lead.status,
+        })),
+      });
+
+      // Filter by status - handle both direct names and ObjectID mapping
+      filtered = filtered.filter((lead) => {
+        // Check if lead.status matches the filter directly (for "NEW" status)
+        const directMatch = lead.status === uiState.filterByStatus;
+
+        // Check if lead.status is an ObjectID that maps to the filter name
+        const mappedMatch =
+          statusIdToName[lead.status] === uiState.filterByStatus;
+
+        const matches = directMatch || mappedMatch;
+
+        if (matches) {
+          console.log("✅ Status match found:", {
+            leadId: lead._id,
+            originalStatus: lead.status,
+            statusName: statusIdToName[lead.status] || lead.status,
+            filterBy: uiState.filterByStatus,
+          });
+        }
+        return matches;
+      });
+
+      console.log("📈 Status filter result:", {
+        statusFilter: uiState.filterByStatus,
+        resultCount: filtered.length,
+      });
     }
 
     return filtered;
