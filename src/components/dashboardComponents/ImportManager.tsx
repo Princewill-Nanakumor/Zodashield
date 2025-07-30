@@ -2,7 +2,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import FileUploadSection from "@/components/dashboardComponents/FileUploadSection";
+import FileUploadSection from "../importPageComponents/FileUploadSection";
 import { HelpSection } from "../importPageComponents/HelpSection";
 import { ImportTabs } from "../importPageComponents/ImportTabs";
 import { ImportContent } from "../importPageComponents/ImportContent";

@@ -61,7 +61,7 @@ export const FileUploadSection = ({
   }
 
   return (
-    <div className="px-6 pb-6">
+    <div className="px-6 pb-6 mt-4">
       {/* Usage Limit Warning */}
       {usageData && !usageData.canImport && (
         <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
@@ -86,7 +86,9 @@ export const FileUploadSection = ({
                 </Badge>
               </div>
               <Button
-                onClick={() => (window.location.href = "/subscription")}
+                onClick={() =>
+                  (window.location.href = "/dashboard/subscription")
+                }
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 Upgrade Plan
