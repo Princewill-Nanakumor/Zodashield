@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useLeads } from "@/hooks/useLeads";
 import { useLeadsStore } from "@/stores/leadsStore";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useToast } from "@/components/ui/use-toast";
 import {
   getAssignedUserId,
   filterLeadsByUser,
@@ -22,6 +23,7 @@ export const useLeadsPage = (
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const isOnline = useNetworkStatus();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -53,7 +55,7 @@ export const useLeadsPage = (
     searchQuery: searchQuery,
   });
 
-  // Debug statuses
+  // Debug statuses with better error handling
   useEffect(() => {
     console.log("🔍 STATUSES DEBUG:", {
       statusesLength: statuses.length,
@@ -66,7 +68,7 @@ export const useLeadsPage = (
     });
   }, [statuses, isLoadingUsers]);
 
-  // Session refresh logic
+  // Improved session refresh logic with timeout handling
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (
@@ -74,15 +76,24 @@ export const useLeadsPage = (
         status === "authenticated"
       ) {
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
           const response = await fetch("/api/users", {
             credentials: "include",
+            signal: controller.signal,
           });
+
+          clearTimeout(timeoutId);
 
           if (response.status === 401) {
             await update();
           }
         } catch (error) {
           console.error("Session check failed:", error);
+          if (error instanceof Error && error.name === "AbortError") {
+            console.log("Session check timed out, continuing...");
+          }
         }
       }
     };
@@ -115,6 +126,7 @@ export const useLeadsPage = (
     }));
   }, [searchParams]);
 
+  // Update layout loading state with better error handling
   useEffect(() => {
     if (setLayoutLoading) {
       setLayoutLoading(isLoadingLeads || isLoadingUsers);
@@ -129,17 +141,31 @@ export const useLeadsPage = (
     return statuses.map((status) => status.name);
   }, [statuses]);
 
-  // STABILIZED LEADS DATA
+  // STABILIZED LEADS DATA with better error handling
   const stableLeads = useMemo(() => {
     if (!leads || leads.length === 0) {
+      console.log("�� No leads available in stableLeads");
       return [];
     }
     const sorted = [...leads].sort((a, b) => a._id.localeCompare(b._id));
+    console.log("�� Stable leads count:", sorted.length);
     return sorted;
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
     let filtered = stableLeads;
+
+    console.log("🔍 FILTERING PROCESS DEBUG:", {
+      initialCount: filtered.length,
+      searchQuery: uiState.searchQuery,
+      filterByUser,
+      filterByCountry: uiState.filterByCountry,
+      filterByStatus: uiState.filterByStatus,
+      statusesCount: statuses.length,
+      // Remove this line since it's not needed for filtering logic
+      // statusesLoaded: !isLoadingUsers,
+      statusesWithValidIds: statuses.filter((s) => s.id && s.name).length,
+    });
 
     if (uiState.searchQuery.trim()) {
       filtered = searchLeads(filtered, uiState.searchQuery);
@@ -154,7 +180,12 @@ export const useLeadsPage = (
     }
 
     if (uiState.filterByStatus !== "all") {
-      console.log("📈 Applying status filter:", uiState.filterByStatus);
+      console.log("📈 STATUS FILTER DEBUG START:", {
+        filterByStatus: uiState.filterByStatus,
+        statusesAvailable: statuses,
+        leadsBeforeFilter: filtered.length,
+        statusesWithValidIds: statuses.filter((s) => s.id && s.name).length,
+      });
 
       const statusIdToName = statuses.reduce(
         (acc, status) => {
@@ -166,10 +197,23 @@ export const useLeadsPage = (
         {} as Record<string, string>
       );
 
-      console.log("🔍 STATUS MAPPING:", statusIdToName);
+      const statusNameToId = statuses.reduce(
+        (acc, status) => {
+          if (status.id && status.name) {
+            acc[status.name] = status.id;
+          }
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
+      console.log("STATUS MAPPINGS:", {
+        idToName: statusIdToName,
+        nameToId: statusNameToId,
+      });
 
       const uniqueStatuses = [...new Set(filtered.map((lead) => lead.status))];
-      console.log(" LEAD STATUS VALUES:", {
+      console.log("LEAD STATUS VALUES:", {
         totalLeads: filtered.length,
         uniqueStatuses: uniqueStatuses,
         statusCounts: uniqueStatuses.reduce(
@@ -193,12 +237,15 @@ export const useLeadsPage = (
         })),
       });
 
+      const beforeCount = filtered.length;
       filtered = filtered.filter((lead) => {
         const directMatch = lead.status === uiState.filterByStatus;
         const mappedMatch =
           statusIdToName[lead.status] === uiState.filterByStatus;
+        const reverseMatch =
+          statusNameToId[uiState.filterByStatus] === lead.status;
 
-        const matches = directMatch || mappedMatch;
+        const matches = directMatch || mappedMatch || reverseMatch;
 
         if (matches) {
           console.log("✅ Status match found:", {
@@ -206,16 +253,33 @@ export const useLeadsPage = (
             originalStatus: lead.status,
             statusName: statusIdToName[lead.status] || lead.status,
             filterBy: uiState.filterByStatus,
+            directMatch,
+            mappedMatch,
+            reverseMatch,
           });
         }
         return matches;
       });
 
-      console.log("📈 Status filter result:", {
+      const afterCount = filtered.length;
+      console.log("📈 STATUS FILTER RESULT:", {
         statusFilter: uiState.filterByStatus,
-        resultCount: filtered.length,
+        beforeCount,
+        afterCount,
+        removed: beforeCount - afterCount,
+        matchesFound: afterCount,
+        statusIdToNameMapping: statusIdToName,
       });
     }
+
+    console.log("🎯 FINAL FILTERED LEADS:", {
+      finalCount: filtered.length,
+      sampleFinalLeads: filtered.slice(0, 3).map((l) => ({
+        id: l._id,
+        status: l.status,
+        assignedTo: l.assignedTo,
+      })),
+    });
 
     return filtered;
   }, [
@@ -245,8 +309,16 @@ export const useLeadsPage = (
   const showEmptyState =
     !shouldShowLoading && filteredLeads.length === 0 && leads.length === 0;
 
+  // Improved assignment handler with better error handling
   const handleAssignLeads = useCallback(async () => {
-    if (selectedLeads.length === 0 || !uiState.selectedUser) return;
+    if (selectedLeads.length === 0 || !uiState.selectedUser) {
+      toast({
+        title: "No leads selected",
+        description: "Please select leads to assign",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       await assignLeads({
@@ -259,11 +331,29 @@ export const useLeadsPage = (
         isDialogOpen: false,
         selectedUser: "",
       }));
+
+      toast({
+        title: "Leads assigned successfully",
+        description: `${selectedLeads.length} lead(s) have been assigned`,
+      });
     } catch (error) {
       console.error("Assignment error:", error);
+      toast({
+        title: "Assignment failed",
+        description:
+          error instanceof Error ? error.message : "Failed to assign leads",
+        variant: "destructive",
+      });
     }
-  }, [selectedLeads, uiState.selectedUser, assignLeads, setSelectedLeads]);
+  }, [
+    selectedLeads,
+    uiState.selectedUser,
+    assignLeads,
+    setSelectedLeads,
+    toast,
+  ]);
 
+  // Improved unassignment handler with better error handling
   const handleUnassignLeads = useCallback(async () => {
     const leadsToUnassign = selectedLeads.filter(
       (lead) => !!getAssignedUserId(lead.assignedTo)
@@ -271,6 +361,11 @@ export const useLeadsPage = (
 
     if (leadsToUnassign.length === 0) {
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
+      toast({
+        title: "No assigned leads",
+        description: "Selected leads are not assigned to anyone",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -280,10 +375,21 @@ export const useLeadsPage = (
       });
       setSelectedLeads([]);
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
+
+      toast({
+        title: "Leads unassigned successfully",
+        description: `${leadsToUnassign.length} lead(s) have been unassigned`,
+      });
     } catch (error) {
       console.error("Unassignment error:", error);
+      toast({
+        title: "Unassignment failed",
+        description:
+          error instanceof Error ? error.message : "Failed to unassign leads",
+        variant: "destructive",
+      });
     }
-  }, [selectedLeads, unassignLeads, setSelectedLeads]);
+  }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
 
   const handleSelectionChange = useCallback(
     (newSelectedLeads: Lead[]) => setSelectedLeads(newSelectedLeads),

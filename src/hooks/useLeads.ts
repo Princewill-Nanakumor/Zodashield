@@ -36,35 +36,69 @@ interface AssignedToObject {
   lastName: string;
 }
 
-// Helper function to handle API calls with session refresh
+// Helper function to handle API calls with session refresh and better timeout handling
 const apiCallWithSessionRefresh = async (
   url: string,
   options: RequestInit = {}
 ) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
   try {
     // First attempt
     const response = await fetch(url, {
       ...options,
-      credentials: "include", // Always include cookies
+      credentials: "include",
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     // If unauthorized, try to refresh session
     if (response.status === 401) {
       console.log("Session expired, attempting refresh...");
 
-      // Try to refresh the session
-      const refreshResponse = await fetch("/api/auth/session", {
-        credentials: "include",
-      });
+      const refreshController = new AbortController();
+      const refreshTimeoutId = setTimeout(
+        () => refreshController.abort(),
+        10000
+      );
 
-      if (refreshResponse.ok) {
-        // Retry the original request
-        return await fetch(url, {
-          ...options,
+      try {
+        const refreshResponse = await fetch("/api/auth/session", {
           credentials: "include",
+          signal: refreshController.signal,
         });
-      } else {
-        // Refresh failed, redirect to login
+
+        clearTimeout(refreshTimeoutId);
+
+        if (refreshResponse.ok) {
+          // Retry the original request
+          const retryController = new AbortController();
+          const retryTimeoutId = setTimeout(
+            () => retryController.abort(),
+            30000
+          );
+
+          try {
+            const retryResponse = await fetch(url, {
+              ...options,
+              credentials: "include",
+              signal: retryController.signal,
+            });
+            clearTimeout(retryTimeoutId);
+            return retryResponse;
+          } catch (retryError) {
+            clearTimeout(retryTimeoutId);
+            throw retryError;
+          }
+        } else {
+          // Refresh failed, redirect to login
+          window.location.href = "/signin";
+          throw new Error("Session refresh failed");
+        }
+      } catch {
+        clearTimeout(refreshTimeoutId);
         window.location.href = "/signin";
         throw new Error("Session refresh failed");
       }
@@ -72,7 +106,13 @@ const apiCallWithSessionRefresh = async (
 
     return response;
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error("API call failed:", error);
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+
     throw error;
   }
 };
@@ -98,7 +138,7 @@ export const useLeads = () => {
     setLoadingStatuses,
   } = useLeadsStore();
 
-  // Fetch statuses with retry logic and session refresh
+  // Fetch statuses with improved error handling and timeout
   const { data: statuses = [], error: statusesError } = useQuery({
     queryKey: ["statuses"],
     queryFn: async (): Promise<
@@ -106,9 +146,9 @@ export const useLeads = () => {
     > => {
       setLoadingStatuses(true);
       try {
+        console.log("🔄 Fetching statuses from /api/statuses...");
         const response = await apiCallWithSessionRefresh("/api/statuses", {
           cache: "no-store",
-          signal: AbortSignal.timeout(10000),
         });
 
         if (!response.ok) {
@@ -120,6 +160,10 @@ export const useLeads = () => {
 
         const data = await response.json();
         const statusesArray = data.statuses || data || [];
+        console.log("✅ Statuses fetched successfully:", {
+          count: statusesArray.length,
+          sample: statusesArray.slice(0, 2),
+        });
         setStatuses(statusesArray);
         return statusesArray;
       } catch (error) {
@@ -140,32 +184,30 @@ export const useLeads = () => {
       }
     },
     retry: (failureCount, error) => {
-      // Don't retry on 401 (unauthorized)
+      // Don't retry on 401 (unauthorized) or timeout
       if (isUnauthorizedError(error)) return false;
-      if (
-        failureCount < 3 &&
-        error instanceof Error &&
-        (error.message.includes("connection") ||
-          error.message.includes("timeout"))
-      ) {
+      if (error instanceof Error && error.message.includes("timed out"))
+        return false;
+
+      if (failureCount < 2) {
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     staleTime: 10 * 60 * 1000,
     enabled: status === "authenticated",
   });
 
-  // Fetch users with retry logic and session refresh
+  // Fetch users with improved error handling and timeout
   const { data: users = [], error: usersError } = useQuery({
     queryKey: ["users"],
     queryFn: async (): Promise<User[]> => {
       setLoadingUsers(true);
       try {
+        console.log("🔄 Fetching users from /api/users...");
         const response = await apiCallWithSessionRefresh("/api/users", {
           cache: "no-store",
-          signal: AbortSignal.timeout(10000),
         });
 
         if (!response.ok) {
@@ -185,6 +227,10 @@ export const useLeads = () => {
         const activeUsers = usersArray.filter(
           (u: User) => u.status === "ACTIVE"
         );
+        console.log("✅ Users fetched successfully:", {
+          count: activeUsers.length,
+          sample: activeUsers.slice(0, 2),
+        });
         setUsers(activeUsers);
         return activeUsers;
       } catch (error) {
@@ -205,24 +251,22 @@ export const useLeads = () => {
       }
     },
     retry: (failureCount, error) => {
-      // Don't retry on 401 (unauthorized)
+      // Don't retry on 401 (unauthorized) or timeout
       if (isUnauthorizedError(error)) return false;
-      if (
-        failureCount < 3 &&
-        error instanceof Error &&
-        (error.message.includes("connection") ||
-          error.message.includes("timeout"))
-      ) {
+      if (error instanceof Error && error.message.includes("timed out"))
+        return false;
+
+      if (failureCount < 2) {
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     staleTime: 5 * 60 * 1000,
     enabled: status === "authenticated",
   });
 
-  // Fetch leads with retry logic and session refresh
+  // Fetch leads with improved error handling and timeout
   const {
     data: leads = [],
     isLoading: isLoadingLeads,
@@ -236,7 +280,6 @@ export const useLeads = () => {
         console.log("🔄 Fetching leads from /api/leads/all...");
         const response = await apiCallWithSessionRefresh("/api/leads/all", {
           cache: "no-store",
-          signal: AbortSignal.timeout(15000),
         });
 
         if (!response.ok) {
@@ -248,7 +291,7 @@ export const useLeads = () => {
         }
 
         const data: ApiLead[] = await response.json();
-        console.log(" Raw API leads data:", {
+        console.log("✅ Raw API leads data:", {
           count: data.length,
           sample: data.slice(0, 2),
         });
@@ -307,46 +350,83 @@ export const useLeads = () => {
       }
     },
     retry: (failureCount, error) => {
-      // Don't retry on 401 (unauthorized)
+      // Don't retry on 401 (unauthorized) or timeout
       if (isUnauthorizedError(error)) return false;
-      if (
-        failureCount < 3 &&
-        error instanceof Error &&
-        (error.message.includes("connection") ||
-          error.message.includes("timeout"))
-      ) {
+      if (error instanceof Error && error.message.includes("timed out"))
+        return false;
+
+      if (failureCount < 2) {
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     staleTime: 2 * 60 * 1000,
     enabled: status === "authenticated",
   });
 
-  // Add error handling for all queries
+  // Add error handling for all queries with better timeout handling
   useEffect(() => {
-    if (leadsError && isUnauthorizedError(leadsError)) {
-      console.log("Leads query unauthorized, redirecting to login...");
-      window.location.href = "/signin";
+    if (leadsError) {
+      if (isUnauthorizedError(leadsError)) {
+        console.log("Leads query unauthorized, redirecting to login...");
+        window.location.href = "/signin";
+      } else if (
+        leadsError instanceof Error &&
+        leadsError.message.includes("timed out")
+      ) {
+        console.log("Leads query timed out");
+        toast({
+          title: "Connection timeout",
+          description:
+            "Failed to load leads. Please check your connection and try again.",
+          variant: "destructive",
+        });
+      }
     }
-  }, [leadsError]);
+  }, [leadsError, toast]);
 
   useEffect(() => {
-    if (usersError && isUnauthorizedError(usersError)) {
-      console.log("Users query unauthorized, redirecting to login...");
-      window.location.href = "/signin";
+    if (usersError) {
+      if (isUnauthorizedError(usersError)) {
+        console.log("Users query unauthorized, redirecting to login...");
+        window.location.href = "/signin";
+      } else if (
+        usersError instanceof Error &&
+        usersError.message.includes("timed out")
+      ) {
+        console.log("Users query timed out");
+        toast({
+          title: "Connection timeout",
+          description:
+            "Failed to load users. Please check your connection and try again.",
+          variant: "destructive",
+        });
+      }
     }
-  }, [usersError]);
+  }, [usersError, toast]);
 
   useEffect(() => {
-    if (statusesError && isUnauthorizedError(statusesError)) {
-      console.log("Statuses query unauthorized, redirecting to login...");
-      window.location.href = "/signin";
+    if (statusesError) {
+      if (isUnauthorizedError(statusesError)) {
+        console.log("Statuses query unauthorized, redirecting to login...");
+        window.location.href = "/signin";
+      } else if (
+        statusesError instanceof Error &&
+        statusesError.message.includes("timed out")
+      ) {
+        console.log("Statuses query timed out");
+        toast({
+          title: "Connection timeout",
+          description:
+            "Failed to load statuses. Please check your connection and try again.",
+          variant: "destructive",
+        });
+      }
     }
-  }, [statusesError]);
+  }, [statusesError, toast]);
 
-  // Assignment mutation with optimistic updates and session refresh
+  // Assignment mutation with improved error handling
   const assignLeadsMutation = useMutation({
     mutationFn: async ({
       leadIds,
@@ -359,7 +439,6 @@ export const useLeads = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds, userId }),
-        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {
@@ -449,7 +528,6 @@ export const useLeads = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadIds }),
-        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {

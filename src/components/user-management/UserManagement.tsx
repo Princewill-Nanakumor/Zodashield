@@ -63,6 +63,7 @@ export default function UsersManagement({
     useState<User | null>(null);
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [showUsageLimit, setShowUsageLimit] = useState(false);
+  const [usageDataLoading, setUsageDataLoading] = useState(true);
 
   const handleUserCreated = useCallback(
     (user: User) => {
@@ -122,6 +123,12 @@ export default function UsersManagement({
     setShowModal(true);
   };
 
+  // Handle usage data loading state
+  const handleUsageDataLoaded = useCallback((data: UsageData | null) => {
+    setUsageData(data);
+    setUsageDataLoading(false);
+  }, []);
+
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -140,7 +147,7 @@ export default function UsersManagement({
       <UserDataManager
         onUsersLoaded={setUsers}
         onLoadingChange={setLoading}
-        onUsageDataLoaded={setUsageData}
+        onUsageDataLoaded={handleUsageDataLoaded}
       >
         <UserCRUDOperations
           onUserCreated={handleUserCreated}
@@ -165,19 +172,54 @@ export default function UsersManagement({
                   </p>
                 </div>
                 {showCreateButton && (
-                  <Button
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 !text-white"
-                    onClick={handleCreateUserClick}
-                    disabled={!!(usageData && !usageData.canAddTeamMember)}
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    Create User
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {usageDataLoading ? (
+                      // Loading skeleton for the button
+                      <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse">
+                        <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                        <div className="w-20 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      </div>
+                    ) : (
+                      <Button
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 !text-white"
+                        onClick={handleCreateUserClick}
+                        disabled={!!(usageData && !usageData.canAddTeamMember)}
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                        Create User
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Usage Limits Display */}
-              {usageData && (
+              {/* Usage Limits Display - Show skeleton while loading */}
+              {usageDataLoading ? (
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                      <div className="w-32 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {/* Progress bar skeleton */}
+                      <div className="flex justify-between">
+                        <div className="w-16 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                        <div className="w-20 h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse"
+                          style={{ width: "60%" }}
+                        ></div>
+                      </div>
+                      <div className="w-32 h-3 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : usageData ? (
                 <Card className="border-gray-200 dark:border-gray-700">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center space-x-2 text-sm">
@@ -233,7 +275,7 @@ export default function UsersManagement({
                     </div>
                   </CardContent>
                 </Card>
-              )}
+              ) : null}
 
               {/* Usage Limit Warning */}
               {showUsageLimit && usageData && (
@@ -259,7 +301,9 @@ export default function UsersManagement({
                         </Badge>
                       </div>
                       <Button
-                        onClick={() => (window.location.href = "/subscription")}
+                        onClick={() =>
+                          (window.location.href = "/dashboard/subscription")
+                        }
                         className="bg-red-600 hover:bg-red-700 text-white"
                       >
                         Upgrade Plan

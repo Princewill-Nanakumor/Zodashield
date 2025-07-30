@@ -108,7 +108,9 @@ export function ImportModal({
 
                   <div className="flex space-x-3">
                     <button
-                      onClick={() => (window.location.href = "/subscription")}
+                      onClick={() =>
+                        (window.location.href = "/dashboard/subscription")
+                      }
                       className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                     >
                       Upgrade Plan

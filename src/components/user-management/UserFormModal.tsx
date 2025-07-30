@@ -81,6 +81,11 @@ export function UserFormModal({
     mode,
   });
 
+  // Check if inputs should be disabled (when usage limit is reached in create mode)
+  const shouldDisableInputs = Boolean(
+    mode === "create" && usageData && !usageData.canAddTeamMember
+  );
+
   // Memoize clearErrors to prevent infinite re-renders
   const memoizedClearErrors = useCallback(() => {
     clearErrors();
@@ -121,6 +126,9 @@ export function UserFormModal({
     field: keyof (UserFormCreateData & UserFormEditData),
     value: string | string[]
   ) => {
+    // Don't allow changes if inputs are disabled
+    if (shouldDisableInputs) return;
+
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -128,11 +136,17 @@ export function UserFormModal({
   };
 
   const handleCountryChange = (option: SelectOption | null) => {
+    // Don't allow changes if inputs are disabled
+    if (shouldDisableInputs) return;
+
     setSelectedCountry(option);
     handleInputChange("country", option?.label || "");
   };
 
   const handlePhoneChange = (value?: string) => {
+    // Don't allow changes if inputs are disabled
+    if (shouldDisableInputs) return;
+
     if (!value || value.startsWith("+")) {
       handleInputChange("phoneNumber", value || "");
     }
@@ -207,7 +221,9 @@ export function UserFormModal({
                     </Badge>
                   </div>
                   <Button
-                    onClick={() => (window.location.href = "/subscription")}
+                    onClick={() =>
+                      (window.location.href = "/dashboard/subscription")
+                    }
                     className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     Upgrade Plan
@@ -233,7 +249,7 @@ export function UserFormModal({
           <form onSubmit={handleSubmit} className="space-y-6">
             <NameFields
               formData={formData}
-              isLoading={isLoading}
+              isLoading={isLoading || shouldDisableInputs}
               handleInputChange={handleInputChange}
               getFieldError={getFieldError}
             />
@@ -241,7 +257,7 @@ export function UserFormModal({
             <EmailField
               value={formData.email}
               error={getFieldError("email")}
-              isLoading={isLoading}
+              isLoading={isLoading || shouldDisableInputs}
               onChange={(value) => handleInputChange("email", value)}
             />
 
@@ -249,7 +265,7 @@ export function UserFormModal({
               <PasswordField
                 value={formData.password || ""}
                 error={getFieldError("password")}
-                isLoading={isLoading}
+                isLoading={isLoading || shouldDisableInputs}
                 onChange={(value) => handleInputChange("password", value)}
               />
             )}
@@ -267,7 +283,7 @@ export function UserFormModal({
                       <span>Select a country</span>
                     </div>
                   }
-                  isDisabled={isLoading}
+                  isDisabled={isLoading || shouldDisableInputs}
                   isClearable
                   styles={getCountrySelectStyles(!!getFieldError("country"))}
                   className="react-select-container"
@@ -291,7 +307,7 @@ export function UserFormModal({
                 value={formData.phoneNumber}
                 onChange={handlePhoneChange}
                 defaultCountry={selectedCountry?.value as Country | undefined}
-                isLoading={isLoading}
+                isLoading={isLoading || shouldDisableInputs}
                 error={getFieldError("phoneNumber")}
               />
             </div>
