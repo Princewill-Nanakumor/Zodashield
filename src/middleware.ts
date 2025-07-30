@@ -40,7 +40,6 @@ export default withAuth(
 
     // ✅ Redirect authenticated users away from auth pages
     if (isAuthPage && isAuth) {
-      // Both ADMIN and AGENT go to dashboard
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
@@ -138,17 +137,17 @@ export default withAuth(
             return NextResponse.redirect(new URL("/subscription", request.url));
           }
         } else {
-          // 🛡️ If subscription check fails, redirect to subscription page for security
+          // ✅ Allow access if subscription check fails (less aggressive)
           console.error("Subscription status check failed:", response.status);
-          return NextResponse.redirect(new URL("/subscription", request.url));
+          // Don't redirect - allow access and let the app handle it
         }
       } catch (error) {
+        // ✅ Allow access if subscription check throws an error (less aggressive)
         console.error(
           "Error checking subscription status in middleware:",
           error
         );
-        // 🛡️ For security, redirect to subscription page if check fails
-        return NextResponse.redirect(new URL("/subscription", request.url));
+        // Don't redirect - allow access and let the app handle it
       }
     }
 
