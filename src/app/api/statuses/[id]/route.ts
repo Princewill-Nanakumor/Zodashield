@@ -1,4 +1,4 @@
-// /api/statuses/[id]/route.ts
+// app/api/statuses/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
@@ -82,7 +82,19 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(updatedStatus);
+    // FIXED: Return the same structure as the main route (both _id and id)
+    const transformedStatus = {
+      _id: updatedStatus._id.toString(), // Keep _id for display compatibility
+      id: updatedStatus._id.toString(), // Add id for filtering compatibility
+      name: updatedStatus.name,
+      color: updatedStatus.color,
+      adminId: updatedStatus.adminId.toString(),
+      createdBy: updatedStatus.createdBy.toString(),
+      createdAt: updatedStatus.createdAt,
+      updatedAt: updatedStatus.updatedAt,
+    };
+
+    return NextResponse.json(transformedStatus);
   } catch (error) {
     console.error("Error updating status:", error);
     return NextResponse.json(

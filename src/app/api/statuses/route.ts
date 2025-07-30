@@ -1,4 +1,4 @@
-// /api/statuses/route.ts
+// app/api/statuses/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectMongoDB } from "@/libs/dbConfig";
@@ -64,12 +64,26 @@ export async function GET() {
 
     console.log("🔍 API DEBUG - Found statuses:", statuses);
 
+    // FIXED: Return the correct structure that works for both filtering and display
+    const transformedStatuses = statuses.map((status) => ({
+      _id: status._id.toString(), // Keep _id for display compatibility
+      id: status._id.toString(), // Add id for filtering compatibility
+      name: status.name,
+      color: status.color,
+      adminId: status.adminId.toString(),
+      createdBy: status.createdBy.toString(),
+      createdAt: status.createdAt,
+      updatedAt: status.updatedAt,
+    }));
+
+    console.log("🔍 API DEBUG - Transformed statuses:", transformedStatuses);
+
     // Set cache headers
     const headers = new Headers();
     headers.set("Cache-Control", "private, max-age=300"); // 5 minutes
     headers.set("Vary", "Cookie");
 
-    return NextResponse.json(statuses, {
+    return NextResponse.json(transformedStatuses, {
       headers,
       status: 200,
     });
@@ -115,7 +129,19 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    return NextResponse.json(newStatus, { status: 201 });
+    // Return the same structure as GET
+    const transformedStatus = {
+      _id: newStatus._id.toString(),
+      id: newStatus._id.toString(),
+      name: newStatus.name,
+      color: newStatus.color,
+      adminId: newStatus.adminId.toString(),
+      createdBy: newStatus.createdBy.toString(),
+      createdAt: newStatus.createdAt,
+      updatedAt: newStatus.updatedAt,
+    };
+
+    return NextResponse.json(transformedStatus, { status: 201 });
   } catch (error) {
     console.error("Error creating status:", error);
     return NextResponse.json(
