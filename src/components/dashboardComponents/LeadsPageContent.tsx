@@ -196,7 +196,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
       // Create a robust mapping from status ObjectID to status name
       const statusIdToName = statuses.reduce(
         (acc, status) => {
-          // Only use id, since _id is not present in your data
           if (status.id && status.name) {
             acc[status.id] = status.name;
           }

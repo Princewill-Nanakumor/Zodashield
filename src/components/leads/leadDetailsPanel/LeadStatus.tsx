@@ -1,3 +1,4 @@
+// src/components/leads/leadDetailsPanel/LeadStatus.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -203,14 +204,15 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
             </SelectTrigger>
             <SelectContent className="border-gray-200 dark:border-gray-700">
               {statuses.map((status) => {
+                const statusColor = status.color || "#3b82f6"; // Provide default color
                 const itemBg = isDark
-                  ? hexWithAlpha(status.color, darkAlpha)
-                  : status.color;
+                  ? hexWithAlpha(statusColor, darkAlpha)
+                  : statusColor;
                 const textColor = "#fff";
                 return (
                   <SelectItem
-                    key={status._id}
-                    value={status._id}
+                    key={status._id || status.id || `status-${status.name}`}
+                    value={status._id || status.id || ""}
                     className="my-1 rounded-md transition-colors font-medium cursor-pointer"
                     style={{
                       backgroundColor: itemBg,
@@ -222,7 +224,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
                         className="w-2 h-2 rounded-full"
                         style={{
                           backgroundColor: "#fff",
-                          border: `2px solid ${status.color}`,
+                          border: `2px solid ${statusColor}`,
                         }}
                       />
                       <span style={{ color: textColor }}>{status.name}</span>

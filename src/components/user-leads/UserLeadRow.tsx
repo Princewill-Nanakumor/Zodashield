@@ -1,3 +1,4 @@
+// src/components/user-leads/UserLeadRow.tsx
 "use client";
 
 import { TableCell, TableRow } from "@/components/ui/Table";
@@ -37,6 +38,7 @@ export function UserLeadRow({
       if (!hasNewStatus) {
         data.unshift({
           _id: "NEW",
+          id: "NEW", // Add the required id property
           name: "New",
           color: "#3B82F6",
           createdAt: new Date().toISOString(),
@@ -48,7 +50,8 @@ export function UserLeadRow({
         if (a._id === "NEW") return -1;
         if (b._id === "NEW") return 1;
         return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt || new Date()).getTime() -
+          new Date(a.createdAt || new Date()).getTime()
         );
       });
 
@@ -73,13 +76,16 @@ export function UserLeadRow({
     if (statuses.length > 0) {
       let status = statuses.find((s) => s._id === lead.status);
       if (!status && lead.status !== "NEW") {
-        status = statuses.find((s) => s._id === "NEW") || {
-          _id: "NEW",
-          name: "New",
-          color: "#3B82F6",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+        status =
+          statuses.find((s) => s._id === "NEW") ||
+          ({
+            _id: "NEW",
+            id: "NEW", // Add the required id property
+            name: "New",
+            color: "#3B82F6",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as Status); // Add type assertion
       }
       setCurrentStatus(status || null);
     }

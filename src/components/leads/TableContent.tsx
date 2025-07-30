@@ -1,3 +1,4 @@
+// src/components/leads/TableContent.tsx
 import { Table as TanstackTable, flexRender } from "@tanstack/react-table";
 import { Lead, Status } from "@/types/leads";
 import {
@@ -115,6 +116,7 @@ export function TableContent({
       if (!hasNewStatus) {
         data.unshift({
           _id: "NEW",
+          id: "NEW", // Add the required id property
           name: "New",
           color: "#3B82F6",
           createdAt: new Date().toISOString(),
@@ -126,7 +128,8 @@ export function TableContent({
         if (a._id === "NEW") return -1;
         if (b._id === "NEW") return 1;
         return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt || new Date()).getTime() -
+          new Date(a.createdAt || new Date()).getTime()
         );
       });
       setStatuses(data);
