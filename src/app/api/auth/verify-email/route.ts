@@ -34,7 +34,9 @@ export async function POST(req: Request) {
     await user.save();
 
     return NextResponse.json(
-      { message: "Email verified successfully!" },
+      {
+        message: "Email verified successfully",
+      },
       { status: 200 }
     );
   } catch (error) {
