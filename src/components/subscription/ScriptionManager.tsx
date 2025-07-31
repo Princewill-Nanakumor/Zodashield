@@ -125,7 +125,7 @@ export default function SubscriptionManager() {
 
       // If trial expired and no active subscription, redirect to subscription page
       if (subscriptionStatus === "expired") {
-        router.push("/subscription");
+        router.push("/dashboard/subscription");
         return;
       }
 
@@ -136,7 +136,7 @@ export default function SubscriptionManager() {
 
         if (now > trialEndDate) {
           // Trial has expired, redirect to subscription
-          router.push("/subscription");
+          router.push("/dashboard/subscription");
           return;
         }
       }

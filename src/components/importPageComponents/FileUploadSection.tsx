@@ -29,6 +29,7 @@ interface FileUploadSectionProps {
   setShowModal: (show: boolean) => void;
   missingFields: string[];
   usageData?: UsageData | null;
+  usageDataLoading?: boolean;
 }
 
 export const FileUploadSection = ({
@@ -38,6 +39,7 @@ export const FileUploadSection = ({
   successMessage,
   handleFileUpload,
   usageData,
+  usageDataLoading = false,
 }: FileUploadSectionProps) => {
   const [showRequiredFields, setShowRequiredFields] = useState(false);
   const { toast } = useToast();
@@ -53,7 +55,10 @@ export const FileUploadSection = ({
     }
   }, [successMessage, toast]);
 
+  // Improved loading and disabled logic
   const isDisabled = Boolean(isLoading || (usageData && !usageData.canImport));
+  const shouldShowSkeleton =
+    usageDataLoading || (usageData === null && !usageDataLoading);
 
   // Only render the file upload section when activeTab is "new"
   if (activeTab !== "new") {
@@ -121,40 +126,61 @@ export const FileUploadSection = ({
       </div>
 
       <div className="flex items-center justify-center w-full">
-        <label
-          htmlFor="file-upload"
-          className={`flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 transition-colors
+        {shouldShowSkeleton ? (
+          // Loading skeleton for file upload area
+          <div className="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800">
+            <div className="flex flex-col items-center justify-center px-6 py-8">
+              {/* Skeleton icon */}
+              <div className="w-8 h-8 mb-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+
+              {/* Skeleton text lines */}
+              <div className="space-y-2 w-full max-w-xs">
+                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded animate-pulse w-3/4"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded animate-pulse w-1/2"></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label
+            htmlFor="file-upload"
+            className={`flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 transition-colors
 ${
   isDisabled
     ? "pointer-events-none opacity-60"
     : "hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
 }`}
-        >
-          <div className="flex flex-col items-center justify-center px-6 py-8">
-            {isDisabled ? (
-              <XCircle className="w-8 h-8 mb-4 text-gray-400 dark:text-gray-500" />
-            ) : (
-              <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-            )}
-            <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-semibold">
-                {isDisabled ? "Import Disabled" : "Click to upload"}
-              </span>{" "}
-              or drag and drop
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Excel or CSV files
-            </p>
-            {usageData && !usageData.canImport && (
-              <p className="text-xs text-red-500 mt-2">Import limit reached</p>
-            )}
-            {usageData && usageData.canImport && usageData.maxLeads !== -1 && (
-              <p className="text-xs text-blue-500 mt-1">
-                You can import up to {usageData.remainingLeads} more leads
+          >
+            <div className="flex flex-col items-center justify-center px-6 py-8">
+              {isDisabled ? (
+                <XCircle className="w-8 h-8 mb-4 text-gray-400 dark:text-gray-500" />
+              ) : (
+                <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
+              )}
+              <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className="font-semibold">
+                  {isDisabled ? "Import Disabled" : "Click to upload"}
+                </span>{" "}
+                or drag and drop
               </p>
-            )}
-          </div>
-        </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Excel or CSV files
+              </p>
+              {usageData && !usageData.canImport && (
+                <p className="text-xs text-red-500 mt-2">
+                  Import limit reached
+                </p>
+              )}
+              {usageData &&
+                usageData.canImport &&
+                usageData.maxLeads !== -1 && (
+                  <p className="text-xs text-blue-500 mt-1">
+                    You can import up to {usageData.remainingLeads} more leads
+                  </p>
+                )}
+            </div>
+          </label>
+        )}
 
         <input
           id="file-upload"
@@ -163,7 +189,7 @@ ${
           className="hidden"
           accept=".xlsx,.xls,.csv,.txt"
           onChange={handleFileUpload}
-          disabled={isDisabled}
+          disabled={isDisabled || shouldShowSkeleton} // Use shouldShowSkeleton here too
           onClick={(e) => {
             // Prevent the click from bubbling up
             e.stopPropagation();

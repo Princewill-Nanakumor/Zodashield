@@ -1,9 +1,11 @@
+// src/components/dashboardComponents/UserDropdownMenu.tsx
 "use client";
 import React from "react";
 import { UserCircle, LogOut, User, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { BalanceDisplay } from "./BalanceDisplay";
+import { PlanDisplay } from "./PlanDisplay";
 
 interface UserDropdownMenuProps {
   session: {
@@ -20,6 +22,10 @@ interface UserDropdownMenuProps {
     email?: string;
     balance?: number;
     role?: string;
+    currentPlan?: string;
+    subscriptionStatus?: "active" | "inactive" | "trial" | "expired";
+    trialEndsAt?: string;
+    subscriptionEndDate?: string;
   } | null;
   balanceLoading: boolean;
   dropdownOpen: boolean;
@@ -75,7 +81,6 @@ export function UserDropdownMenu({
           {/* User Info Section */}
           <div className="px-4 py-3">
             <div className="ml-3 max-w-[180px]">
-              {" "}
               <p className="text-sm font-medium text-gray-900 dark:text-white break-all">
                 {session?.user?.firstName && session?.user?.lastName
                   ? `${session.user.firstName} ${session.user.lastName}`
@@ -91,11 +96,15 @@ export function UserDropdownMenu({
                     : ""}
               </p>
               {isAdmin && (
-                <div className="mt-1">
+                <div className="mt-2 space-y-1">
+                  {/* Balance Display */}
                   <BalanceDisplay
                     balance={userProfile?.balance}
                     loading={balanceLoading}
                   />
+
+                  {/* Plan Display Component */}
+                  <PlanDisplay isAdmin={isAdmin} />
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,14 @@ export default function TrialStatus({
     total: 0,
   });
 
+  // Helper function to format countdown (moved before useEffect)
+  const formatCountdown = (time: TimeRemaining) => {
+    if (time.total <= 0) return "00:00:00:00";
+
+    const pad = (num: number) => num.toString().padStart(2, "0");
+    return `${pad(time.days)}:${pad(time.hours)}:${pad(time.minutes)}:${pad(time.seconds)}`;
+  };
+
   useEffect(() => {
     if (!subscriptionData.trialEndsAt) {
       return;
@@ -78,17 +86,28 @@ export default function TrialStatus({
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeRemaining({
+      const newTimeRemaining = {
         days,
         hours,
         minutes,
         seconds,
         total: diff,
+      };
+
+      // Add debug log
+      console.log("🕐 Countdown Update:", {
+        now: now.toISOString(),
+        trialEnd: trialEnd.toISOString(),
+        diff: diff,
+        formatted: formatCountdown(newTimeRemaining),
+        timeRemaining: newTimeRemaining,
       });
+
+      setTimeRemaining(newTimeRemaining);
     };
 
     updateTimeRemaining();
-    const interval = setInterval(updateTimeRemaining, 1000); // Update every second
+    const interval = setInterval(updateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
   }, [subscriptionData.trialEndsAt]);
@@ -107,15 +126,9 @@ export default function TrialStatus({
     }
   };
 
-  const formatCountdown = (time: TimeRemaining) => {
-    if (time.total <= 0) return "00:00:00:00";
-
-    const pad = (num: number) => num.toString().padStart(2, "0");
-    return `${pad(time.days)}:${pad(time.hours)}:${pad(time.minutes)}:${pad(time.seconds)}`;
-  };
-
   // Check if trial is in last 24 hours (red warning)
   const isLastDay = timeRemaining.days === 0 && timeRemaining.total > 0;
+  const hasZeroBalance = subscriptionData.balance === 0;
 
   if (subscriptionData.subscriptionStatus === "active") {
     return (
@@ -247,28 +260,51 @@ export default function TrialStatus({
               </span>
             </div>
 
-            <Button
-              onClick={() =>
-                onSubscribe({
-                  id: "professional",
-                  name: "Professional",
-                  price: 19.99,
-                  billingCycle: "monthly",
-                  features: [],
-                  maxLeads: 30000,
-                  maxUsers: 5,
-                  isPopular: true,
-                })
-              }
-              className={`${
-                isLastDay
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              } text-white`}
-            >
-              {isLastDay ? "⚠️ Subscribe Now" : "Subscribe Now"}
-            </Button>
+            {/* Show appropriate button based on balance */}
+            {hasZeroBalance ? (
+              <Button
+                onClick={() => (window.location.href = "/dashboard/billing")}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Fund Account
+              </Button>
+            ) : (
+              <Button
+                onClick={() =>
+                  onSubscribe({
+                    id: "professional",
+                    name: "Professional",
+                    price: 19.99,
+                    billingCycle: "monthly",
+                    features: [],
+                    maxLeads: 30000,
+                    maxUsers: 5,
+                    isPopular: true,
+                  })
+                }
+                className={`${
+                  isLastDay
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                } text-white`}
+              >
+                {isLastDay ? "⚠️ Subscribe Now" : "Subscribe Now"}
+              </Button>
+            )}
           </div>
+
+          {/* Zero Balance Warning */}
+          {hasZeroBalance && (
+            <div className="mt-4 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm text-amber-700 dark:text-amber-300">
+                  Your account balance is $0. Add funds to subscribe to a plan.
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
