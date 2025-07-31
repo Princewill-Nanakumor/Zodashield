@@ -100,6 +100,8 @@ export async function GET() {
       trialEndsAt: user.trialEndsAt,
       subscriptionStatus: user.subscriptionStatus,
       isOnTrial: user.isOnTrial,
+      subscriptionEndDate: user.subscriptionEndDate,
+      subscriptionStartDate: user.subscriptionStartDate,
     });
 
     // Calculate trial status
@@ -130,6 +132,8 @@ export async function GET() {
       currentPlan: user.currentPlan,
       subscriptionStatus,
       balance,
+      subscriptionEndDate: user.subscriptionEndDate, // Added this field
+      subscriptionStartDate: user.subscriptionStartDate, // Added this field
     };
 
     console.log("API - Returning:", response);

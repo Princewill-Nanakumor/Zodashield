@@ -1,7 +1,7 @@
 // src/components/dashboardComponents/PlanDisplay.tsx
 "use client";
 import React, { useEffect, useState } from "react";
-import { Crown, Clock } from "lucide-react";
+import { Crown } from "lucide-react";
 
 interface SubscriptionData {
   isOnTrial: boolean;
@@ -10,6 +10,7 @@ interface SubscriptionData {
   subscriptionStatus: "active" | "inactive" | "trial" | "expired";
   balance: number;
   subscriptionEndDate?: string | null;
+  subscriptionStartDate?: string | null;
 }
 
 interface PlanDisplayProps {
@@ -59,9 +60,13 @@ export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
       subscriptionData.subscriptionEndDate
     ) {
       endDate = new Date(subscriptionData.subscriptionEndDate);
+    } else if (subscriptionData.subscriptionStatus === "active") {
+      return null; // No end date for recurring subscriptions
     }
 
-    if (!endDate) return null;
+    if (!endDate) {
+      return null;
+    }
 
     const now = new Date();
     const diffTime = endDate.getTime() - now.getTime();
@@ -91,20 +96,20 @@ export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
   const getPlanStatusColor = (status: string | undefined) => {
     // If no status but user is admin, assume trial
     if (isAdmin && !status) {
-      return "text-blue-600 dark:text-blue-400";
+      return "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30";
     }
 
     switch (status) {
       case "active":
-        return "text-green-600 dark:text-green-400";
+        return "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30";
       case "trial":
-        return "text-blue-600 dark:text-blue-400";
+        return "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30";
       case "expired":
-        return "text-red-600 dark:text-red-400";
+        return "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30";
       case "inactive":
-        return "text-gray-600 dark:text-gray-400";
+        return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30";
       default:
-        return "text-gray-600 dark:text-gray-400";
+        return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30";
     }
   };
 
@@ -154,42 +159,45 @@ export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
   if (!isAdmin) return null;
 
   return (
-    <div className="flex items-center space-x-2">
-      <Crown className="h-3 w-3 text-purple-500 dark:text-purple-400" />
-      <div className="flex flex-col">
-        <span className="text-xs font-medium text-gray-900 dark:text-white">
+    <div className="relative overflow-hidden bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/30 dark:via-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-purple-200/50 dark:border-purple-700/50 p-3 shadow-sm hover:shadow-md transition-all duration-200">
+      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-400/20 to-blue-400/20 rounded-full -translate-y-8 translate-x-8"></div>
+
+      <div className="relative flex items-center space-x-3">
+        <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl shadow-sm">
+          <Crown className="h-5 w-5 text-white" />
+        </div>
+
+        <div className="flex flex-col space-y-1.5 flex-1">
           {subscriptionLoading ? (
-            <div className="h-3 w-16 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
-          ) : (
-            formatPlanName(
-              subscriptionData?.currentPlan,
-              subscriptionData?.subscriptionStatus
-            )
-          )}
-        </span>
-        <div className="flex items-center space-x-1">
-          {subscriptionLoading ? (
-            <div className="h-3 w-12 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+            <>
+              <div className="h-4 w-24 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+              <div className="h-3 w-16 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+            </>
           ) : (
             <>
-              <span
-                className={`text-xs ${getPlanStatusColor(subscriptionData?.subscriptionStatus)}`}
-              >
-                {getPlanStatusText(subscriptionData?.subscriptionStatus)}
-              </span>
+              <div className="flex flex-col space-y-1">
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  {formatPlanName(
+                    subscriptionData?.currentPlan,
+                    subscriptionData?.subscriptionStatus
+                  )}
+                </span>
+                <span
+                  className={`inline-flex w-fit px-2 text-xs font-semibold border rounded-full ${getPlanStatusColor(subscriptionData?.subscriptionStatus)}`}
+                >
+                  {getPlanStatusText(subscriptionData?.subscriptionStatus)}
+                </span>
+              </div>
+
               {remainingDays !== null && (
-                <>
-                  <span className="text-xs text-gray-400">•</span>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-2.5 w-2.5 text-gray-400" />
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {getRemainingDaysText(
-                        remainingDays,
-                        subscriptionData?.subscriptionStatus
-                      )}
-                    </span>
-                  </div>
-                </>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                    {getRemainingDaysText(
+                      remainingDays,
+                      subscriptionData?.subscriptionStatus
+                    )}
+                  </span>
+                </div>
               )}
             </>
           )}
