@@ -1,252 +1,123 @@
 // src/components/adminManagement/AdminList.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Eye, Edit, Trash2, Clock, UserCheck, Shield } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-interface ActivityData {
-  _id: string;
-  type: string;
-  userId: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email?: string;
-  };
-  details: string;
-  timestamp: string;
-  metadata: Record<string, unknown>;
-}
-
-interface AdminStats {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  lastLogin?: string;
-  createdAt: string;
-  agentCount: number;
-  leadCount: number;
-  balance?: number;
-  subscription?: {
-    plan: string;
-    status: string;
-    maxUsers: number;
-    maxLeads: number;
-    endDate: string;
-  };
-  recentActivity: ActivityData[];
-  lastAgentLogin?: {
-    lastLogin?: string;
-    firstName: string;
-    lastName: string;
-  };
-}
+import { useToast } from "../ui/use-toast";
+import { AdminCard } from "./AdminCard";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import { AdminStats } from "@/types/adminManagement"; // Fix the import
 
 interface AdminListProps {
   admins: AdminStats[];
   allowedEmails: string[];
+  onAdminDeleted?: (adminId: string) => void;
 }
 
-export default function AdminList({ admins, allowedEmails }: AdminListProps) {
-  const router = useRouter();
+export default function AdminList({
+  admins,
+  allowedEmails,
+  onAdminDeleted,
+}: AdminListProps) {
+  const { toast } = useToast();
+  const [deletingAdminId, setDeletingAdminId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [adminToDelete, setAdminToDelete] = useState<AdminStats | null>(null);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200 dark:border-green-800";
-      case "INACTIVE":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300 border-red-200 dark:border-red-800";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300 border-gray-200 dark:border-gray-800";
+  const handleDeleteClick = (admin: AdminStats) => {
+    setAdminToDelete(admin);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!adminToDelete) return;
+
+    setDeletingAdminId(adminToDelete._id);
+    setShowDeleteDialog(false);
+
+    try {
+      const response = await fetch(`/api/admin/delete-admin`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminId: adminToDelete._id,
+          adminEmail: adminToDelete.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Admin Deleted",
+          description: `Successfully deleted ${adminToDelete.firstName} ${adminToDelete.lastName} and all associated data.`,
+          variant: "success",
+        });
+
+        // Call the callback to update the parent component
+        onAdminDeleted?.(adminToDelete._id);
+      } else {
+        throw new Error(data.message || "Failed to delete admin");
+      }
+    } catch (error) {
+      console.error("Error deleting admin:", error);
+      toast({
+        title: "Delete Failed",
+        description:
+          error instanceof Error ? error.message : "Failed to delete admin",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAdminId(null);
+      setAdminToDelete(null);
     }
   };
 
-  const getPlanColor = (plan: string) => {
-    switch (plan) {
-      case "ENTERPRISE":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200 dark:border-purple-800";
-      case "PRO":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800";
-      case "BASIC":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200 dark:border-green-800";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300 border-gray-200 dark:border-gray-800";
-    }
-  };
-
-  const formatLastLogin = (lastLogin?: string) => {
-    if (!lastLogin) return "Never";
-
-    const date = new Date(lastLogin);
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    );
-
-    if (diffInHours < 1) return "Just now";
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    if (diffInHours < 48) return "Yesterday";
-
-    return date.toLocaleDateString();
-  };
-
-  const getLastLoginColor = (lastLogin?: string) => {
-    if (!lastLogin) return "text-gray-500 dark:text-gray-400";
-
-    const date = new Date(lastLogin);
-    const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    );
-
-    if (diffInHours < 24) return "text-green-600 dark:text-green-400";
-    if (diffInHours < 168) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
-  };
-
-  const formatBalance = (balance?: number) => {
-    if (!balance) return "$0.00";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(balance);
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+    setAdminToDelete(null);
   };
 
   return (
-    <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-      <CardHeader>
-        <CardTitle className="text-gray-900 dark:text-white">
-          All Administrators
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {admins.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">
-                No administrators found
-              </p>
-            </div>
-          ) : (
-            admins.map((admin) => (
-              <div
-                key={admin._id}
-                className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg backdrop-blur-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-200"
-              >
-                <div className="flex items-center space-x-4">
-                  <Avatar>
-                    <AvatarFallback className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                      {admin.firstName[0]}
-                      {admin.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {admin.firstName} {admin.lastName}
-                      </h3>
-                      <Badge className={getStatusColor(admin.status)}>
-                        {admin.status}
-                      </Badge>
-                      {admin.subscription && (
-                        <Badge
-                          className={getPlanColor(admin.subscription.plan)}
-                        >
-                          {admin.subscription.plan}
-                        </Badge>
-                      )}
-                      {allowedEmails.includes(admin.email) && (
-                        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Super Admin
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      {admin.email}
-                    </p>
-                    <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      <span>{admin.agentCount} agents</span>
-                      <span>{admin.leadCount} leads</span>
-                      {admin.balance && (
-                        <span className="text-green-600 dark:text-green-400">
-                          {formatBalance(admin.balance)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center space-x-6 text-xs">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3 text-gray-400" />
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Admin:
-                        </span>
-                        <span className={getLastLoginColor(admin.lastLogin)}>
-                          {formatLastLogin(admin.lastLogin)}
-                        </span>
-                      </div>
-
-                      {admin.lastAgentLogin && (
-                        <div className="flex items-center space-x-1">
-                          <UserCheck className="h-3 w-3 text-gray-400" />
-                          <span className="text-gray-500 dark:text-gray-400">
-                            Agent:
-                          </span>
-                          <span
-                            className={getLastLoginColor(
-                              admin.lastAgentLogin.lastLogin
-                            )}
-                          >
-                            {formatLastLogin(admin.lastAgentLogin.lastLogin)}
-                            <span className="text-gray-400 dark:text-gray-500 ml-1">
-                              ({admin.lastAgentLogin.firstName}{" "}
-                              {admin.lastAgentLogin.lastName})
-                            </span>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      router.push(`/dashboard/admin-management/${admin._id}`)
-                    }
-                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 hover:bg-white/90 dark:hover:bg-gray-900/90"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 hover:bg-white/90 dark:hover:bg-gray-900/90"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 hover:bg-white/90 dark:hover:bg-gray-900/90"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+    <>
+      <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-gray-900 dark:text-white">
+            All Administrators
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {admins.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No administrators found
+                </p>
               </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            ) : (
+              admins.map((admin) => (
+                <AdminCard
+                  key={admin._id}
+                  admin={admin}
+                  allowedEmails={allowedEmails}
+                  onDeleteClick={handleDeleteClick}
+                  deletingAdminId={deletingAdminId}
+                />
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <DeleteConfirmationDialog
+        isOpen={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        adminToDelete={adminToDelete}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
+    </>
   );
 }

@@ -8,46 +8,7 @@ import { Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import AdminStats from "./AdminStats";
 import AdminList from "./AdminList";
-
-interface ActivityData {
-  _id: string;
-  type: string;
-  userId: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email?: string;
-  };
-  details: string;
-  timestamp: string;
-  metadata: Record<string, unknown>;
-}
-
-interface AdminStats {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  lastLogin?: string;
-  createdAt: string;
-  agentCount: number;
-  leadCount: number;
-  balance?: number;
-  subscription?: {
-    plan: string;
-    status: string;
-    maxUsers: number;
-    maxLeads: number;
-    endDate: string;
-  };
-  recentActivity: ActivityData[];
-  lastAgentLogin?: {
-    lastLogin?: string;
-    firstName: string;
-    lastName: string;
-  };
-}
+import { AdminStats as AdminStatsType } from "@/types/adminManagement";
 
 interface PlatformStats {
   totalAdmins: number;
@@ -60,7 +21,7 @@ interface PlatformStats {
 export default function AdminManagementContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [admins, setAdmins] = useState<AdminStats[]>([]);
+  const [admins, setAdmins] = useState<AdminStatsType[]>([]);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(
     null
   );
@@ -107,6 +68,17 @@ export default function AdminManagementContent() {
     }
   };
 
+  // Handle admin deletion
+  const handleAdminDeleted = (deletedAdminId: string) => {
+    // Remove the deleted admin from the local state
+    setAdmins((prevAdmins) =>
+      prevAdmins.filter((admin) => admin._id !== deletedAdminId)
+    );
+
+    // Refresh the platform stats
+    fetchAdminData();
+  };
+
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -140,7 +112,11 @@ export default function AdminManagementContent() {
       </div>
 
       <AdminStats platformStats={platformStats} />
-      <AdminList admins={admins} allowedEmails={allowedEmails} />
+      <AdminList
+        admins={admins}
+        allowedEmails={allowedEmails}
+        onAdminDeleted={handleAdminDeleted}
+      />
     </div>
   );
 }
