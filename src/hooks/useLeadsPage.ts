@@ -16,6 +16,13 @@ import {
 } from "../utils/LeadsUtils";
 import { Lead } from "@/types/leads";
 
+// Local storage keys for filter persistence
+const STORAGE_KEYS = {
+  FILTER_BY_COUNTRY: "leads_filter_by_country",
+  FILTER_BY_STATUS: "leads_filter_by_status",
+  FILTER_BY_USER: "leads_filter_by_user",
+} as const;
+
 export const useLeadsPage = (
   searchQuery: string,
   setLayoutLoading?: (loading: boolean) => void
@@ -27,9 +34,22 @@ export const useLeadsPage = (
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
+  // Helper function to get initial filter values from localStorage or URL
+  const getInitialFilterValue = (
+    key: string,
+    urlValue: string | null,
+    defaultValue: string
+  ) => {
+    if (typeof window !== "undefined") {
+      // Prioritize URL parameters, then localStorage, then default
+      return urlValue || localStorage.getItem(key) || defaultValue;
+    }
+    return urlValue || defaultValue;
+  };
+
   // Get initial filters from URL
-  const initialCountry = searchParams.get("country") || "all";
-  const initialStatus = searchParams.get("status") || "all";
+  const initialCountry = searchParams.get("country");
+  const initialStatus = searchParams.get("status");
 
   const {
     leads,
@@ -50,23 +70,34 @@ export const useLeadsPage = (
     isDialogOpen: false,
     isUnassignDialogOpen: false,
     selectedUser: "",
-    filterByCountry: initialCountry,
-    filterByStatus: initialStatus,
+    filterByCountry: getInitialFilterValue(
+      STORAGE_KEYS.FILTER_BY_COUNTRY,
+      initialCountry,
+      "all"
+    ),
+    filterByStatus: getInitialFilterValue(
+      STORAGE_KEYS.FILTER_BY_STATUS,
+      initialStatus,
+      "all"
+    ),
     searchQuery: searchQuery,
   });
 
-  // Debug statuses with better error handling
+  // Save filter values to localStorage whenever they change
   useEffect(() => {
-    console.log("🔍 STATUSES DEBUG:", {
-      statusesLength: statuses.length,
-      statuses: statuses.map((s) => ({
-        id: s.id,
-        name: s.name,
-        color: s.color,
-      })),
-      isLoadingStatuses: isLoadingUsers,
-    });
-  }, [statuses, isLoadingUsers]);
+    localStorage.setItem(
+      STORAGE_KEYS.FILTER_BY_COUNTRY,
+      uiState.filterByCountry
+    );
+  }, [uiState.filterByCountry]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.FILTER_BY_STATUS, uiState.filterByStatus);
+  }, [uiState.filterByStatus]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.FILTER_BY_USER, filterByUser);
+  }, [filterByUser]);
 
   // Improved session refresh logic with timeout handling
   useEffect(() => {
@@ -114,17 +145,20 @@ export const useLeadsPage = (
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
 
-  // Sync filters with URL changes
+  // Sync filters with URL changes (but don't override localStorage on initial load)
   useEffect(() => {
-    const urlCountry = searchParams.get("country") || "all";
-    const urlStatus = searchParams.get("status") || "all";
+    const urlCountry = searchParams.get("country");
+    const urlStatus = searchParams.get("status");
 
-    setUiState((prev) => ({
-      ...prev,
-      filterByCountry: urlCountry,
-      filterByStatus: urlStatus,
-    }));
-  }, [searchParams]);
+    // Only update if URL parameters are different from current state
+    // This prevents overriding localStorage values on initial load
+    if (urlCountry !== null && urlCountry !== uiState.filterByCountry) {
+      setUiState((prev) => ({ ...prev, filterByCountry: urlCountry }));
+    }
+    if (urlStatus !== null && urlStatus !== uiState.filterByStatus) {
+      setUiState((prev) => ({ ...prev, filterByStatus: urlStatus }));
+    }
+  }, [searchParams, uiState.filterByCountry, uiState.filterByStatus]);
 
   // Update layout loading state with better error handling
   useEffect(() => {
@@ -144,28 +178,14 @@ export const useLeadsPage = (
   // STABILIZED LEADS DATA with better error handling
   const stableLeads = useMemo(() => {
     if (!leads || leads.length === 0) {
-      console.log("�� No leads available in stableLeads");
       return [];
     }
     const sorted = [...leads].sort((a, b) => a._id.localeCompare(b._id));
-    console.log("�� Stable leads count:", sorted.length);
     return sorted;
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
     let filtered = stableLeads;
-
-    console.log("🔍 FILTERING PROCESS DEBUG:", {
-      initialCount: filtered.length,
-      searchQuery: uiState.searchQuery,
-      filterByUser,
-      filterByCountry: uiState.filterByCountry,
-      filterByStatus: uiState.filterByStatus,
-      statusesCount: statuses.length,
-      // Remove this line since it's not needed for filtering logic
-      // statusesLoaded: !isLoadingUsers,
-      statusesWithValidIds: statuses.filter((s) => s.id && s.name).length,
-    });
 
     if (uiState.searchQuery.trim()) {
       filtered = searchLeads(filtered, uiState.searchQuery);
@@ -180,13 +200,6 @@ export const useLeadsPage = (
     }
 
     if (uiState.filterByStatus !== "all") {
-      console.log("📈 STATUS FILTER DEBUG START:", {
-        filterByStatus: uiState.filterByStatus,
-        statusesAvailable: statuses,
-        leadsBeforeFilter: filtered.length,
-        statusesWithValidIds: statuses.filter((s) => s.id && s.name).length,
-      });
-
       const statusIdToName = statuses.reduce(
         (acc, status) => {
           if (status.id && status.name) {
@@ -207,37 +220,6 @@ export const useLeadsPage = (
         {} as Record<string, string>
       );
 
-      console.log("STATUS MAPPINGS:", {
-        idToName: statusIdToName,
-        nameToId: statusNameToId,
-      });
-
-      const uniqueStatuses = [...new Set(filtered.map((lead) => lead.status))];
-      console.log("LEAD STATUS VALUES:", {
-        totalLeads: filtered.length,
-        uniqueStatuses: uniqueStatuses,
-        statusCounts: uniqueStatuses.reduce(
-          (acc, status) => {
-            acc[status] = filtered.filter(
-              (lead) => lead.status === status
-            ).length;
-            return acc;
-          },
-          {} as Record<string, number>
-        ),
-        mappedStatuses: uniqueStatuses.map((status) => ({
-          original: status,
-          mapped: statusIdToName[status] || status,
-        })),
-        sampleLeads: filtered.slice(0, 5).map((lead) => ({
-          id: lead._id,
-          status: lead.status,
-          statusName: statusIdToName[lead.status] || lead.status,
-          statusType: typeof lead.status,
-        })),
-      });
-
-      const beforeCount = filtered.length;
       filtered = filtered.filter((lead) => {
         const directMatch = lead.status === uiState.filterByStatus;
         const mappedMatch =
@@ -245,41 +227,9 @@ export const useLeadsPage = (
         const reverseMatch =
           statusNameToId[uiState.filterByStatus] === lead.status;
 
-        const matches = directMatch || mappedMatch || reverseMatch;
-
-        if (matches) {
-          console.log("✅ Status match found:", {
-            leadId: lead._id,
-            originalStatus: lead.status,
-            statusName: statusIdToName[lead.status] || lead.status,
-            filterBy: uiState.filterByStatus,
-            directMatch,
-            mappedMatch,
-            reverseMatch,
-          });
-        }
-        return matches;
-      });
-
-      const afterCount = filtered.length;
-      console.log("📈 STATUS FILTER RESULT:", {
-        statusFilter: uiState.filterByStatus,
-        beforeCount,
-        afterCount,
-        removed: beforeCount - afterCount,
-        matchesFound: afterCount,
-        statusIdToNameMapping: statusIdToName,
+        return directMatch || mappedMatch || reverseMatch;
       });
     }
-
-    console.log("🎯 FINAL FILTERED LEADS:", {
-      finalCount: filtered.length,
-      sampleFinalLeads: filtered.slice(0, 3).map((l) => ({
-        id: l._id,
-        status: l.status,
-        assignedTo: l.assignedTo,
-      })),
-    });
 
     return filtered;
   }, [
@@ -335,6 +285,7 @@ export const useLeadsPage = (
       toast({
         title: "Leads assigned successfully",
         description: `${selectedLeads.length} lead(s) have been assigned`,
+        variant: "success",
       });
     } catch (error) {
       console.error("Assignment error:", error);
@@ -379,6 +330,7 @@ export const useLeadsPage = (
       toast({
         title: "Leads unassigned successfully",
         description: `${leadsToUnassign.length} lead(s) have been unassigned`,
+        variant: "success",
       });
     } catch (error) {
       console.error("Unassignment error:", error);
