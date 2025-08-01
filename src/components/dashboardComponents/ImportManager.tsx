@@ -10,9 +10,8 @@ import { UsageLimitsDisplay } from "@/components/importPageComponents/UsageLimit
 import { UsageLimitsSkeleton } from "@/components/importPageComponents/UsageLimitsSkeleton";
 import { ImportHistorySection } from "@/components/importPageComponents/ImportHistorySection";
 import { ImportModalWrapper } from "@/components/importPageComponents/ImportModalWrapper";
-
-// CUSTOM HOOK
 import { useImportManager } from "@/hooks/useImportManager";
+import { useUsageData } from "@/hooks/useUsageData";
 
 export const ImportManager = () => {
   const {
@@ -20,14 +19,12 @@ export const ImportManager = () => {
     status,
     fileInputRef,
     isLoading,
-    isInitialLoading,
     error,
     successMessage,
     showModal,
     activeTab,
     importHistory,
     missingFields,
-    usageData,
     importLimitExceeded,
     setError,
     setShowModal,
@@ -37,6 +34,9 @@ export const ImportManager = () => {
     handleFileUpload,
     handleDeleteImport,
   } = useImportManager();
+
+  // Use the new usage data hook
+  const { usageData, isLoading: isUsageLoading } = useUsageData();
 
   // Show loading spinner only when session is loading
   if (status === "loading") {
@@ -58,7 +58,7 @@ export const ImportManager = () => {
           {/* Usage Limits Display - Above the tabs */}
           {activeTab === "new" && (
             <div>
-              {isInitialLoading ? (
+              {isUsageLoading ? (
                 <UsageLimitsSkeleton />
               ) : usageData ? (
                 <UsageLimitsDisplay usageData={usageData} />

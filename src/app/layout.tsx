@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -5,6 +6,7 @@ import ClientProviders from "@/components/ClientProviders";
 import { Toaster } from "@/components/ui/toaster";
 import { StatusProvider } from "@/context/StatusContext";
 import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
+import { Providers } from "@/app/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -158,12 +160,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          <Toaster />
-          <ClientProviders>
-            <StatusProvider>{children}</StatusProvider>
-          </ClientProviders>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider>
+            <Toaster />
+            <ClientProviders>
+              <StatusProvider>{children}</StatusProvider>
+            </ClientProviders>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
