@@ -1,47 +1,10 @@
+// src/components/dashboardComponents/DashboardOverview.tsx
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import { BarChart3, Users, Search } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useToast } from "@/components/ui/use-toast";
-import { Lead } from "@/types/leads";
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  country: string;
-  role: string;
-  status: string;
-  permissions: string[];
-  createdBy: string;
-  createdAt: string;
-  lastLogin?: string;
-}
-
-interface DashboardStats {
-  total: number;
-  assigned: number;
-  unassigned: number;
-  myLeads: number;
-}
-
-// Utility function to get assigned user ID
-const getAssignedUserId = (assignedTo: unknown): string | null => {
-  if (!assignedTo) return null;
-  if (typeof assignedTo === "string") return assignedTo;
-  if (assignedTo && typeof assignedTo === "object") {
-    const assignedToObj = assignedTo as Record<string, unknown>;
-    if (assignedToObj.id && typeof assignedToObj.id === "string")
-      return assignedToObj.id;
-    if (assignedToObj._id && typeof assignedToObj._id === "string")
-      return assignedToObj._id;
-    return null;
-  }
-  return null;
-};
+import { useUsersData, useLeadsStats } from "@/hooks/useDashboardData";
 
 // Loading skeleton for stat cards
 const StatCardSkeleton = () => (
@@ -64,104 +27,11 @@ export default function DashboardOverview({
   className = "",
 }: DashboardOverviewProps) {
   const { data: session, status } = useSession();
-  const { toast } = useToast();
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [leadStats, setLeadStats] = useState<DashboardStats>({
-    total: 0,
-    assigned: 0,
-    unassigned: 0,
-    myLeads: 0,
-  });
-
-  // Loading states
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [isLoadingLeadStats, setIsLoadingLeadStats] = useState(false);
-
-  const fetchUsers = useCallback(async () => {
-    if (session?.user?.role !== "ADMIN") return;
-
-    setIsLoadingUsers(true);
-    try {
-      const response = await fetch("/api/users", {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setUsers(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch users",
-        variant: "destructive",
-      });
-      setUsers([]);
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  }, [toast, session?.user?.role]);
-
-  const fetchLeadStats = useCallback(async () => {
-    setIsLoadingLeadStats(true);
-    try {
-      const endpoint =
-        session?.user?.role === "ADMIN"
-          ? "/api/leads/all"
-          : "/api/leads/assigned";
-
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error("Failed to fetch leads");
-      const data = await res.json();
-      const leads = Array.isArray(data)
-        ? data
-        : data.assignedLeads // /api/leads/assigned returns { assignedLeads: [...] }
-          ? data.assignedLeads
-          : [];
-
-      if (session?.user?.role === "ADMIN") {
-        // Admin sees all stats
-        const total = leads.length;
-        const unassigned = leads.filter(
-          (lead: Lead) => !getAssignedUserId(lead.assignedTo)
-        ).length;
-        const assigned = total - unassigned;
-
-        setLeadStats({ total, assigned, unassigned, myLeads: 0 });
-      } else {
-        // Agent: Only count leads assigned to this user
-        setLeadStats({
-          total: 0,
-          assigned: 0,
-          unassigned: 0,
-          myLeads: leads.length,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching lead stats:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load lead statistics.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingLeadStats(false);
-    }
-  }, [toast, session?.user?.role]);
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchUsers();
-      fetchLeadStats();
-    }
-  }, [status, fetchUsers, fetchLeadStats]);
+  // Use React Query for data fetching
+  const { users, isLoading: isLoadingUsers } = useUsersData();
+  const isAdmin = session?.user?.role === "ADMIN";
+  const { stats, isLoading: isLoadingStats } = useLeadsStats(isAdmin);
 
   if (status === "loading") {
     return (
@@ -176,7 +46,6 @@ export default function DashboardOverview({
   }
 
   const activeUsers = users.filter((user) => user.status === "ACTIVE");
-  const isAdmin = session.user.role === "ADMIN";
 
   return (
     <div
@@ -199,7 +68,7 @@ export default function DashboardOverview({
         // Admin Dashboard - All 4 cards in grid
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Total Leads Card */}
-          {isLoadingLeadStats ? (
+          {isLoadingStats ? (
             <StatCardSkeleton />
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -209,7 +78,7 @@ export default function DashboardOverview({
                     Total Leads
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {leadStats.total.toLocaleString()}
+                    {stats.total.toLocaleString()}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
@@ -241,7 +110,7 @@ export default function DashboardOverview({
           )}
 
           {/* Assigned Leads Card */}
-          {isLoadingLeadStats ? (
+          {isLoadingStats ? (
             <StatCardSkeleton />
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -251,7 +120,7 @@ export default function DashboardOverview({
                     Assigned Leads
                   </p>
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {leadStats.assigned.toLocaleString()}
+                    {stats.assigned.toLocaleString()}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -262,7 +131,7 @@ export default function DashboardOverview({
           )}
 
           {/* Unassigned Leads Card */}
-          {isLoadingLeadStats ? (
+          {isLoadingStats ? (
             <StatCardSkeleton />
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -272,7 +141,7 @@ export default function DashboardOverview({
                     Unassigned Leads
                   </p>
                   <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {leadStats.unassigned.toLocaleString()}
+                    {stats.unassigned.toLocaleString()}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
@@ -285,7 +154,7 @@ export default function DashboardOverview({
       ) : (
         // User/Agent Dashboard - Only My Leads card (no grid, single card)
         <div className="max-w-sm">
-          {isLoadingLeadStats ? (
+          {isLoadingStats ? (
             <StatCardSkeleton />
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -295,7 +164,7 @@ export default function DashboardOverview({
                     My Assigned Leads
                   </p>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {leadStats.myLeads.toLocaleString()}
+                    {stats.myLeads.toLocaleString()}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">

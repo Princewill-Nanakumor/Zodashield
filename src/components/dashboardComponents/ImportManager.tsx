@@ -11,7 +11,7 @@ import { UsageLimitsSkeleton } from "@/components/importPageComponents/UsageLimi
 import { ImportHistorySection } from "@/components/importPageComponents/ImportHistorySection";
 import { ImportModalWrapper } from "@/components/importPageComponents/ImportModalWrapper";
 import { useImportManager } from "@/hooks/useImportManager";
-import { useUsageData } from "@/hooks/useUsageData";
+import { useImportUsageData } from "@/hooks/useUsageData";
 
 export const ImportManager = () => {
   const {
@@ -35,8 +35,8 @@ export const ImportManager = () => {
     handleDeleteImport,
   } = useImportManager();
 
-  // Use the new usage data hook
-  const { usageData, isLoading: isUsageLoading } = useUsageData();
+  // Use the import usage data hook
+  const { importUsageData, isLoading: isUsageLoading } = useImportUsageData();
 
   // Show loading spinner only when session is loading
   if (status === "loading") {
@@ -60,8 +60,8 @@ export const ImportManager = () => {
             <div>
               {isUsageLoading ? (
                 <UsageLimitsSkeleton />
-              ) : usageData ? (
-                <UsageLimitsDisplay usageData={usageData} />
+              ) : importUsageData ? (
+                <UsageLimitsDisplay usageData={importUsageData} />
               ) : null}
             </div>
           )}
@@ -79,7 +79,7 @@ export const ImportManager = () => {
             onDelete={handleDeleteImport}
             setShowModal={setShowModal}
             missingFields={missingFields}
-            usageData={usageData}
+            usageData={importUsageData}
           />
 
           {/* Import History Section */}

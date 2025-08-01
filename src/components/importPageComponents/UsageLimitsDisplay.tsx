@@ -17,7 +17,7 @@ export function UsageLimitsDisplay({ usageData }: { usageData: UsageData }) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center space-x-2 text-sm">
           <FileText className="h-4 w-4" />
-          <span>Leads Usage</span>
+          <span>Import Usage</span>
           {usageData.currentLeads >= usageData.maxLeads * 0.8 && (
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
           )}

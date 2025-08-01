@@ -1,7 +1,7 @@
-// src/hooks/useUsageData.ts
+//src/hooks/useUsageData.ts
 import { useQuery } from "@tanstack/react-query";
 
-interface UsageData {
+interface ImportUsageData {
   currentLeads: number;
   maxLeads: number;
   remainingLeads: number;
@@ -19,14 +19,14 @@ interface ApiUsageData {
   remainingUsers: number;
 }
 
-export const useUsageData = () => {
+export const useImportUsageData = () => {
   const {
     data: apiData,
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ["usage-limits"],
+    queryKey: ["import-usage-data"],
     queryFn: async (): Promise<ApiUsageData> => {
       const response = await fetch("/api/usage");
       if (!response.ok) {
@@ -40,8 +40,8 @@ export const useUsageData = () => {
     refetchOnWindowFocus: false,
   });
 
-  // Transform the API data to match the expected interface
-  const usageData: UsageData | null = apiData
+  // Transform the API data to match the import usage interface
+  const importUsageData: ImportUsageData | null = apiData
     ? {
         currentLeads: apiData.currentLeads,
         maxLeads: apiData.maxLeads,
@@ -51,9 +51,9 @@ export const useUsageData = () => {
     : null;
 
   return {
-    usageData,
+    importUsageData,
     isLoading,
     error,
-    refreshUsageData: refetch,
+    refreshImportUsageData: refetch,
   };
 };
