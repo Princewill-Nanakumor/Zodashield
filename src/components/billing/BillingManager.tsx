@@ -1,5 +1,4 @@
 // src/components/billing/BillingManager.tsx
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -11,8 +10,8 @@ import CardDepositSection from "./CardDepositSection";
 import PaymentDetailsModal from "./PaymentDetailsModal";
 import BillingHeader from "./BillingHeader";
 import PaymentStorageManager from "./PaymentStorageManager";
-import BillingDataManager from "./BillingDataManager";
 import PaymentCreationManager from "./PaymentCreationManager";
+import { useBillingData } from "@/hooks/useBillingData"; // Add this import
 
 interface CurrentPayment {
   _id: string;
@@ -29,30 +28,11 @@ interface CurrentPayment {
   approvedBy?: string;
 }
 
-interface Transaction {
-  id: string;
-  amount: number;
-  status: string;
-  date: string;
-  type: string;
-}
-
-interface BillingData {
-  balance: number;
-  totalDeposits: number;
-  pendingAmount: number;
-  recentTransactions: Transaction[];
-}
-
 // Manager interfaces
 interface PaymentStorageManagerType {
   loadPaymentFromStorage: () => void;
   savePaymentToStorage: (confirmed?: boolean) => void;
   clearPaymentFromStorage: () => void;
-}
-
-interface BillingDataManagerType {
-  fetchBillingData: () => Promise<void>;
 }
 
 interface PaymentCreationManagerType {
@@ -72,19 +52,21 @@ export default function BillingManager() {
     null
   );
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-  const [isBillingLoading, setIsBillingLoading] = useState(true);
 
-  // State for billing data
-  const [billingData, setBillingData] = useState<BillingData>({
-    balance: 0,
-    totalDeposits: 0,
-    pendingAmount: 0,
-    recentTransactions: [],
-  });
+  // Use React Query for billing data
+  const {
+    billingData,
+    isLoading: isBillingLoading,
+    refreshBillingData,
+  } = useBillingData();
+
+  // Create a wrapper function that matches the expected signature
+  const handleRefreshBillingData = useCallback(async () => {
+    await refreshBillingData();
+  }, [refreshBillingData]);
 
   // Use refs to store managers
   const paymentStorageRef = useRef<PaymentStorageManagerType | null>(null);
-  const billingDataManagerRef = useRef<BillingDataManagerType | null>(null);
   const paymentCreationManagerRef = useRef<PaymentCreationManagerType | null>(
     null
   );
@@ -99,10 +81,6 @@ export default function BillingManager() {
       setPaymentConfirmed,
     });
 
-    billingDataManagerRef.current = BillingDataManager({
-      setBillingData,
-    });
-
     paymentCreationManagerRef.current = PaymentCreationManager({
       amount,
       network,
@@ -111,7 +89,9 @@ export default function BillingManager() {
       setCurrentPayment,
       setPaymentConfirmed,
       setAmount,
-      billingDataManager: billingDataManagerRef.current!,
+      billingDataManager: {
+        fetchBillingData: handleRefreshBillingData, // Use the wrapper function
+      },
     });
   }, [
     currentPayment,
@@ -123,7 +103,7 @@ export default function BillingManager() {
     setError,
     setIsSubmitting,
     setAmount,
-    setBillingData,
+    handleRefreshBillingData,
   ]);
 
   // Load persisted payment on component mount
@@ -139,16 +119,6 @@ export default function BillingManager() {
       paymentStorageRef.current.savePaymentToStorage();
     }
   }, [currentPayment, network, paymentConfirmed, paymentStorageRef]);
-
-  // Fetch billing data on component mount
-  useEffect(() => {
-    if (billingDataManagerRef.current) {
-      setIsBillingLoading(true);
-      billingDataManagerRef.current
-        .fetchBillingData()
-        .finally(() => setIsBillingLoading(false));
-    }
-  }, [billingDataManagerRef]);
 
   const handleCreatePayment = useCallback(
     async (e: React.FormEvent) => {

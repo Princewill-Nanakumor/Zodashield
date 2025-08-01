@@ -27,6 +27,7 @@ import { useRowSelection } from "./RowSelection";
 import { usePanelNavigation } from "./PanelNavigation";
 import { useTableColumns } from "./TableColumns";
 import { useTableConfiguration } from "./TableConfiguration";
+import { Loader } from "lucide-react";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -76,30 +77,6 @@ export default function LeadsTable({
     return sorting;
   }, [sorting]);
 
-  // --- DEBUG LOG: Every render ---
-  console.log("LeadsTable render", {
-    filterByUser,
-    filterByCountry,
-    filterByStatus,
-    sorting: stableSorting,
-    pageIndex,
-    pageSize,
-    leadsCount: leads.length,
-  });
-
-  // Debug log to see what's causing re-renders - FIXED DEPENDENCY ARRAY
-  useEffect(() => {
-    console.log("LeadsTable re-render triggered:", {
-      leadsLength: leads.length,
-      leadsIds: leads.slice(0, 3).map((l) => l._id),
-      pageIndex,
-      filterByUser,
-      filterByCountry,
-      filterByStatus,
-      reason: "props changed",
-    });
-  }, [leads, pageIndex, filterByUser, filterByCountry, filterByStatus]);
-
   // Sync pageIndex with URL on mount ONLY (not on every URL change)
   useEffect(() => {
     if (isInitializedRef.current) return;
@@ -107,10 +84,6 @@ export default function LeadsTable({
     const pageParam = searchParams.get("page");
     if (pageParam && !isNaN(Number(pageParam))) {
       const newPageIndex = Number(pageParam) - 1;
-      console.log("Initializing pageIndex from URL:", {
-        pageParam,
-        newPageIndex,
-      });
       setPageIndex(newPageIndex);
     }
 
@@ -123,11 +96,6 @@ export default function LeadsTable({
     if (currentPage && !isNaN(Number(currentPage))) {
       const targetPage = Number(currentPage) - 1;
       if (pageIndex !== targetPage) {
-        console.log("Preserving page position:", {
-          from: pageIndex,
-          to: targetPage,
-          reason: "leads changed",
-        });
         setPageIndex(targetPage);
       }
     }
@@ -146,16 +114,6 @@ export default function LeadsTable({
     );
   }, []);
 
-  useEffect(() => {
-    console.log("LeadsTable: Received leads:", {
-      count: leads.length,
-      searchQuery,
-      filterByUser,
-      filterByCountry,
-      filterByStatus,
-    });
-  }, [leads, searchQuery, filterByUser, filterByCountry, filterByStatus]);
-
   // Use props selectedLeads if provided, otherwise use store
   const displaySelectedLeads =
     selectedLeads.length > 0 ? selectedLeads : storeSelectedLeads;
@@ -169,7 +127,6 @@ export default function LeadsTable({
     searchQuery,
     onSortChange: useCallback(
       (field, order) => {
-        console.log("Sort change triggered:", { field, order });
         setSorting([{ id: field, desc: order === "desc" }]);
       },
       [setSorting]
@@ -180,16 +137,6 @@ export default function LeadsTable({
   const currentPageLeads = useMemo(() => {
     const startIndex = pageIndex * pageSize;
     const endIndex = startIndex + pageSize;
-
-    console.log("currentPageLeads calculation:", {
-      pageIndex,
-      pageSize,
-      startIndex,
-      endIndex,
-      sortedLeadsLength: sortedLeads.length,
-      wouldBeEmpty: startIndex >= sortedLeads.length,
-    });
-
     return sortedLeads.slice(startIndex, endIndex);
   }, [sortedLeads, pageIndex, pageSize]);
 
@@ -242,7 +189,7 @@ export default function LeadsTable({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-pulse rounded-full w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500"></div>
+        <Loader />
       </div>
     );
   }

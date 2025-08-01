@@ -11,7 +11,7 @@ interface EmptyStateAdminLeadsTableProps {
   searchQuery?: string;
   filterByUser?: string;
   filterByCountry?: string;
-  filterByStatus?: string; // Add this prop
+  filterByStatus?: string;
   hasFilters?: boolean;
   users?: User[];
 }

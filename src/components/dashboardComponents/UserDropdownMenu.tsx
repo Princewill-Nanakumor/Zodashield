@@ -16,17 +16,20 @@ interface UserDropdownMenuProps {
       role?: string;
     };
   } | null;
-  userProfile: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    balance?: number;
-    role?: string;
-    currentPlan?: string;
-    subscriptionStatus?: "active" | "inactive" | "trial" | "expired";
-    trialEndsAt?: string;
-    subscriptionEndDate?: string;
-  } | null;
+  userProfile:
+    | {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        balance?: number;
+        role?: string;
+        currentPlan?: string;
+        subscriptionStatus?: "active" | "inactive" | "trial" | "expired";
+        trialEndsAt?: string;
+        subscriptionEndDate?: string;
+      }
+    | null
+    | undefined; // Added undefined to handle React Query's undefined state
   balanceLoading: boolean;
   dropdownOpen: boolean;
   setDropdownOpen: (open: boolean) => void;

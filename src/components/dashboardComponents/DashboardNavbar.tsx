@@ -1,3 +1,4 @@
+// src/components/dashboardComponents/DashboardNavbar.tsx
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -8,21 +9,12 @@ import ThemeToggle from "./ThemeToggle";
 import { DateTimeDisplay } from "./DateTimeDisplay";
 import { UserDropdownMenu } from "./UserDropdownMenu";
 import { NotificationBell } from "./NotificationBell";
+import { useUserProfileData } from "@/hooks/useNavbarData";
 
 interface DashboardNavbarProps {
   onSearch: (query: string) => void;
   searchQuery: string;
   isLoading?: boolean;
-}
-
-interface UserProfile {
-  _id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  balance: number;
-  status: string;
 }
 
 export default function DashboardNavbar({
@@ -33,34 +25,14 @@ export default function DashboardNavbar({
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Use React Query for user profile data
+  const { userProfile, isLoading: profileLoading } = useUserProfileData();
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Fetch user profile and balance
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (session?.user?.email) {
-        try {
-          setBalanceLoading(true);
-          const response = await fetch("/api/user/profile");
-          if (response.ok) {
-            const data = await response.json();
-            setUserProfile(data.user);
-          }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-        } finally {
-          setBalanceLoading(false);
-        }
-      }
-    };
-    fetchUserProfile();
-  }, [session?.user?.email]);
 
   // Dropdown close on outside click
   useEffect(() => {
@@ -110,7 +82,7 @@ export default function DashboardNavbar({
           <UserDropdownMenu
             session={session}
             userProfile={userProfile}
-            balanceLoading={balanceLoading}
+            balanceLoading={profileLoading}
             dropdownOpen={dropdownOpen}
             setDropdownOpen={setDropdownOpen}
             dropdownRef={dropdownRef}
@@ -140,7 +112,7 @@ export default function DashboardNavbar({
         <UserDropdownMenu
           session={session}
           userProfile={userProfile}
-          balanceLoading={balanceLoading}
+          balanceLoading={profileLoading}
           dropdownOpen={dropdownOpen}
           setDropdownOpen={setDropdownOpen}
           dropdownRef={dropdownRef}

@@ -1,48 +1,16 @@
 // src/components/dashboardComponents/PlanDisplay.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Crown } from "lucide-react";
-
-interface SubscriptionData {
-  isOnTrial: boolean;
-  trialEndsAt: string | null;
-  currentPlan: string | null;
-  subscriptionStatus: "active" | "inactive" | "trial" | "expired";
-  balance: number;
-  subscriptionEndDate?: string | null;
-  subscriptionStartDate?: string | null;
-}
+import { useSubscriptionData } from "@/hooks/useNavbarData";
 
 interface PlanDisplayProps {
   isAdmin: boolean;
 }
 
 export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
-  const [subscriptionData, setSubscriptionData] =
-    useState<SubscriptionData | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
-
-  // Fetch subscription data when component mounts
-  useEffect(() => {
-    if (isAdmin && !subscriptionData) {
-      const fetchSubscriptionData = async () => {
-        try {
-          setSubscriptionLoading(true);
-          const response = await fetch("/api/subscription/status");
-          if (response.ok) {
-            const data = await response.json();
-            setSubscriptionData(data);
-          }
-        } catch (error) {
-          console.error("Error fetching subscription data:", error);
-        } finally {
-          setSubscriptionLoading(false);
-        }
-      };
-
-      fetchSubscriptionData();
-    }
-  }, [isAdmin, subscriptionData]);
+  const { subscriptionData, isLoading: subscriptionLoading } =
+    useSubscriptionData();
 
   // Helper function to calculate remaining days
   const getRemainingDays = () => {

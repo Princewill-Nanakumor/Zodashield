@@ -15,7 +15,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 interface DashboardSearchBarProps {
   onSearch: (query: string) => void;
-  searchQuery?: string; // Add this prop
+  searchQuery?: string;
   isLoading?: boolean;
   placeholder?: string;
 }
