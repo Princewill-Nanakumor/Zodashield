@@ -40,7 +40,7 @@ export const ConnectionStatus = () => {
       toast({
         title: "Connection Issue",
         description:
-          "Some features may be unavailable. Please check your connection.",
+          "Some features may be unavailable. Please check your connection or refresh the page",
         variant: "destructive",
         duration: 5000,
       });
