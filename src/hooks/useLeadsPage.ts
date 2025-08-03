@@ -27,6 +27,7 @@ export const useLeadsPage = (
   searchQuery: string,
   setLayoutLoading?: (loading: boolean) => void
 ) => {
+  // ===== HOOKS & STATE =====
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const isOnline = useNetworkStatus();
@@ -34,23 +35,10 @@ export const useLeadsPage = (
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // Helper function to get initial filter values from localStorage or URL
-  const getInitialFilterValue = (
-    key: string,
-    urlValue: string | null,
-    defaultValue: string
-  ) => {
-    if (typeof window !== "undefined") {
-      // Prioritize URL parameters, then localStorage, then default
-      return urlValue || localStorage.getItem(key) || defaultValue;
-    }
-    return urlValue || defaultValue;
-  };
+  // Initialize state
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Get initial filters from URL
-  const initialCountry = searchParams.get("country");
-  const initialStatus = searchParams.get("status");
-
+  // ===== DATA HOOKS =====
   const {
     leads,
     users,
@@ -66,6 +54,23 @@ export const useLeadsPage = (
   const { selectedLeads, setSelectedLeads, filterByUser, setFilterByUser } =
     useLeadsStore();
 
+  // ===== HELPER FUNCTIONS =====
+  const getInitialFilterValue = (
+    key: string,
+    urlValue: string | null,
+    defaultValue: string
+  ) => {
+    if (typeof window !== "undefined") {
+      return urlValue || localStorage.getItem(key) || defaultValue;
+    }
+    return urlValue || defaultValue;
+  };
+
+  // ===== INITIAL FILTER VALUES =====
+  const initialCountry = searchParams.get("country");
+  const initialStatus = searchParams.get("status");
+
+  // ===== UI STATE =====
   const [uiState, setUiState] = useState({
     isDialogOpen: false,
     isUnassignDialogOpen: false,
@@ -83,47 +88,94 @@ export const useLeadsPage = (
     searchQuery: searchQuery,
   });
 
-  // Save filter values to localStorage whenever they change
+  // ===== INITIALIZATION EFFECT =====
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEYS.FILTER_BY_COUNTRY,
-      uiState.filterByCountry
-    );
-  }, [uiState.filterByCountry]);
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ===== LOCALSTORAGE PERSISTENCE =====
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem(
+        STORAGE_KEYS.FILTER_BY_COUNTRY,
+        uiState.filterByCountry
+      );
+    }
+  }, [uiState.filterByCountry, isInitialized]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FILTER_BY_STATUS, uiState.filterByStatus);
-  }, [uiState.filterByStatus]);
+    if (isInitialized) {
+      localStorage.setItem(
+        STORAGE_KEYS.FILTER_BY_STATUS,
+        uiState.filterByStatus
+      );
+    }
+  }, [uiState.filterByStatus, isInitialized]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FILTER_BY_USER, filterByUser);
-  }, [filterByUser]);
+    if (isInitialized) {
+      localStorage.setItem(STORAGE_KEYS.FILTER_BY_USER, filterByUser);
+    }
+  }, [filterByUser, isInitialized]);
 
-  // Improved session refresh logic with timeout handling
+  // ===== SESSION MANAGEMENT =====
   useEffect(() => {
+    let isMounted = true;
+    let currentController: AbortController | null = null;
+    let currentTimeout: NodeJS.Timeout | null = null;
+
     const handleVisibilityChange = async () => {
       if (
         document.visibilityState === "visible" &&
-        status === "authenticated"
+        status === "authenticated" &&
+        isMounted
       ) {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          if (currentController && !currentController.signal.aborted) {
+            currentController.abort();
+          }
+          if (currentTimeout) {
+            clearTimeout(currentTimeout);
+            currentTimeout = null;
+          }
+
+          currentController = new AbortController();
+
+          currentTimeout = setTimeout(() => {
+            if (currentController && !currentController.signal.aborted) {
+              currentController.abort();
+            }
+          }, 10000);
 
           const response = await fetch("/api/users", {
             credentials: "include",
-            signal: controller.signal,
+            signal: currentController.signal,
           });
 
-          clearTimeout(timeoutId);
+          if (currentTimeout) {
+            clearTimeout(currentTimeout);
+            currentTimeout = null;
+          }
 
-          if (response.status === 401) {
+          if (response.status === 401 && isMounted) {
             await update();
           }
         } catch (error) {
-          console.error("Session check failed:", error);
-          if (error instanceof Error && error.name === "AbortError") {
-            console.log("Session check timed out, continuing...");
+          if (currentTimeout) {
+            clearTimeout(currentTimeout);
+            currentTimeout = null;
+          }
+
+          if (
+            isMounted &&
+            error instanceof Error &&
+            error.name !== "AbortError"
+          ) {
+            console.error("Session check failed:", error);
           }
         }
       }
@@ -136,22 +188,31 @@ export const useLeadsPage = (
     }
 
     return () => {
+      isMounted = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      if (currentController && !currentController.signal.aborted) {
+        try {
+          currentController.abort();
+        } catch (error) {
+          console.error("Database connection failed:", error);
+        }
+      }
+      if (currentTimeout) {
+        clearTimeout(currentTimeout);
+      }
     };
   }, [status, update]);
 
-  // Sync searchQuery prop with local state
+  // ===== STATE SYNC EFFECTS =====
   useEffect(() => {
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
 
-  // Sync filters with URL changes (but don't override localStorage on initial load)
   useEffect(() => {
     const urlCountry = searchParams.get("country");
     const urlStatus = searchParams.get("status");
 
-    // Only update if URL parameters are different from current state
-    // This prevents overriding localStorage values on initial load
     if (urlCountry !== null && urlCountry !== uiState.filterByCountry) {
       setUiState((prev) => ({ ...prev, filterByCountry: urlCountry }));
     }
@@ -160,13 +221,13 @@ export const useLeadsPage = (
     }
   }, [searchParams, uiState.filterByCountry, uiState.filterByStatus]);
 
-  // Update layout loading state with better error handling
   useEffect(() => {
     if (setLayoutLoading) {
       setLayoutLoading(isLoadingLeads || isLoadingUsers);
     }
   }, [isLoadingLeads, isLoadingUsers, setLayoutLoading]);
 
+  // ===== COMPUTED VALUES =====
   const availableCountries = useMemo(() => {
     return getAvailableCountries(leads);
   }, [leads]);
@@ -175,13 +236,11 @@ export const useLeadsPage = (
     return statuses.map((status) => status.name);
   }, [statuses]);
 
-  // STABILIZED LEADS DATA with better error handling
   const stableLeads = useMemo(() => {
     if (!leads || leads.length === 0) {
       return [];
     }
-    const sorted = [...leads].sort((a, b) => a._id.localeCompare(b._id));
-    return sorted;
+    return [...leads].sort((a, b) => a._id.localeCompare(b._id));
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
@@ -259,7 +318,7 @@ export const useLeadsPage = (
   const showEmptyState =
     !shouldShowLoading && filteredLeads.length === 0 && leads.length === 0;
 
-  // Improved assignment handler with better error handling
+  // ===== EVENT HANDLERS =====
   const handleAssignLeads = useCallback(async () => {
     if (selectedLeads.length === 0 || !uiState.selectedUser) {
       toast({
@@ -304,7 +363,6 @@ export const useLeadsPage = (
     toast,
   ]);
 
-  // Improved unassignment handler with better error handling
   const handleUnassignLeads = useCallback(async () => {
     const leadsToUnassign = selectedLeads.filter(
       (lead) => !!getAssignedUserId(lead.assignedTo)
@@ -399,6 +457,7 @@ export const useLeadsPage = (
     (lead) => !!getAssignedUserId(lead.assignedTo)
   );
 
+  // ===== RETURN OBJECT =====
   return {
     session,
     status,
@@ -428,5 +487,6 @@ export const useLeadsPage = (
     handleStatusFilterChange,
     handleFilterChange,
     hasAssignedLeads,
+    isInitializing: !isInitialized,
   };
 };

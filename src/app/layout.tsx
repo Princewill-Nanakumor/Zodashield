@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { StatusProvider } from "@/context/StatusContext";
 import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
 import { Providers } from "@/app/providers";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -164,7 +165,10 @@ export default function RootLayout({
           <ThemeProvider>
             <Toaster />
             <ClientProviders>
-              <StatusProvider>{children}</StatusProvider>
+              <StatusProvider>
+                {children}
+                <ConnectionStatus />
+              </StatusProvider>
             </ClientProviders>
           </ThemeProvider>
         </Providers>

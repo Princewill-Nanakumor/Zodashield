@@ -60,6 +60,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleStatusFilterChange,
     handleFilterChange,
     hasAssignedLeads,
+    isInitializing, // Add this line
   } = useLeadsPage(searchQuery, setLayoutLoading);
 
   const handleLeadUpdate = useCallback(async () => {
@@ -129,6 +130,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           onFilterChange={handleFilterChange}
           users={users}
           isLoadingUsers={isLoadingUsers}
+          isInitializing={isInitializing} // Add this line
         />
 
         <div className="flex-1 overflow-auto px-8 py-6">

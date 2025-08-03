@@ -18,6 +18,7 @@ interface FilterControlsProps {
   onFilterChange: (newFilter: string) => void;
   users: User[];
   isLoading?: boolean;
+  isInitializing?: boolean;
 }
 
 export const FilterControls: React.FC<FilterControlsProps> = ({
@@ -25,6 +26,7 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
   onFilterChange,
   users,
   isLoading = false,
+  isInitializing = false,
 }) => {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
@@ -59,6 +61,16 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
     localStorage.removeItem("statusModalOpen");
   };
 
+  // Show skeleton during initialization
+  if (isInitializing) {
+    return (
+      <div className="flex gap-4">
+        <div className="w-[120px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+        <div className="w-[200px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex gap-4">
       <Button
@@ -70,7 +82,7 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
         Add Status
       </Button>
 
-      {/* Replaced Radix UI Select with simple HTML select */}
+      {/* User Filter */}
       <div className="relative">
         <select
           value={filterByUser}
