@@ -44,6 +44,7 @@ export const useLeadsPage = (
     users,
     statuses,
     isLoadingLeads,
+    isRefetchingLeads, // Add this line
     isLoadingUsers,
     assignLeads,
     unassignLeads,
@@ -467,6 +468,7 @@ export const useLeadsPage = (
     users,
     statuses,
     isLoadingLeads,
+    isRefetchingLeads, // Add this line
     isLoadingUsers,
     isAssigning,
     isUnassigning,

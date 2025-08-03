@@ -5,7 +5,7 @@ import { User } from "@/types/user.types";
 import { useLeadsStore } from "@/stores/leadsStore";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface ApiLead {
   _id?: string;
@@ -42,17 +42,35 @@ const apiCallWithSessionRefresh = async (
   options: RequestInit = {}
 ) => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+  // Get cached ETag if available
+  const cachedETag = localStorage.getItem(`etag-${url}`);
 
   try {
-    // First attempt
     const response = await fetch(url, {
       ...options,
       credentials: "include",
       signal: controller.signal,
+      headers: {
+        ...options.headers,
+        ...(cachedETag && { "If-None-Match": cachedETag }),
+      },
     });
 
     clearTimeout(timeoutId);
+
+    // Handle 304 Not Modified
+    if (response.status === 304) {
+      console.log("✅ Data unchanged, using cached version");
+      return response;
+    }
+
+    // Store new ETag if provided
+    const newETag = response.headers.get("ETag");
+    if (newETag) {
+      localStorage.setItem(`etag-${url}`, newETag);
+    }
 
     // If unauthorized, try to refresh session
     if (response.status === 401) {
@@ -61,7 +79,7 @@ const apiCallWithSessionRefresh = async (
       const refreshController = new AbortController();
       const refreshTimeoutId = setTimeout(
         () => refreshController.abort(),
-        10000
+        15000
       );
 
       try {
@@ -77,7 +95,7 @@ const apiCallWithSessionRefresh = async (
           const retryController = new AbortController();
           const retryTimeoutId = setTimeout(
             () => retryController.abort(),
-            30000
+            60000
           );
 
           try {
@@ -125,10 +143,62 @@ const isUnauthorizedError = (error: unknown): boolean => {
   return false;
 };
 
+// Window focus refetch hook
+const useWindowFocusRefetch = (inactiveThreshold = 30 * 60 * 1000) => {
+  const queryClient = useQueryClient();
+  const lastActiveTime = useRef(Date.now());
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const now = Date.now();
+        const timeInactive = now - lastActiveTime.current;
+
+        if (timeInactive > inactiveThreshold) {
+          console.log(
+            "🔄 App was inactive for",
+            Math.round(timeInactive / 60000),
+            "minutes, refetching data..."
+          );
+          queryClient.invalidateQueries();
+        }
+      } else {
+        lastActiveTime.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => {
+      const now = Date.now();
+      const timeInactive = now - lastActiveTime.current;
+
+      if (timeInactive > inactiveThreshold) {
+        console.log(
+          "🔄 Window was inactive for",
+          Math.round(timeInactive / 60000),
+          "minutes, refetching data..."
+        );
+        queryClient.invalidateQueries();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [queryClient, inactiveThreshold]);
+};
+
 export const useLeads = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { status } = useSession();
+
+  // Initialize window focus refetch
+  useWindowFocusRefetch(30 * 60 * 1000); // 30 minutes
+
   const {
     setLeads,
     setLoadingLeads,
@@ -138,7 +208,7 @@ export const useLeads = () => {
     setLoadingStatuses,
   } = useLeadsStore();
 
-  // Fetch statuses with improved error handling and timeout
+  // Fetch statuses with improved persistence and error handling
   const { data: statuses = [], error: statusesError } = useQuery({
     queryKey: ["statuses"],
     queryFn: async (): Promise<
@@ -189,17 +259,22 @@ export const useLeads = () => {
       if (error instanceof Error && error.message.includes("timed out"))
         return false;
 
-      if (failureCount < 2) {
+      // More retries for better resilience
+      if (failureCount < 3) {
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    staleTime: 10 * 60 * 1000,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 60 * 60 * 1000, // 1 hour - statuses rarely change
+    gcTime: 2 * 60 * 60 * 1000, // 2 hours cache time
+    refetchOnMount: "always", // Always refetch on mount
+    refetchOnWindowFocus: false, // Disable automatic refetch
+    refetchOnReconnect: true, // Keep this for network reconnection
     enabled: status === "authenticated",
   });
 
-  // Fetch users with improved error handling and timeout
+  // Fetch users with improved persistence and error handling
   const { data: users = [], error: usersError } = useQuery({
     queryKey: ["users"],
     queryFn: async (): Promise<User[]> => {
@@ -256,22 +331,28 @@ export const useLeads = () => {
       if (error instanceof Error && error.message.includes("timed out"))
         return false;
 
-      if (failureCount < 2) {
+      // More retries for better resilience
+      if (failureCount < 3) {
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    staleTime: 5 * 60 * 1000,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes cache time
+    refetchOnMount: "always", // Always refetch on mount
+    refetchOnWindowFocus: false, // Disable automatic refetch
+    refetchOnReconnect: true, // Keep this for network reconnection
     enabled: status === "authenticated",
   });
 
-  // Fetch leads with improved error handling and timeout
+  // Fetch leads with improved persistence and error handling
   const {
     data: leads = [],
     isLoading: isLoadingLeads,
     error: leadsError,
     refetch: refetchLeads,
+    isFetching: isRefetchingLeads, // Add this for optimistic UI
   } = useQuery({
     queryKey: ["leads"],
     queryFn: async (): Promise<Lead[]> => {
@@ -355,13 +436,18 @@ export const useLeads = () => {
       if (error instanceof Error && error.message.includes("timed out"))
         return false;
 
-      if (failureCount < 2) {
+      // More retries for better resilience
+      if (failureCount < 3) {
         return true;
       }
       return false;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    staleTime: 2 * 60 * 1000,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 30 * 60 * 1000, // 30 minutes - much longer
+    gcTime: 60 * 60 * 1000, // 1 hour cache time
+    refetchOnMount: "always", // Always refetch on mount
+    refetchOnWindowFocus: false, // Disable automatic refetch
+    refetchOnReconnect: true, // Keep this for network reconnection
     enabled: status === "authenticated",
   });
 
@@ -658,6 +744,7 @@ export const useLeads = () => {
     users,
     statuses,
     isLoadingLeads,
+    isRefetchingLeads, // Add this for optimistic UI
     isLoadingUsers: useLeadsStore((state) => state.isLoadingUsers),
     isLoadingStatuses: useLeadsStore((state) => state.isLoadingStatuses),
     assignLeads: assignLeadsMutation.mutateAsync,

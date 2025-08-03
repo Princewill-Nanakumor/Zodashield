@@ -35,7 +35,7 @@ export default function Support({
     try {
       await navigator.clipboard.writeText(supportEmail);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy email:", error);
       // Fallback for older browsers

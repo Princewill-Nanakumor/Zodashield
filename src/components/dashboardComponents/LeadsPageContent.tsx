@@ -17,6 +17,7 @@ import {
 } from "./LeadsLoadingState";
 import { useLeadsPage } from "@/hooks/useLeadsPage";
 import { SubscriptionGuard } from "./SubscriptionGuard";
+import { RefetchIndicator } from "@/components/ui/RefetchIndicator";
 
 const USER_ROLES = {
   ADMIN: "ADMIN",
@@ -60,7 +61,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleStatusFilterChange,
     handleFilterChange,
     hasAssignedLeads,
-    isInitializing, // Add this line
+    isInitializing,
+    isRefetchingLeads, // Add this line
   } = useLeadsPage(searchQuery, setLayoutLoading);
 
   const handleLeadUpdate = useCallback(async () => {
@@ -103,6 +105,9 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   return (
     <SubscriptionGuard>
       <div className="flex flex-col h-full bg-background dark:bg-gray-800 border-1 rounded-lg">
+        {/* Add refetch indicator */}
+        {isRefetchingLeads && <RefetchIndicator />}
+
         <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
 
         <LeadsFilterControls
@@ -130,7 +135,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           onFilterChange={handleFilterChange}
           users={users}
           isLoadingUsers={isLoadingUsers}
-          isInitializing={isInitializing} // Add this line
+          isInitializing={isInitializing}
         />
 
         <div className="flex-1 overflow-auto px-8 py-6">

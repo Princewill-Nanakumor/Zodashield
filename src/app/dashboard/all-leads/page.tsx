@@ -4,24 +4,11 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import LeadsPageContent from "@/components/dashboardComponents/LeadsPageContent";
 import { useSearchContext } from "@/context/SearchContext";
 import { Shield } from "lucide-react";
-
-// Create a client with improved settings
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 1,
-      refetchOnWindowFocus: false, // 🔥 KEY CHANGE: Disable automatic refetch
-      refetchOnReconnect: true, // Keep this for network reconnection
-      refetchOnMount: true, // Keep this for component mounting
-      gcTime: 10 * 60 * 1000, // 10 minutes cache time (replaces cacheTime)
-    },
-  },
-});
+import { queryClient } from "@/lib/queryClient";
 
 const AllLeadsPage: React.FC = () => {
   const { data: session, status } = useSession();
@@ -43,9 +30,7 @@ const AllLeadsPage: React.FC = () => {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="relative w-16 h-16 flex items-center justify-center">
-          {/* Rotating border */}
           <div className="absolute inset-0 border-4 border-transparent border-t-blue-400 border-r-purple-500 rounded-full animate-spin w-16 h-16"></div>
-
           <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600">
             <Shield size={28} className="text-white" />
           </div>
@@ -54,7 +39,6 @@ const AllLeadsPage: React.FC = () => {
     );
   }
 
-  // Don't render anything if we're redirecting
   if (
     status === "unauthenticated" ||
     (status === "authenticated" && session?.user?.role !== "ADMIN")
