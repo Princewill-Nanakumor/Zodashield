@@ -27,7 +27,7 @@ export const ConnectionStatus = () => {
     },
     retry: 1,
     retryDelay: 2000,
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 30000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     staleTime: 5000,

@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { PlusIcon, Shield } from "lucide-react";
 import { UserFormModal } from "./UserFormModal";
 import { PasswordResetModal } from "../dashboardComponents/PasswordRestModal";
-import { UserDataManager } from "../user-management/UserDataManager";
 import { UserCRUDOperations } from "@/components/user-management/UserCRUDOperations";
 import { UserTableDisplay } from "@/components/user-management/UserTableDisplay";
 import { AuthGuard } from "@/components/user-management/AuthGuard";
 import UsageLimitsDisplay from "./UsageLimitsDisplay";
 import { useUserUsageData } from "@/hooks/useUserUsageData";
+import { useUsersData } from "@/hooks/useUsersData";
 
 interface User {
   id: string;
@@ -46,8 +46,6 @@ export default function UsersManagement({
   filterActiveOnly = true,
 }: UsersManagementProps) {
   const { status } = useSession();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -55,38 +53,42 @@ export default function UsersManagement({
     useState<User | null>(null);
   const [showUsageLimit, setShowUsageLimit] = useState(false);
 
+  // Use React Query for user data
+  const {
+    data: users = [],
+    isLoading: usersLoading,
+    refetch: refetchUsers,
+  } = useUsersData();
+
   // Use React Query for user usage data
   const { userUsageData, isLoading: usageDataLoading } = useUserUsageData();
 
   const handleUserCreated = useCallback(
     (user: User) => {
       onUserCreated?.(user);
-      setUsers((prev) => {
-        const filtered = prev.filter((u) => u.id !== user.id);
-        return [user, ...filtered];
-      });
+      refetchUsers(); // Refetch users after creation
       setShowModal(false);
       setSelectedUser(null);
     },
-    [onUserCreated]
+    [onUserCreated, refetchUsers]
   );
 
   const handleUserUpdated = useCallback(
     (user: User) => {
       onUserUpdated?.(user);
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
+      refetchUsers(); // Refetch users after update
       setShowModal(false);
       setSelectedUser(null);
     },
-    [onUserUpdated]
+    [onUserUpdated, refetchUsers]
   );
 
   const handleUserDeleted = useCallback(
     (userId: string) => {
       onUserDeleted?.(userId);
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      refetchUsers(); // Refetch users after deletion
     },
-    [onUserDeleted]
+    [onUserDeleted, refetchUsers]
   );
 
   const handleCreateUserClick = useCallback(() => {
@@ -113,136 +115,134 @@ export default function UsersManagement({
 
   return (
     <AuthGuard>
-      <UserDataManager onUsersLoaded={setUsers} onLoadingChange={setLoading}>
-        <UserCRUDOperations
-          onUserCreated={handleUserCreated}
-          onUserUpdated={handleUserUpdated}
-          onUserDeleted={handleUserDeleted}
-          onRefreshUsers={() => {}}
-        >
-          {({
-            handleCreateUser,
-            handleUpdateUser,
-            handleDeleteUser,
-            handleResetPassword,
-          }) => (
-            <div className="space-y-6 p-6 bg-background dark:bg-gray-800 rounded border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    User Management
-                  </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Create and manage user accounts for your organization
-                  </p>
-                </div>
-                {showCreateButton && (
-                  <div className="flex items-center gap-2">
-                    {usageDataLoading ? (
-                      // Loading skeleton for the button
-                      <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse">
-                        <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                        <div className="w-20 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                      </div>
-                    ) : (
-                      <Button
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 !text-white"
-                        onClick={handleCreateUserClick}
-                        disabled={
-                          !!(userUsageData && !userUsageData.canAddTeamMember)
-                        }
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        Create User
-                      </Button>
-                    )}
-                  </div>
-                )}
+      <UserCRUDOperations
+        onUserCreated={handleUserCreated}
+        onUserUpdated={handleUserUpdated}
+        onUserDeleted={handleUserDeleted}
+        onRefreshUsers={refetchUsers}
+      >
+        {({
+          handleCreateUser,
+          handleUpdateUser,
+          handleDeleteUser,
+          handleResetPassword,
+        }) => (
+          <div className="space-y-6 p-6 bg-background dark:bg-gray-800 rounded border">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  User Management
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Create and manage user accounts for your organization
+                </p>
               </div>
-
-              {/* Usage Limits Display - Now uses React Query */}
-              <UsageLimitsDisplay
-                showUsageLimit={showUsageLimit}
-                onShowUsageLimit={setShowUsageLimit}
-              />
-
-              <UserTableDisplay
-                users={users}
-                loading={loading}
-                filterActiveOnly={filterActiveOnly}
-                showActions={showActions}
-                onEditUser={(user) => {
-                  setSelectedUser(user);
-                  setShowModal(true);
-                }}
-                onDeleteUser={handleDeleteUser}
-                onResetPassword={(userId) => {
-                  const user = users.find((u) => u.id === userId);
-                  if (user) {
-                    setSelectedUserForPassword(user);
-                    setShowPasswordModal(true);
-                  }
-                }}
-              />
-
-              <UserFormModal
-                isOpen={showModal}
-                onClose={() => {
-                  setShowModal(false);
-                  setSelectedUser(null);
-                }}
-                onSubmit={async (userData) => {
-                  try {
-                    if (selectedUser) {
-                      await handleUpdateUser(userData, selectedUser.id);
-                    } else {
-                      await handleCreateUser(userData);
-                    }
-                  } catch (error) {
-                    console.error("Error in form submission:", error);
-                    throw error;
-                  }
-                }}
-                initialData={
-                  selectedUser
-                    ? {
-                        firstName: selectedUser.firstName,
-                        lastName: selectedUser.lastName,
-                        email: selectedUser.email,
-                        phoneNumber: selectedUser.phoneNumber,
-                        country: selectedUser.country,
-                        role: selectedUser.role,
-                        status: selectedUser.status,
-                        permissions: selectedUser.permissions,
+              {showCreateButton && (
+                <div className="flex items-center gap-2">
+                  {usageDataLoading ? (
+                    // Loading skeleton for the button
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse">
+                      <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      <div className="w-20 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                    </div>
+                  ) : (
+                    <Button
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 !text-white"
+                      onClick={handleCreateUserClick}
+                      disabled={
+                        !!(userUsageData && !userUsageData.canAddTeamMember)
                       }
-                    : undefined
-                }
-                mode={selectedUser ? "edit" : "create"}
-                usageData={userUsageData}
-              />
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      Create User
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
-              <PasswordResetModal
-                isOpen={showPasswordModal}
-                onClose={() => {
+            {/* Usage Limits Display - Now uses React Query */}
+            <UsageLimitsDisplay
+              showUsageLimit={showUsageLimit}
+              onShowUsageLimit={setShowUsageLimit}
+            />
+
+            <UserTableDisplay
+              users={users}
+              loading={usersLoading}
+              filterActiveOnly={filterActiveOnly}
+              showActions={showActions}
+              onEditUser={(user) => {
+                setSelectedUser(user);
+                setShowModal(true);
+              }}
+              onDeleteUser={handleDeleteUser}
+              onResetPassword={(userId) => {
+                const user = users.find((u) => u.id === userId);
+                if (user) {
+                  setSelectedUserForPassword(user);
+                  setShowPasswordModal(true);
+                }
+              }}
+            />
+
+            <UserFormModal
+              isOpen={showModal}
+              onClose={() => {
+                setShowModal(false);
+                setSelectedUser(null);
+              }}
+              onSubmit={async (userData) => {
+                try {
+                  if (selectedUser) {
+                    await handleUpdateUser(userData, selectedUser.id);
+                  } else {
+                    await handleCreateUser(userData);
+                  }
+                } catch (error) {
+                  console.error("Error in form submission:", error);
+                  throw error;
+                }
+              }}
+              initialData={
+                selectedUser
+                  ? {
+                      firstName: selectedUser.firstName,
+                      lastName: selectedUser.lastName,
+                      email: selectedUser.email,
+                      phoneNumber: selectedUser.phoneNumber,
+                      country: selectedUser.country,
+                      role: selectedUser.role,
+                      status: selectedUser.status,
+                      permissions: selectedUser.permissions,
+                    }
+                  : undefined
+              }
+              mode={selectedUser ? "edit" : "create"}
+              usageData={userUsageData}
+            />
+
+            <PasswordResetModal
+              isOpen={showPasswordModal}
+              onClose={() => {
+                setShowPasswordModal(false);
+                setSelectedUserForPassword(null);
+              }}
+              onSubmit={async (password) => {
+                if (selectedUserForPassword) {
+                  await handleResetPassword(
+                    selectedUserForPassword.id,
+                    password
+                  );
                   setShowPasswordModal(false);
                   setSelectedUserForPassword(null);
-                }}
-                onSubmit={async (password) => {
-                  if (selectedUserForPassword) {
-                    await handleResetPassword(
-                      selectedUserForPassword.id,
-                      password
-                    );
-                    setShowPasswordModal(false);
-                    setSelectedUserForPassword(null);
-                  }
-                }}
-                userEmail={selectedUserForPassword?.email || ""}
-              />
-            </div>
-          )}
-        </UserCRUDOperations>
-      </UserDataManager>
+                }
+              }}
+              userEmail={selectedUserForPassword?.email || ""}
+            />
+          </div>
+        )}
+      </UserCRUDOperations>
     </AuthGuard>
   );
 }
