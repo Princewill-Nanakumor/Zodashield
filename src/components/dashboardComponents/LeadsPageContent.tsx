@@ -111,7 +111,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
         <LeadsHeader
           shouldShowLoading={shouldShowLoading}
           counts={counts}
-          isRefetching={isRefetchingLeads} // Pass this prop
+          // Remove the isRefetching prop - the header manages its own React Query state
         />
 
         <LeadsFilterControls
