@@ -10,6 +10,7 @@ interface LeadsHeaderProps {
     filtered: number;
     countries: number;
   };
+  isRefetching?: boolean; // Add this prop for refetch indicator
 }
 
 export const LeadsHeader: React.FC<LeadsHeaderProps> = ({

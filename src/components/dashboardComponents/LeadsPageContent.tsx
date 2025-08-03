@@ -62,7 +62,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleFilterChange,
     hasAssignedLeads,
     isInitializing,
-    isRefetchingLeads, // Add this line
+    isRefetchingLeads, // This comes from useLeadsPage
   } = useLeadsPage(searchQuery, setLayoutLoading);
 
   const handleLeadUpdate = useCallback(async () => {
@@ -108,7 +108,11 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
         {/* Add refetch indicator */}
         {isRefetchingLeads && <RefetchIndicator />}
 
-        <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
+        <LeadsHeader
+          shouldShowLoading={shouldShowLoading}
+          counts={counts}
+          isRefetching={isRefetchingLeads} // Pass this prop
+        />
 
         <LeadsFilterControls
           selectedLeads={selectedLeads}
