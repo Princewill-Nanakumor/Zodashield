@@ -45,7 +45,7 @@ export default function UsdtDepositSection({
   showInstructions,
   currentPayment,
   paymentConfirmed,
-  onNetworkToggle,
+  // onNetworkToggle,
   onAmountChange,
   onCreatePayment,
   onConfirmPayment,
@@ -99,12 +99,12 @@ export default function UsdtDepositSection({
             funds through the <span className="font-semibold">{network}</span>{" "}
             network.
           </p>
-          <Button
+          {/* <Button
             onClick={onNetworkToggle}
             className="px-6 py-1 text-xs dark:bg-transparent dark:hover:bg-white/10 dark:border dark:border-white/20 dark:text-white bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
           >
             Switch to {network === "TRC20" ? "ERC20" : "TRC20"}
-          </Button>
+          </Button> */}
         </div>
 
         <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
@@ -116,7 +116,7 @@ export default function UsdtDepositSection({
               </h4>
               <p className="text-yellow-700 dark:text-yellow-300 text-xs">
                 {network === "TRC20"
-                  ? "TRC20 deposits are faster and have lower fees (~1 USDT) compared to ERC20"
+                  ? "TRC20 deposits are faster and have lower fees "
                   : "ERC20 deposits may take longer and have higher gas fees (varies)"}
               </p>
             </div>

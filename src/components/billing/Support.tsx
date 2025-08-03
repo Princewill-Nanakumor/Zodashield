@@ -1,13 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Mail, Copy, Check } from "lucide-react";
 
 interface SupportProps {
   title?: string;
   description?: string;
   buttonText?: string;
   onContactSupport?: () => void;
+  supportEmail?: string;
 }
 
 export default function Support({
@@ -15,13 +17,36 @@ export default function Support({
   description = "Contact our support team if you encounter any issues or have questions about the deposit process.",
   buttonText = "Contact Support",
   onContactSupport,
+  supportEmail = "support@zohashield.com",
 }: SupportProps) {
+  const [copied, setCopied] = useState(false);
+
   const handleContactSupport = () => {
     if (onContactSupport) {
       onContactSupport();
     } else {
-      // Default behavior - you can customize this
-      window.open("support@zohashield", "_blank");
+      const subject = "Support Request";
+      const body = `Hello ZoHashield Support Team,\n\nI need assistance with:\n\n[Please describe your issue here]\n\nThank you,\n[Your Name]`;
+      window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
+  };
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(supportEmail);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    } catch (error) {
+      console.error("Failed to copy email:", error);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = supportEmail;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -34,6 +59,24 @@ export default function Support({
       <p className="dark:text-gray-300 text-gray-600 text-sm mb-4">
         {description}
       </p>
+
+      <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-white/5 rounded-lg">
+        <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          {supportEmail}
+        </span>
+        <button
+          onClick={handleCopyEmail}
+          className="ml-auto p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+          title="Copy email address"
+        >
+          {copied ? (
+            <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </button>
+      </div>
 
       <Button
         onClick={handleContactSupport}
