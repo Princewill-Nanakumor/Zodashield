@@ -2,7 +2,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useLeads } from "@/hooks/useLeads";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLeadsStore } from "@/stores/leadsStore";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,6 +15,7 @@ import {
   getAvailableCountries,
 } from "../utils/LeadsUtils";
 import { Lead } from "@/types/leads";
+import { User } from "@/types/user.types";
 
 // Local storage keys for filter persistence
 const STORAGE_KEYS = {
@@ -28,30 +29,189 @@ export const useLeadsPage = (
   setLayoutLoading?: (loading: boolean) => void
 ) => {
   // ===== HOOKS & STATE =====
-  const { data: session, status, update } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const isOnline = useNetworkStatus();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
   // Initialize state
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // ===== DATA HOOKS =====
+  // ===== REACT QUERY HOOKS =====
+  // Fetch leads with React Query
   const {
-    leads,
-    users,
-    statuses,
-    isLoadingLeads,
-    isRefetchingLeads, // Add this line
-    isLoadingUsers,
-    assignLeads,
-    unassignLeads,
-    isAssigning,
-    isUnassigning,
-  } = useLeads();
+    data: leads = [],
+    isLoading: isLoadingLeads,
+    isFetching: isRefetchingLeads,
+    error: leadsError,
+  } = useQuery({
+    queryKey: ["leads", "all"], // Same key as header
+    queryFn: async (): Promise<Lead[]> => {
+      const response = await fetch("/api/leads/all", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch leads");
+      return response.json();
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    refetchOnMount: false,
+  });
 
+  // Fetch users with React Query
+  const {
+    data: users = [],
+    isLoading: isLoadingUsers,
+    error: usersError,
+  } = useQuery({
+    queryKey: ["users"],
+    queryFn: async (): Promise<User[]> => {
+      const response = await fetch("/api/users", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch users");
+      const data = await response.json();
+      return Array.isArray(data) ? data : data.users || [];
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    refetchOnMount: false,
+  });
+
+  // Fetch statuses with React Query
+  const {
+    data: statuses = [],
+    isLoading: isLoadingStatuses,
+    error: statusesError,
+  } = useQuery({
+    queryKey: ["statuses"],
+    queryFn: async (): Promise<
+      Array<{ id: string; name: string; color?: string }>
+    > => {
+      const response = await fetch("/api/statuses", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch statuses");
+      return response.json();
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+    refetchOnWindowFocus: false,
+    retry: 2,
+    refetchOnMount: false,
+  });
+
+  // ===== ERROR HANDLING =====
+  useEffect(() => {
+    if (leadsError) {
+      console.error("Leads query error:", leadsError);
+      toast({
+        title: "Error loading leads",
+        description:
+          leadsError instanceof Error
+            ? leadsError.message
+            : "Failed to load leads",
+        variant: "destructive",
+      });
+    }
+  }, [leadsError, toast]);
+
+  useEffect(() => {
+    if (usersError) {
+      console.error("Users query error:", usersError);
+      toast({
+        title: "Error loading users",
+        description:
+          usersError instanceof Error
+            ? usersError.message
+            : "Failed to load users",
+        variant: "destructive",
+      });
+    }
+  }, [usersError, toast]);
+
+  useEffect(() => {
+    if (statusesError) {
+      console.error("Statuses query error:", statusesError);
+      toast({
+        title: "Error loading statuses",
+        description:
+          statusesError instanceof Error
+            ? statusesError.message
+            : "Failed to load statuses",
+        variant: "destructive",
+      });
+    }
+  }, [statusesError, toast]);
+
+  // ===== MUTATIONS =====
+  const assignLeadsMutation = useMutation({
+    mutationFn: async ({
+      leadIds,
+      userId,
+    }: {
+      leadIds: string[];
+      userId: string;
+    }) => {
+      const response = await fetch("/api/leads/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds, userId }),
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to assign leads");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
+      toast({
+        title: "Leads assigned successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Assignment failed",
+        description:
+          error instanceof Error ? error.message : "Failed to assign leads",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unassignLeadsMutation = useMutation({
+    mutationFn: async ({ leadIds }: { leadIds: string[] }) => {
+      const response = await fetch("/api/leads/unassign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds }),
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to unassign leads");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
+      toast({
+        title: "Leads unassigned successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Unassignment failed",
+        description:
+          error instanceof Error ? error.message : "Failed to unassign leads",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // ===== STORE HOOKS =====
   const { selectedLeads, setSelectedLeads, filterByUser, setFilterByUser } =
     useLeadsStore();
 
@@ -123,88 +283,6 @@ export const useLeadsPage = (
     }
   }, [filterByUser, isInitialized]);
 
-  // ===== SESSION MANAGEMENT =====
-  useEffect(() => {
-    let isMounted = true;
-    let currentController: AbortController | null = null;
-    let currentTimeout: NodeJS.Timeout | null = null;
-
-    const handleVisibilityChange = async () => {
-      if (
-        document.visibilityState === "visible" &&
-        status === "authenticated" &&
-        isMounted
-      ) {
-        try {
-          if (currentController && !currentController.signal.aborted) {
-            currentController.abort();
-          }
-          if (currentTimeout) {
-            clearTimeout(currentTimeout);
-            currentTimeout = null;
-          }
-
-          currentController = new AbortController();
-
-          currentTimeout = setTimeout(() => {
-            if (currentController && !currentController.signal.aborted) {
-              currentController.abort();
-            }
-          }, 10000);
-
-          const response = await fetch("/api/users", {
-            credentials: "include",
-            signal: currentController.signal,
-          });
-
-          if (currentTimeout) {
-            clearTimeout(currentTimeout);
-            currentTimeout = null;
-          }
-
-          if (response.status === 401 && isMounted) {
-            await update();
-          }
-        } catch (error) {
-          if (currentTimeout) {
-            clearTimeout(currentTimeout);
-            currentTimeout = null;
-          }
-
-          if (
-            isMounted &&
-            error instanceof Error &&
-            error.name !== "AbortError"
-          ) {
-            console.error("Session check failed:", error);
-          }
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    if (status === "authenticated") {
-      handleVisibilityChange();
-    }
-
-    return () => {
-      isMounted = false;
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-
-      if (currentController && !currentController.signal.aborted) {
-        try {
-          currentController.abort();
-        } catch (error) {
-          console.error("Database connection failed:", error);
-        }
-      }
-      if (currentTimeout) {
-        clearTimeout(currentTimeout);
-      }
-    };
-  }, [status, update]);
-
   // ===== STATE SYNC EFFECTS =====
   useEffect(() => {
     setUiState((prev) => ({ ...prev, searchQuery }));
@@ -224,9 +302,9 @@ export const useLeadsPage = (
 
   useEffect(() => {
     if (setLayoutLoading) {
-      setLayoutLoading(isLoadingLeads || isLoadingUsers);
+      setLayoutLoading(isLoadingLeads || isLoadingUsers || isLoadingStatuses);
     }
-  }, [isLoadingLeads, isLoadingUsers, setLayoutLoading]);
+  }, [isLoadingLeads, isLoadingUsers, isLoadingStatuses, setLayoutLoading]);
 
   // ===== COMPUTED VALUES =====
   const availableCountries = useMemo(() => {
@@ -315,7 +393,8 @@ export const useLeadsPage = (
     availableCountries.length,
   ]);
 
-  const shouldShowLoading = isLoadingLeads || isLoadingUsers;
+  const shouldShowLoading =
+    isLoadingLeads || isLoadingUsers || isLoadingStatuses;
   const showEmptyState =
     !shouldShowLoading && filteredLeads.length === 0 && leads.length === 0;
 
@@ -331,7 +410,7 @@ export const useLeadsPage = (
     }
 
     try {
-      await assignLeads({
+      await assignLeadsMutation.mutateAsync({
         leadIds: selectedLeads.map((l) => l._id),
         userId: uiState.selectedUser,
       });
@@ -341,25 +420,13 @@ export const useLeadsPage = (
         isDialogOpen: false,
         selectedUser: "",
       }));
-
-      toast({
-        title: "Leads assigned successfully",
-        description: `${selectedLeads.length} lead(s) have been assigned`,
-        variant: "success",
-      });
     } catch (error) {
       console.error("Assignment error:", error);
-      toast({
-        title: "Assignment failed",
-        description:
-          error instanceof Error ? error.message : "Failed to assign leads",
-        variant: "destructive",
-      });
     }
   }, [
     selectedLeads,
     uiState.selectedUser,
-    assignLeads,
+    assignLeadsMutation,
     setSelectedLeads,
     toast,
   ]);
@@ -380,27 +447,15 @@ export const useLeadsPage = (
     }
 
     try {
-      await unassignLeads({
+      await unassignLeadsMutation.mutateAsync({
         leadIds: leadsToUnassign.map((l) => l._id),
       });
       setSelectedLeads([]);
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
-
-      toast({
-        title: "Leads unassigned successfully",
-        description: `${leadsToUnassign.length} lead(s) have been unassigned`,
-        variant: "success",
-      });
     } catch (error) {
       console.error("Unassignment error:", error);
-      toast({
-        title: "Unassignment failed",
-        description:
-          error instanceof Error ? error.message : "Failed to unassign leads",
-        variant: "destructive",
-      });
     }
-  }, [selectedLeads, unassignLeads, setSelectedLeads, toast]);
+  }, [selectedLeads, unassignLeadsMutation, setSelectedLeads, toast]);
 
   const handleSelectionChange = useCallback(
     (newSelectedLeads: Lead[]) => setSelectedLeads(newSelectedLeads),
@@ -468,10 +523,11 @@ export const useLeadsPage = (
     users,
     statuses,
     isLoadingLeads,
-    isRefetchingLeads, // Add this line
+    isRefetchingLeads,
     isLoadingUsers,
-    isAssigning,
-    isUnassigning,
+    isLoadingStatuses,
+    isAssigning: assignLeadsMutation.isPending,
+    isUnassigning: unassignLeadsMutation.isPending,
     selectedLeads,
     filterByUser,
     uiState,

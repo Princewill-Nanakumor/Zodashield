@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
 import EmptyState from "@/components/dashboardComponents/EmptyState";
 import { LeadsHeader } from "./LeadHeader";
-import { LeadsFilterControls } from "./LeadFilter";
+import { LeadsFilterControls } from "./leadsFilters/LeadFilter";
 import { LeadsDialogs } from "./LeadDialog";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
@@ -52,8 +52,6 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     counts,
     shouldShowLoading,
     showEmptyState,
-    availableCountries,
-    availableStatuses,
     handleAssignLeads,
     handleUnassignLeads,
     handleSelectionChange,
@@ -61,8 +59,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleStatusFilterChange,
     handleFilterChange,
     hasAssignedLeads,
-    isInitializing,
-    isRefetchingLeads, // This comes from useLeadsPage
+    isRefetchingLeads,
   } = useLeadsPage(searchQuery, setLayoutLoading);
 
   const handleLeadUpdate = useCallback(async () => {
@@ -108,11 +105,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
         {/* Add refetch indicator */}
         {isRefetchingLeads && <RefetchIndicator />}
 
-        <LeadsHeader
-          shouldShowLoading={shouldShowLoading}
-          counts={counts}
-          // Remove the isRefetching prop - the header manages its own React Query state
-        />
+        <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
 
         <LeadsFilterControls
           selectedLeads={selectedLeads}
@@ -132,14 +125,11 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           onCountryFilterChange={handleCountryFilterChange}
           filterByStatus={uiState.filterByStatus}
           onStatusFilterChange={handleStatusFilterChange}
-          availableCountries={availableCountries}
-          availableStatuses={availableStatuses}
           isLoading={isLoading}
           filterByUser={filterByUser}
           onFilterChange={handleFilterChange}
           users={users}
           isLoadingUsers={isLoadingUsers}
-          isInitializing={isInitializing}
         />
 
         <div className="flex-1 overflow-auto px-8 py-6">

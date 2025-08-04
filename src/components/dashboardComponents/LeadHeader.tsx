@@ -55,7 +55,7 @@ export const LeadsHeader: React.FC<LeadsHeaderProps> = ({
 }) => {
   // React Query hooks for leads data - using the same query key as the main page
   const { data: leads = [], isLoading: isLoadingLeads } = useQuery<Lead[]>({
-    queryKey: ["leads", "all"], // More specific query key
+    queryKey: ["leads", "all"], // Same key as useLeadsPage
     queryFn: async (): Promise<Lead[]> => {
       const response = await fetch("/api/leads/all", {
         credentials: "include",
@@ -66,7 +66,7 @@ export const LeadsHeader: React.FC<LeadsHeaderProps> = ({
     staleTime: 30 * 60 * 1000, // 30 minutes
     refetchOnWindowFocus: false,
     retry: 2,
-    refetchOnMount: false, // Don't refetch if data exists
+    refetchOnMount: false,
   });
 
   // Calculate counts from React Query data
