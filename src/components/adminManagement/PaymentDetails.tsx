@@ -37,6 +37,7 @@ interface PaymentDetailsProps {
 
 export default function PaymentDetails({ payments }: PaymentDetailsProps) {
   const [approvingPayment, setApprovingPayment] = useState<string | null>(null);
+  const [rejectingPayment, setRejectingPayment] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const getStatusColor = (status: string) => {
@@ -143,8 +144,35 @@ export default function PaymentDetails({ payments }: PaymentDetailsProps) {
   };
 
   const handleRejectPayment = async (paymentId: string) => {
-    // Implement reject functionality
-    console.log("Reject payment:", paymentId);
+    setRejectingPayment(paymentId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/payments/${paymentId}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to reject payment");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh the page or update the payment list
+        window.location.reload();
+      }
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to reject payment"
+      );
+    } finally {
+      setRejectingPayment(null);
+    }
   };
 
   return (
@@ -346,11 +374,21 @@ export default function PaymentDetails({ payments }: PaymentDetailsProps) {
 
                     <Button
                       onClick={() => handleRejectPayment(payment._id)}
+                      disabled={rejectingPayment === payment._id}
                       variant="outline"
                       className="border-red-200 text-red-600 hover:bg-red-50 text-sm"
                     >
-                      <X className="h-3 w-3 mr-1" />
-                      Reject
+                      {rejectingPayment === payment._id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-2"></div>
+                          Rejecting...
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-3 w-3 mr-1" />
+                          Reject
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}

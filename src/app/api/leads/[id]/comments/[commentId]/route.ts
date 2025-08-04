@@ -81,8 +81,6 @@ export async function PUT(request: Request) {
     console.log("=== COMMENT PUT REQUEST ===");
     console.log("Lead ID:", id);
     console.log("Comment ID:", commentId);
-    console.log("User ID:", session.user.id);
-    console.log("User Role:", session.user.role);
     console.log("Admin ID:", adminId.toString());
     console.log("Content:", content);
 
@@ -165,8 +163,6 @@ export async function DELETE(request: Request) {
     console.log("=== COMMENT DELETE REQUEST ===");
     console.log("Lead ID:", id);
     console.log("Comment ID:", commentId);
-    console.log("User ID:", session.user.id);
-    console.log("User Role:", session.user.role);
     console.log("Admin ID:", adminId.toString());
 
     // Build query that handles both old comments (without adminId) and new comments (with adminId)

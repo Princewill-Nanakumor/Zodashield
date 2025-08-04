@@ -36,12 +36,3 @@ export function buildMultiTenancyQuery(
     adminId: adminId,
   };
 }
-
-// Utility function to log adminId information for debugging
-export function logAdminIdInfo(session: Session, context: string) {
-  console.log(`=== ${context} ===`);
-  console.log("User ID:", session.user.id);
-  console.log("User Role:", session.user.role);
-  console.log("Session adminId:", session.user.adminId);
-  console.log("Computed adminId:", getCorrectAdminId(session).toString());
-}

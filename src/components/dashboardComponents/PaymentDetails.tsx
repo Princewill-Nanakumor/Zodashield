@@ -1,0 +1,535 @@
+// src/components/PaymentDetails.tsx
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  DollarSign,
+  CreditCard,
+  Wallet,
+  ExternalLink,
+  Check,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+interface Payment {
+  _id: string;
+  amount: number;
+  currency: string;
+  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
+  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
+  transactionId: string;
+  description?: string;
+  network?: "TRC20" | "ERC20";
+  walletAddress?: string;
+  createdAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+}
+
+export default function PaymentDetails() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const paymentId = searchParams.get("paymentId");
+
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+
+  const fetchPaymentDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/payments/${paymentId}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch payment details");
+      }
+
+      const data = await response.json();
+      setPayment(data.payment);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch payment details"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [paymentId]);
+
+  useEffect(() => {
+    if (paymentId) {
+      fetchPaymentDetails();
+    }
+  }, [paymentId, fetchPaymentDetails]);
+
+  const handleApprove = async () => {
+    if (!payment) return;
+
+    setApproving(true);
+    try {
+      const response = await fetch(`/api/payments/${payment._id}/approve`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to approve payment");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setPayment(data.payment);
+        // Show success message
+        alert("Payment approved successfully! Balance has been updated.");
+      }
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to approve payment"
+      );
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!payment) return;
+
+    setRejecting(true);
+    try {
+      const response = await fetch(`/api/payments/${payment._id}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to reject payment");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setPayment(data.payment);
+        // Show success message
+        alert("Payment rejected successfully.");
+      }
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to reject payment"
+      );
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "COMPLETED":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200 dark:border-green-800";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800";
+      case "FAILED":
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300 border-red-200 dark:border-red-800";
+      case "REFUNDED":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300 border-gray-200 dark:border-gray-800";
+    }
+  };
+
+  const getMethodColor = (method: string) => {
+    switch (method) {
+      case "CREDIT_CARD":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200 dark:border-purple-800";
+      case "PAYPAL":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+      case "BANK_TRANSFER":
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200 dark:border-green-800";
+      case "CRYPTO":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300 border-orange-200 dark:border-orange-800";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300 border-gray-200 dark:border-gray-800";
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+          <p className="text-gray-500 dark:text-gray-400">
+            Loading payment details...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={fetchPaymentDetails}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!payment) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            Payment not found
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/dashboard/billing")}
+          >
+            Back to Billing
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/dashboard/billing")}
+              className="backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 hover:bg-white/90 dark:hover:bg-gray-900/90"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Payment Details
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Transaction ID: {payment.transactionId}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Payment Status Card */}
+            <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white">
+                  <DollarSign className="h-5 w-5" />
+                  <span>Payment Information</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Amount
+                    </span>
+                    <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {formatCurrency(payment.amount, payment.currency)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Status
+                    </span>
+                    <Badge className={getStatusColor(payment.status)}>
+                      {payment.status}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Method
+                    </span>
+                    <Badge className={getMethodColor(payment.method)}>
+                      {payment.method}
+                    </Badge>
+                  </div>
+
+                  {payment.network && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Network
+                      </span>
+                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                        {payment.network}
+                      </Badge>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Created
+                    </span>
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {formatDate(payment.createdAt)}
+                    </span>
+                  </div>
+
+                  {payment.approvedAt && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Approved
+                      </span>
+                      <span className="text-sm text-gray-900 dark:text-white">
+                        {formatDate(payment.approvedAt)}
+                      </span>
+                    </div>
+                  )}
+
+                  {payment.rejectedAt && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Rejected
+                      </span>
+                      <span className="text-sm text-gray-900 dark:text-white">
+                        {formatDate(payment.rejectedAt)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Details Card */}
+            <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white">
+                  Transaction Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Transaction ID
+                    </span>
+                    <p className="font-mono text-sm text-gray-900 dark:text-white mt-1">
+                      {payment.transactionId}
+                    </p>
+                  </div>
+
+                  {payment.description && (
+                    <div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Description
+                      </span>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {payment.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {payment.walletAddress && (
+                    <div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Wallet Address
+                      </span>
+                      <p className="font-mono text-sm text-gray-900 dark:text-white mt-1 break-all">
+                        {payment.walletAddress}
+                      </p>
+                      <div className="mt-2">
+                        <a
+                          href={
+                            payment.network === "TRC20"
+                              ? `https://tronscan.org/#/address/${payment.walletAddress}`
+                              : `https://etherscan.io/address/${payment.walletAddress}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          View on{" "}
+                          {payment.network === "TRC20"
+                            ? "Tronscan"
+                            : "Etherscan"}{" "}
+                          <ExternalLink className="ml-1 h-4 w-4" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Approval Actions */}
+            {payment.status === "PENDING" && (
+              <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">
+                    Payment Actions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleApprove}
+                      disabled={approving}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {approving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Approving...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Approve Payment
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={handleReject}
+                      disabled={rejecting}
+                      variant="outline"
+                      className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      {rejecting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                          Rejecting...
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-4 w-4 mr-2" />
+                          Reject Payment
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Status Indicator */}
+            <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white">
+                  Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2">
+                  {payment.status === "COMPLETED" ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : payment.status === "PENDING" ? (
+                    <Clock className="h-5 w-5 text-yellow-600" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {payment.status}
+                  </span>
+                </div>
+
+                {payment.status === "PENDING" && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Waiting for admin approval
+                  </p>
+                )}
+
+                {payment.status === "COMPLETED" && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                    Payment approved and balance updated
+                  </p>
+                )}
+
+                {payment.status === "FAILED" && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    Payment was rejected
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white">
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push("/dashboard/billing")}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    New Payment
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push("/dashboard/notifications")}
+                  >
+                    <Wallet className="h-4 w-4 mr-2" />
+                    View Notifications
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

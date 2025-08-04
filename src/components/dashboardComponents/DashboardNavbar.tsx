@@ -8,7 +8,7 @@ import { DashboardSearchBar } from "./DashboardSearchBar";
 import ThemeToggle from "./ThemeToggle";
 import { DateTimeDisplay } from "./DateTimeDisplay";
 import { UserDropdownMenu } from "./UserDropdownMenu";
-import { NotificationBell } from "./NotificationBell";
+import { NotificationBell } from "../notifications/NotificationBell";
 import { useUserProfileData } from "@/hooks/useNavbarData";
 
 interface DashboardNavbarProps {

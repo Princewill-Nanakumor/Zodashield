@@ -61,14 +61,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Missing credentials");
           throw new Error("Please enter an email and password");
         }
 
         try {
           await connectMongoDB();
-
-          console.log("🔍 Looking for user with email:", credentials.email);
 
           // Use direct MongoDB collection access like the debug endpoints
           const db = mongoose.connection.db;
@@ -96,21 +93,11 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!user) {
-            console.log("❌ User not found");
             throw new Error("Invalid email or password");
           }
 
-          console.log("✅ User found:", {
-            id: user._id,
-            email: user.email,
-            role: user.role,
-            status: user.status,
-            hasPassword: !!user.password,
-          });
-
           // Check if user is active
           if (user.status === "INACTIVE") {
-            console.log("❌ User is inactive");
             throw new Error(
               "Account is inactive. Please contact administrator."
             );
@@ -118,7 +105,6 @@ export const authOptions: NextAuthOptions = {
 
           // Check if user has password
           if (!user.password) {
-            console.log("❌ User has no password");
             throw new Error("Invalid email or password");
           }
 
@@ -129,11 +115,8 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!passwordMatch) {
-            console.log("❌ Password mismatch");
             throw new Error("Invalid email or password");
           }
-
-          console.log("✅ Password verified successfully");
 
           // Update last login time
           await db

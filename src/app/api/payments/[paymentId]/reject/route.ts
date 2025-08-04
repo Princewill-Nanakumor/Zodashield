@@ -1,4 +1,4 @@
-// /Users/safeconnection/Downloads/drivecrm/src/app/api/payments/[paymentId]/approve/route.ts
+// /Users/safeconnection/Downloads/drivecrm/src/app/api/payments/[paymentId]/reject/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -62,30 +62,12 @@ export async function POST(
     const superAdminEmails =
       process.env.SUPER_ADMIN_EMAILS?.split(",").map((email) => email.trim()) ||
       [];
-
-    console.log("Debug info:", {
-      userEmail: user.email,
-      userRole: user.role,
-      superAdminEmails,
-      isSuperAdmin:
-        user.role === "ADMIN" && superAdminEmails.includes(user.email),
-      sessionUserEmail: session.user.email,
-    });
-
     const isSuperAdmin =
       user.role === "ADMIN" && superAdminEmails.includes(user.email);
 
     if (!isSuperAdmin) {
       return NextResponse.json(
-        {
-          error: "Super admin access required to approve payments",
-          debug: {
-            userEmail: user.email,
-            userRole: user.role,
-            superAdminEmails,
-            isSuperAdmin,
-          },
-        },
+        { error: "Super admin access required to reject payments" },
         { status: 403 }
       );
     }
@@ -101,25 +83,16 @@ export async function POST(
 
     if (payment.status !== "PENDING") {
       return NextResponse.json(
-        { error: "Only pending payments can be approved" },
+        { error: "Only pending payments can be rejected" },
         { status: 400 }
       );
     }
 
-    // Get the admin who created the payment
-    const admin = (await User.findById(
-      payment.adminId
-    ).lean()) as UserDocument | null;
-
-    if (!admin) {
-      return NextResponse.json({ error: "Admin not found" }, { status: 404 });
-    }
-
-    // Update payment status and approval info
+    // Update payment status and rejection info
     const updatedPayment = (await Payment.findByIdAndUpdate(
       paymentId,
       {
-        status: "COMPLETED",
+        status: "FAILED",
         approvedAt: new Date(),
         approvedBy: user._id,
       },
@@ -133,22 +106,6 @@ export async function POST(
       );
     }
 
-    // Update admin's balance
-    const updatedAdmin = (await User.findByIdAndUpdate(
-      payment.adminId,
-      {
-        $inc: { balance: payment.amount },
-      },
-      { new: true, runValidators: true }
-    ).lean()) as UserDocument | null;
-
-    if (!updatedAdmin) {
-      return NextResponse.json(
-        { error: "Failed to update admin balance" },
-        { status: 500 }
-      );
-    }
-
     // Create notification for the admin who made the payment
     if (!mongoose.connection.db) {
       throw new Error("Database connection not established");
@@ -157,8 +114,8 @@ export async function POST(
     await mongoose.connection.db.collection("notifications").insertOne({
       _id: new ObjectId(),
       id: new ObjectId().toString(),
-      type: "PAYMENT_APPROVED",
-      message: `Your payment of ${payment.amount} ${payment.currency} has been approved Successfully`,
+      type: "PAYMENT_REJECTED",
+      message: `Your payment of ${payment.amount} ${payment.currency} has been rejected.`,
       role: "ADMIN",
       link: `/dashboard/billing/payments/${paymentId}`,
       paymentId: paymentId,
@@ -187,10 +144,10 @@ export async function POST(
     return NextResponse.json({
       success: true,
       payment: paymentResponse,
-      message: `Payment approved successfully. Admin balance updated to ${updatedAdmin.balance}`,
+      message: "Payment rejected successfully",
     });
   } catch (error) {
-    console.error("Error approving payment:", error);
+    console.error("Error rejecting payment:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -33,18 +33,10 @@ export const DashboardSearchBar: React.FC<DashboardSearchBarProps> = ({
 
   // Sync with external searchQuery prop
   useEffect(() => {
-    console.log(
-      "DashboardSearchBar: External searchQuery changed to:",
-      searchQuery
-    );
     setLocalSearchQuery(searchQuery);
   }, [searchQuery]);
 
   useEffect(() => {
-    console.log(
-      "DashboardSearchBar: Debounced search query changed to:",
-      debouncedSearchQuery
-    );
     onSearch(debouncedSearchQuery.trim());
   }, [debouncedSearchQuery, onSearch]);
 

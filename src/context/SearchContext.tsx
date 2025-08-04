@@ -29,8 +29,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    console.log("SearchProvider: searchQuery changed to:", searchQuery);
-  }, [searchQuery]);
+    }, [searchQuery]);
 
   const contextValue: SearchContextType = {
     searchQuery,

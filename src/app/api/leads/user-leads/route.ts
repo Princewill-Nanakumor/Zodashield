@@ -81,13 +81,6 @@ export async function GET() {
       })
     );
 
-    console.log("🔍 GET /api/leads/user-leads called, returning:", {
-      count: transformedLeads.length,
-      firstLead: transformedLeads[0],
-      query: query,
-      sessionUser: session.user.id,
-    });
-
     return NextResponse.json(transformedLeads);
   } catch (error) {
     console.error("Error fetching user leads:", error);

@@ -1,5 +1,6 @@
 // src/hooks/useNavbarData.ts
 import { useQuery } from "@tanstack/react-query";
+import { signOut } from "next-auth/react";
 
 interface UserProfile {
   _id: string;
@@ -24,18 +25,36 @@ interface SubscriptionData {
 // Fetch functions outside hooks to prevent recreation
 const fetchUserProfile = async (): Promise<UserProfile> => {
   const response = await fetch("/api/user/profile");
+
+  if (response.status === 404) {
+    // User not found - likely deleted from database
+    console.log("User not found, signing out...");
+    await signOut({ callbackUrl: "/signin" });
+    throw new Error("User not found");
+  }
+
   if (!response.ok) {
     throw new Error("Failed to fetch user profile");
   }
+
   const data = await response.json();
   return data.user;
 };
 
 const fetchSubscriptionData = async (): Promise<SubscriptionData> => {
   const response = await fetch("/api/subscription/status");
+
+  if (response.status === 404) {
+    // User not found - likely deleted from database
+    console.log("User not found in database, signing out...");
+    await signOut({ callbackUrl: "/signin" });
+    throw new Error("User not found");
+  }
+
   if (!response.ok) {
     throw new Error("Failed to fetch subscription data");
   }
+
   return response.json();
 };
 

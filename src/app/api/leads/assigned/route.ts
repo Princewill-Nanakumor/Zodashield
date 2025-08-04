@@ -23,8 +23,6 @@ export async function GET() {
     const userObjectId = new mongoose.Types.ObjectId(session.user.id);
 
     console.log("=== ASSIGNED LEADS GET REQUEST ===");
-    console.log("User ID:", session.user.id);
-    console.log("User Role:", session.user.role);
     console.log("User adminId:", session.user.adminId);
 
     // Build query based on user role and multi-tenancy

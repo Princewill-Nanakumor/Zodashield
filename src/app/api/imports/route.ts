@@ -81,13 +81,6 @@ export async function POST(request: Request) {
     console.log("🔄 Starting database operation");
 
     const session = await getServerSession(authOptions);
-    console.log("�� Session info:", {
-      userId: session?.user?.id,
-      userRole: session?.user?.role,
-      adminId: session?.user?.adminId,
-      isAuthenticated: !!session,
-    });
-
     if (!session?.user?.id) {
       console.error("❌ Unauthorized - No session or user ID");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

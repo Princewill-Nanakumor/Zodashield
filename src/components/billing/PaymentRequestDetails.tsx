@@ -1,5 +1,4 @@
 // src/components/billing/PaymentRequestDetails.tsx
-
 "use client";
 
 import React, { useState } from "react";
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react"; // Add this import
 
 interface CurrentPayment {
   _id: string;
@@ -47,7 +47,9 @@ export default function PaymentRequestDetails({
   onShowPaymentDetails,
   onBackToDeposit,
 }: PaymentRequestDetailsProps) {
+  const { data: session } = useSession(); // Add this line
   const [copied, setCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCopy = (address: string) => {
     navigator.clipboard.writeText(address);
@@ -65,7 +67,45 @@ export default function PaymentRequestDetails({
     onBackToDeposit();
   };
 
-  // Show confirmation screen after user clicks "I Have Made the Payment"
+  const handleConfirmPayment = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // Create notification for super admin
+      const notificationResponse = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "PAYMENT_PENDING_APPROVAL",
+          message: `New payment confirmation submitted: ${currentPayment.amount} ${currentPayment.currency} (${network}) by ${session?.user?.firstName} ${session?.user?.lastName}`,
+          role: "SUPER_ADMIN",
+          link: `/dashboard/payment-details?paymentId=${currentPayment._id}`, // Fixed the link
+          paymentId: currentPayment._id,
+          amount: currentPayment.amount,
+          currency: currentPayment.currency,
+          userId: session?.user?.id,
+        }),
+      });
+
+      if (!notificationResponse.ok) {
+        const errorText = await notificationResponse.text();
+        console.error("Failed to create notification:", errorText);
+      } else {
+        const notificationData = await notificationResponse.json();
+        console.log("✅ Notification created successfully:", notificationData);
+      }
+
+      // Call the parent handler
+      onConfirmPayment();
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      // Still proceed with confirmation even if notification fails
+      onConfirmPayment();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (paymentConfirmed) {
     return (
       <div className="space-y-6">
@@ -286,7 +326,7 @@ export default function PaymentRequestDetails({
                   Network: {currentPayment.network}
                 </p>
                 <p className="text-blue-700 dark:text-blue-300 text-xs mt-2">
-                  ⚠️ No wallet address provided by API
+                  ⚠️ No wallet address provided
                 </p>
               </div>
             </div>
@@ -296,10 +336,20 @@ export default function PaymentRequestDetails({
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
-            onClick={onConfirmPayment}
+            onClick={handleConfirmPayment}
+            disabled={isSubmitting}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white mt-2"
           >
-            <CheckCircle className="h-4 w-4 mr-2" />I Have Made the Payment
+            {isSubmitting ? (
+              <>
+                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />I Have Made the Payment
+              </>
+            )}
           </Button>
         </div>
       </div>
