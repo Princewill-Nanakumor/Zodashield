@@ -1,4 +1,4 @@
-// src/app/dashboard/payment-details/page.tsx
+// src/app/dashboard/payment-details/[id]/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import PaymentDetails from "@/components/dashboardComponents/PaymentDetails";
 
-export default function PaymentDetailsPage() {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function PaymentDetailsPage({ params }: PageProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -38,5 +42,5 @@ export default function PaymentDetailsPage() {
     return null;
   }
 
-  return <PaymentDetails />;
+  return <PaymentDetails params={params} />;
 }

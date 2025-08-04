@@ -11,48 +11,95 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Notification } from "@/types/notifications";
 import { Button } from "@/components/ui/button";
+
+// Loading skeleton component for notification dropdown
+const NotificationSkeleton = () => (
+  <li className="flex items-start justify-between px-4 py-3 animate-pulse">
+    <div className="flex items-start space-x-3 flex-1">
+      {/* Icon skeleton */}
+      <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full flex-shrink-0"></div>
+      <div className="flex-1 min-w-0">
+        {/* Message skeleton */}
+        <div className="space-y-1">
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+        </div>
+        {/* Amount skeleton */}
+        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-20 mt-1"></div>
+        {/* Date skeleton */}
+        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-16 mt-1"></div>
+      </div>
+    </div>
+    {/* X button skeleton */}
+    <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded ml-2 flex-shrink-0"></div>
+  </li>
+);
 
 export function NotificationBell() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showSkeletonOnOpen, setShowSkeletonOnOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  // Fetch notifications using React Query
+  const {
+    data: notifications = [],
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+    isRefetching,
+    isStale,
+  } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async (): Promise<Notification[]> => {
       const response = await fetch("/api/notifications", {
         credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to fetch notifications");
-      const allNotifications: Notification[] = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed to fetch notifications");
+      }
+      return response.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 10000, // Consider data stale after 10 seconds
+    refetchInterval: 60000, // Refetch every 60 seconds
+    refetchIntervalInBackground: false, // Only refetch when tab is active
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchOnMount: true, // Always refetch on mount
+    retry: 1, // Reduce retry attempts
+  });
 
-      // Client-side filtering removed as server-side handles it
-      setNotifications(allNotifications);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
-      setIsLoading(false);
+  // Handle dropdown opening - show skeleton if data is stale or no data
+  const handleDropdownToggle = useCallback(() => {
+    if (!open) {
+      // Opening dropdown - check if we should show loading state
+      const shouldShowLoading = isStale || !notifications.length || isFetching;
+
+      if (shouldShowLoading) {
+        setShowSkeletonOnOpen(true);
+        // Trigger immediate refetch if data is stale
+        if (isStale) {
+          refetch();
+        }
+      } else {
+        setShowSkeletonOnOpen(false);
+      }
     }
-  }, []); // Removed unnecessary dependencies
+    setOpen((prev) => !prev);
+  }, [open, isStale, notifications.length, isFetching, refetch]);
 
+  // Reset skeleton state when data loads
   useEffect(() => {
-    if (session?.user) {
-      fetchNotifications();
+    if (!isLoading && !isFetching && !isRefetching) {
+      setShowSkeletonOnOpen(false);
     }
-  }, [session, fetchNotifications]);
-
-  // Poll for new notifications every 30 seconds
-  useEffect(() => {
-    if (session?.user) {
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [session, fetchNotifications]);
+  }, [isLoading, isFetching, isRefetching]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -62,6 +109,7 @@ export function NotificationBell() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setOpen(false);
+        setShowSkeletonOnOpen(false);
       }
     }
     if (open) {
@@ -72,33 +120,44 @@ export function NotificationBell() {
     };
   }, [open]);
 
-  const handleNotificationClick = useCallback(
-    async (notification: Notification) => {
-      try {
-        // Mark notification as read
-        await fetch(`/api/notifications/${notification.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ read: true }),
-        });
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
+      // Mark notification as read
+      await fetch(`/api/notifications/${notification.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ read: true }),
+      });
 
-        // Remove from local state
-        setNotifications((prev) =>
-          prev.filter((n) => n.id !== notification.id)
-        );
+      // Update the cache optimistically
+      queryClient.setQueryData(
+        ["notifications"],
+        (oldData: Notification[] = []) =>
+          oldData.filter((n) => n.id !== notification.id)
+      );
 
-        // Navigate to link if provided
-        if (notification.link) {
+      // Navigate to correct payment details page using dynamic route
+      if (notification.link) {
+        // Extract payment ID from the link
+        const paymentIdMatch = notification.link.match(/\/payments\/([^\/]+)$/);
+        if (paymentIdMatch) {
+          const paymentId = paymentIdMatch[1];
+          // Redirect to the new dynamic route
+          router.push(`/dashboard/payment-details/${paymentId}`);
+        } else {
+          // Fallback to original link if pattern doesn't match
           router.push(notification.link);
         }
-        setOpen(false);
-      } catch (error) {
-        console.error("Error marking notification as read:", error);
       }
-    },
-    [router]
-  );
+      setOpen(false);
+      setShowSkeletonOnOpen(false);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      // Refetch on error to ensure consistency
+      refetch();
+    }
+  };
 
   const handleDeleteNotification = useCallback(
     async (notificationId: string, event: React.MouseEvent) => {
@@ -108,12 +167,20 @@ export function NotificationBell() {
           method: "DELETE",
           credentials: "include",
         });
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+
+        // Update the cache optimistically
+        queryClient.setQueryData(
+          ["notifications"],
+          (oldData: Notification[] = []) =>
+            oldData.filter((n) => n.id !== notificationId)
+        );
       } catch (error) {
         console.error("Error deleting notification:", error);
+        // Refetch on error to ensure consistency
+        refetch();
       }
     },
-    []
+    [queryClient, refetch]
   );
 
   const getNotificationIcon = useCallback((type: string) => {
@@ -139,13 +206,27 @@ export function NotificationBell() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // Determine if we should show loading state
+  const shouldShowLoading =
+    showSkeletonOnOpen || (isLoading && notifications.length === 0);
+
+  // Calculate appropriate number of skeleton items
+  const getSkeletonCount = () => {
+    // If we have existing notifications, show the same number of skeletons
+    if (notifications.length > 0) {
+      return Math.min(notifications.length, 5); // Cap at 5 to avoid too many skeletons
+    }
+    // If no notifications yet (first load), show 2-3 skeletons as placeholder
+    return 2;
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         className="relative p-2 rounded-full hover:bg-purple-400 dark:hover:bg-gray-800 transition"
         aria-label="Notifications"
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={handleDropdownToggle}
       >
         <Bell className="h-6 w-6 text-white dark:text-purple-300" />
         {unreadCount > 0 && (
@@ -162,13 +243,17 @@ export function NotificationBell() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push("/dashboard/notifications")}
+                onClick={() => {
+                  router.push("/dashboard/notifications");
+                  setOpen(false);
+                  setShowSkeletonOnOpen(false);
+                }}
                 className="text-xs h-6 px-2"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
                 View All
               </Button>
-              {isLoading && (
+              {(isFetching || isRefetching) && (
                 <div className="inline-block">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
                 </div>
@@ -176,7 +261,26 @@ export function NotificationBell() {
             </div>
           </div>
           <ul className="max-h-64 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {shouldShowLoading ? (
+              // Loading skeleton - show appropriate number based on existing notifications
+              <>
+                {Array.from({ length: getSkeletonCount() }).map((_, index) => (
+                  <NotificationSkeleton key={`skeleton-${index}`} />
+                ))}
+              </>
+            ) : error ? (
+              <li className="p-4 text-center text-red-500 dark:text-red-400">
+                <p className="text-sm">Failed to load notifications</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetch()}
+                  className="mt-2 text-xs"
+                >
+                  Retry
+                </Button>
+              </li>
+            ) : notifications.length === 0 ? (
               <li className="p-4 text-center text-gray-500 dark:text-gray-400">
                 No notifications
               </li>

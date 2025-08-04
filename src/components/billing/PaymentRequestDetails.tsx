@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
-import { useSession } from "next-auth/react"; // Add this import
+import { useSession } from "next-auth/react";
 
 interface CurrentPayment {
   _id: string;
@@ -47,9 +47,10 @@ export default function PaymentRequestDetails({
   onShowPaymentDetails,
   onBackToDeposit,
 }: PaymentRequestDetailsProps) {
-  const { data: session } = useSession(); // Add this line
+  const { data: session } = useSession();
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notificationSent, setNotificationSent] = useState(false); // Add this state
 
   const handleCopy = (address: string) => {
     navigator.clipboard.writeText(address);
@@ -62,14 +63,40 @@ export default function PaymentRequestDetails({
     localStorage.removeItem("currentPayment");
     localStorage.removeItem("paymentNetwork");
     localStorage.removeItem("paymentConfirmed");
+    localStorage.removeItem(`notification_sent_${currentPayment._id}`); // Clear notification flag
 
     // Call the parent handler
     onBackToDeposit();
   };
 
   const handleConfirmPayment = async () => {
+    // Prevent double submission
+    if (isSubmitting || notificationSent) {
+      console.log("⚠️ Notification already sent or currently submitting");
+      return;
+    }
+
+    // Check if notification was already sent for this payment
+    const notificationKey = `notification_sent_${currentPayment._id}`;
+    const alreadySent = localStorage.getItem(notificationKey);
+    if (alreadySent) {
+      console.log("⚠️ Notification already sent for this payment");
+      onConfirmPayment();
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      setNotificationSent(true);
+
+      console.log("🔄 Creating notification for payment:", {
+        paymentId: currentPayment._id,
+        userId: session?.user?.id,
+        userName: `${session?.user?.firstName} ${session?.user?.lastName}`,
+        amount: currentPayment.amount,
+        currency: currentPayment.currency,
+        network: network,
+      });
 
       // Create notification for super admin
       const notificationResponse = await fetch("/api/notifications", {
@@ -79,7 +106,7 @@ export default function PaymentRequestDetails({
           type: "PAYMENT_PENDING_APPROVAL",
           message: `New payment confirmation submitted: ${currentPayment.amount} ${currentPayment.currency} (${network}) by ${session?.user?.firstName} ${session?.user?.lastName}`,
           role: "SUPER_ADMIN",
-          link: `/dashboard/payment-details?paymentId=${currentPayment._id}`, // Fixed the link
+          link: `/dashboard/payments/${currentPayment._id}`, // Use the correct dynamic route format
           paymentId: currentPayment._id,
           amount: currentPayment.amount,
           currency: currentPayment.currency,
@@ -89,16 +116,21 @@ export default function PaymentRequestDetails({
 
       if (!notificationResponse.ok) {
         const errorText = await notificationResponse.text();
-        console.error("Failed to create notification:", errorText);
+        console.error("❌ Failed to create notification:", errorText);
+        throw new Error(`Failed to create notification: ${errorText}`);
       } else {
         const notificationData = await notificationResponse.json();
         console.log("✅ Notification created successfully:", notificationData);
+
+        // Mark notification as sent in localStorage
+        localStorage.setItem(notificationKey, "true");
       }
 
       // Call the parent handler
       onConfirmPayment();
     } catch (error) {
-      console.error("Error creating notification:", error);
+      console.error("❌ Error creating notification:", error);
+      setNotificationSent(false); // Reset flag on error
       // Still proceed with confirmation even if notification fails
       onConfirmPayment();
     } finally {
@@ -337,13 +369,18 @@ export default function PaymentRequestDetails({
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={handleConfirmPayment}
-            disabled={isSubmitting}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white mt-2"
+            disabled={isSubmitting || notificationSent}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
                 <Clock className="h-4 w-4 mr-2 animate-spin" />
                 Submitting...
+              </>
+            ) : notificationSent ? (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Payment Confirmed
               </>
             ) : (
               <>

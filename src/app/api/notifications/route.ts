@@ -81,9 +81,35 @@ export async function POST(request: NextRequest) {
       throw new Error("Database connection not established");
     }
 
+    // **ADD DEDUPLICATION LOGIC HERE**
+    // Check for existing notification with same paymentId and type to prevent duplicates
+    if (paymentId && type) {
+      const existingNotification = await mongoose.connection.db
+        .collection("notifications")
+        .findOne({
+          paymentId: paymentId,
+          type: type,
+          role: role,
+        });
+
+      if (existingNotification) {
+        console.log(
+          `⚠️ Duplicate notification prevented for payment ${paymentId} with type ${type}`
+        );
+        return NextResponse.json({
+          success: true,
+          notification: existingNotification,
+          message: "Notification already exists - duplicate prevented",
+        });
+      }
+    }
+
+    // Create unique notification ID
+    const notificationId = new ObjectId();
+
     const notification = {
-      _id: new ObjectId(),
-      id: new ObjectId().toString(),
+      _id: notificationId,
+      id: notificationId.toString(),
       type,
       message,
       role,
@@ -94,13 +120,26 @@ export async function POST(request: NextRequest) {
       userId,
       createdAt: new Date().toISOString(),
       read: false,
+      // Add timestamp for additional uniqueness
+      timestamp: Date.now(),
     };
 
-    await mongoose.connection.db
+    console.log(
+      `✅ Creating new notification for payment ${paymentId} with type ${type}`
+    );
+
+    const result = await mongoose.connection.db
       .collection("notifications")
       .insertOne(notification);
 
-    return NextResponse.json(notification);
+    if (!result.insertedId) {
+      throw new Error("Failed to insert notification");
+    }
+
+    return NextResponse.json({
+      success: true,
+      notification: notification,
+    });
   } catch (error) {
     console.error("Error creating notification:", error);
     return NextResponse.json(

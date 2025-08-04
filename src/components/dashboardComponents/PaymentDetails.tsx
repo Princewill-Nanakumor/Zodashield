@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle,
@@ -36,23 +36,40 @@ interface Payment {
   rejectedBy?: string;
 }
 
-export default function PaymentDetails() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const paymentId = searchParams.get("paymentId");
+interface PaymentDetailsProps {
+  params: Promise<{ id: string }>;
+}
 
+export default function PaymentDetails({ params }: PaymentDetailsProps) {
+  const router = useRouter();
+  const [paymentId, setPaymentId] = useState<string>("");
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
+  // Get the payment ID from params
+  useEffect(() => {
+    const getPaymentId = async () => {
+      const resolvedParams = await params;
+      setPaymentId(resolvedParams.id);
+    };
+    getPaymentId();
+  }, [params]);
+
   const fetchPaymentDetails = useCallback(async () => {
+    if (!paymentId) return;
+
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`/api/payments/${paymentId}`);
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Payment not found");
+        }
         throw new Error("Failed to fetch payment details");
       }
 
@@ -96,7 +113,6 @@ export default function PaymentDetails() {
 
       if (data.success) {
         setPayment(data.payment);
-        // Show success message
         alert("Payment approved successfully! Balance has been updated.");
       }
     } catch (error) {
@@ -129,7 +145,6 @@ export default function PaymentDetails() {
 
       if (data.success) {
         setPayment(data.payment);
-        // Show success message
         alert("Payment rejected successfully.");
       }
     } catch (error) {
@@ -188,51 +203,86 @@ export default function PaymentDetails() {
     });
   };
 
+  // Show loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">
-            Loading payment details...
-          </p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 border rounded-xl">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4 mx-auto"></div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Loading payment details...
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Show error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button onClick={fetchPaymentDetails}>Retry</Button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 border rounded-xl">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Error Loading Payment
+              </h2>
+              <p className="text-red-500 mb-4">{error}</p>
+              <div className="space-x-2">
+                <Button onClick={() => router.push("/dashboard/notifications")}>
+                  View Notifications
+                </Button>
+                <Button variant="outline" onClick={fetchPaymentDetails}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Show payment not found
   if (!payment) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Payment not found
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/dashboard/billing")}
-          >
-            Back to Billing
-          </Button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 border rounded-xl">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Payment Not Found
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                The payment you are looking for does not exist or has been
+                removed.
+              </p>
+              <div className="space-x-2">
+                <Button onClick={() => router.push("/dashboard/notifications")}>
+                  Back to Notifications
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/dashboard/billing")}
+                >
+                  View Billing
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 border rounded-xl">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -240,7 +290,7 @@ export default function PaymentDetails() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push("/dashboard/billing")}
+              onClick={() => router.push("/dashboard/notifications")}
               className="backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700 hover:bg-white/90 dark:hover:bg-gray-900/90"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -373,12 +423,6 @@ export default function PaymentDetails() {
 
                   {payment.walletAddress && (
                     <div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Wallet Address
-                      </span>
-                      <p className="font-mono text-sm text-gray-900 dark:text-white mt-1 break-all">
-                        {payment.walletAddress}
-                      </p>
                       <div className="mt-2">
                         <a
                           href={
