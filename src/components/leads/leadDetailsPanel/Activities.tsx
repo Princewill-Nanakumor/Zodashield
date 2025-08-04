@@ -1,8 +1,7 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/leads/leadDetailsPanel/Activities.tsx
-
+// src/components/leads/leadDetailsPanel/Activities.tsx
 "use client";
 
-import { FC, useState, useEffect, useCallback } from "react";
+import React, { FC, useCallback } from "react";
 import {
   Calendar,
   Loader2,
@@ -14,6 +13,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { Activity, Status } from "@/types/leads";
+import { useQuery } from "@tanstack/react-query";
 
 interface ActivitiesProps {
   leadId: string;
@@ -21,61 +21,65 @@ interface ActivitiesProps {
 
 const Activities: FC<ActivitiesProps> = ({ leadId }) => {
   const { toast } = useToast();
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [statuses, setStatuses] = useState<Status[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch statuses
-  const fetchStatuses = useCallback(async () => {
-    try {
+  const { data: statuses = [] } = useQuery<Status[]>({
+    queryKey: ["statuses"],
+    queryFn: async (): Promise<Status[]> => {
       const response = await fetch("/api/statuses");
-      if (response.ok) {
-        const data = await response.json();
-        setStatuses(data);
+      if (!response.ok) {
+        throw new Error("Failed to fetch statuses");
       }
-    } catch (error) {
-      console.error("Error fetching statuses:", error);
-    }
-  }, []);
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
 
   // Fetch activities
-  const fetchActivities = useCallback(async () => {
-    if (!leadId) return;
-    setIsLoading(true);
+  const {
+    data: activities = [],
+    isLoading,
+    error,
+  } = useQuery<Activity[]>({
+    queryKey: ["activities", leadId],
+    queryFn: async (): Promise<Activity[]> => {
+      console.log("=== FETCHING ACTIVITIES WITH REACT QUERY ===");
+      console.log("Lead ID:", leadId);
 
-    try {
-      console.log("Fetching activities for leadId:", leadId);
-      const activitiesResponse = await fetch(`/api/leads/${leadId}/activities`);
-      if (activitiesResponse.ok) {
-        const responseData = await activitiesResponse.json();
-        console.log("Raw activities response:", responseData);
-        const activitiesData = Array.isArray(responseData) ? responseData : [];
-        setActivities(activitiesData);
-      } else {
-        setActivities([]);
+      const response = await fetch(`/api/leads/${leadId}/activities`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch activities: ${response.status}`);
       }
-    } catch (error) {
-      console.error("Error fetching activities:", error);
+
+      const responseData = await response.json();
+      console.log("Raw activities response:", responseData);
+
+      const activitiesData = Array.isArray(responseData) ? responseData : [];
+      return activitiesData;
+    },
+    enabled: !!leadId,
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error) => {
+      console.error("Activities fetch error:", error);
+      return failureCount < 2;
+    },
+    refetchOnWindowFocus: false,
+  });
+
+  // Handle error - now using imported React
+  React.useEffect(() => {
+    if (error) {
+      console.error("Activities query error:", error);
       toast({
         title: "Error",
         description: "Failed to fetch activities",
         variant: "destructive",
       });
-      setActivities([]);
-    } finally {
-      setIsLoading(false);
     }
-  }, [leadId, toast]);
-
-  useEffect(() => {
-    fetchStatuses();
-  }, [fetchStatuses]);
-
-  useEffect(() => {
-    if (leadId) {
-      fetchActivities();
-    }
-  }, [leadId, fetchActivities]);
+  }, [error, toast]);
 
   const getActivityIcon = (type: Activity["type"]) => {
     const iconSizeClass = "w-5 h-5";
@@ -161,19 +165,25 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
   };
 
   // Get status by name or ID
-  const getStatusByName = (statusName: string): Status | null => {
-    return (
-      statuses.find(
-        (status) => status.name === statusName || status._id === statusName
-      ) || null
-    );
-  };
+  const getStatusByName = useCallback(
+    (statusName: string): Status | null => {
+      return (
+        statuses.find(
+          (status) => status.name === statusName || status._id === statusName
+        ) || null
+      );
+    },
+    [statuses]
+  );
 
   // Get status color
-  const getStatusColor = (statusName: string): string => {
-    const status = getStatusByName(statusName);
-    return status?.color || "#3B82F6";
-  };
+  const getStatusColor = useCallback(
+    (statusName: string): string => {
+      const status = getStatusByName(statusName);
+      return status?.color || "#3B82F6";
+    },
+    [getStatusByName]
+  );
 
   // Updated to handle both Date objects and strings
   const formatDateTime = (dateInput: Date | string) => {
@@ -187,7 +197,7 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
     }
   };
 
-  // Helper function to get user display name - updated for new structure
+  // Helper function to get user display name
   const getUserDisplayName = (createdBy: Activity["createdBy"]): string => {
     if (
       typeof createdBy === "object" &&

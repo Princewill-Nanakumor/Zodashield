@@ -42,18 +42,41 @@ export const StatusFilter = ({
     ? statusNames
     : ["NEW", ...statusNames];
 
-  const options = allStatuses.map((statusName: string) => ({
-    value: statusName,
-    label:
-      statusName === "NEW"
-        ? "New"
-        : statusName.charAt(0).toUpperCase() + statusName.slice(1),
-  }));
+  // Create options with proper "all" handling
+  const options = [
+    { value: "all", label: "All Statuses" }, // Explicitly add "All Statuses" option
+    ...allStatuses.map((statusName: string) => ({
+      value: statusName,
+      label:
+        statusName === "NEW"
+          ? "New"
+          : statusName.charAt(0).toUpperCase() + statusName.slice(1),
+    })),
+  ];
+
+  // Handle the onChange to ensure proper value mapping
+  const handleChange = (selectedValue: string) => {
+    console.log("StatusFilter onChange:", {
+      selectedValue,
+      currentValue: value,
+      options: options.map((opt) => ({ value: opt.value, label: opt.label })),
+    });
+
+    // Ensure "all" is passed correctly
+    onChange(selectedValue === "all" ? "all" : selectedValue);
+  };
+
+  // Debug logging
+  console.log("StatusFilter render:", {
+    value,
+    options: options.map((opt) => ({ value: opt.value, label: opt.label })),
+    isLoadingStatuses,
+  });
 
   return (
     <FilterSelect
       value={value}
-      onChange={onChange}
+      onChange={handleChange}
       options={options}
       placeholder="All Statuses"
       disabled={disabled}

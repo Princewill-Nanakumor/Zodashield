@@ -1,3 +1,4 @@
+// src/components/leads/leadDetailsPanel/Comments.tsx
 "use client";
 
 import { FC, useState, useEffect, KeyboardEvent } from "react";
@@ -16,6 +17,8 @@ interface CommentsProps {
   handleAddComment: () => void;
   onCommentDeleted?: (commentId: string) => void;
   onCommentEdited?: (updatedComment: CommentType) => void;
+  isDeleting?: boolean;
+  isEditing?: boolean;
 }
 
 const LOCAL_STORAGE_KEY = "lead_comment_draft";
@@ -28,12 +31,13 @@ const Comments: FC<CommentsProps> = ({
   handleAddComment,
   onCommentDeleted,
   onCommentEdited,
+  isDeleting = false,
+  isEditing = false,
 }) => {
   const { data: session } = useSession();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
 
   const isAdmin = session?.user?.role === "ADMIN";
 
@@ -77,11 +81,9 @@ const Comments: FC<CommentsProps> = ({
   };
 
   const handleDelete = (commentId: string) => {
-    if (deletingId === commentId || !onCommentDeleted) return;
+    if (isDeleting || !onCommentDeleted) return;
     setDeletingId(commentId);
-    Promise.resolve(onCommentDeleted(commentId)).finally(() =>
-      setDeletingId(null)
-    );
+    onCommentDeleted(commentId);
   };
 
   const handleEdit = (comment: CommentType) => {
@@ -90,8 +92,8 @@ const Comments: FC<CommentsProps> = ({
   };
 
   const handleSaveEdit = async (comment: CommentType) => {
-    if (!onCommentEdited || !editContent.trim()) return;
-    setSavingEdit(true);
+    if (!onCommentEdited || !editContent.trim() || isEditing) return;
+
     try {
       await onCommentEdited({
         ...comment,
@@ -100,8 +102,6 @@ const Comments: FC<CommentsProps> = ({
       setEditingId(null);
     } catch (err) {
       console.error("Error updating comment:", err);
-    } finally {
-      setSavingEdit(false);
     }
   };
 
@@ -113,6 +113,13 @@ const Comments: FC<CommentsProps> = ({
       }
     }
   };
+
+  // Reset deleting state when not deleting anymore
+  useEffect(() => {
+    if (!isDeleting) {
+      setDeletingId(null);
+    }
+  }, [isDeleting]);
 
   return (
     <div
@@ -130,6 +137,7 @@ const Comments: FC<CommentsProps> = ({
           value={commentContent}
           onChange={(e) => setCommentContent(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={isSaving}
         />
         <div className="flex justify-end mt-3">
           <Button
@@ -229,15 +237,16 @@ const Comments: FC<CommentsProps> = ({
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
                             rows={3}
+                            disabled={isEditing}
                           />
                           <div className="flex gap-2">
                             <Button
                               size="sm"
                               onClick={() => handleSaveEdit(comment)}
-                              disabled={savingEdit || !editContent.trim()}
+                              disabled={isEditing || !editContent.trim()}
                               className="bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
                             >
-                              {savingEdit ? (
+                              {isEditing ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <Save className="w-4 h-4" />
@@ -248,6 +257,7 @@ const Comments: FC<CommentsProps> = ({
                               size="sm"
                               variant="outline"
                               onClick={() => setEditingId(null)}
+                              disabled={isEditing}
                             >
                               <X className="w-4 h-4" />
                               <span className="ml-2">Cancel</span>
@@ -273,6 +283,7 @@ const Comments: FC<CommentsProps> = ({
                           size="sm"
                           className="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400"
                           onClick={() => handleEdit(comment)}
+                          disabled={isEditing}
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -281,7 +292,7 @@ const Comments: FC<CommentsProps> = ({
                           size="sm"
                           className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
                           onClick={() => handleDelete(comment._id)}
-                          disabled={deletingId === comment._id}
+                          disabled={deletingId === comment._id || isDeleting}
                         >
                           {deletingId === comment._id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

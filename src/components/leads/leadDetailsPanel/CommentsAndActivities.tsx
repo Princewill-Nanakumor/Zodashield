@@ -1,12 +1,13 @@
 // src/components/leads/leadDetailsPanel/CommentsAndActivities.tsx
 "use client";
 
-import React, { FC, useState, useEffect, useCallback, useRef } from "react";
+import React, { FC, useState, useCallback } from "react";
 import { Lead } from "@/types/leads";
 import { Notebook, Activity as ActivityIcon, Loader2 } from "lucide-react";
 import Comments from "./Comments";
 import Activities from "./Activities";
 import { useToast } from "@/components/ui/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface ApiComment {
   _id: string;
@@ -38,240 +39,251 @@ interface CommentsAndActivitiesProps {
   onLeadUpdated?: (updatedLead: Lead) => Promise<boolean>;
 }
 
+function transformComment(apiComment: ApiComment): Comment {
+  const userId = apiComment.createdBy._id || apiComment.createdBy.id || "";
+  return {
+    _id: apiComment._id,
+    content: apiComment.content,
+    createdAt: apiComment.createdAt,
+    createdBy: {
+      _id: userId,
+      firstName: apiComment.createdBy.firstName,
+      lastName: apiComment.createdBy.lastName,
+      avatar: apiComment.createdBy.avatar,
+    },
+  };
+}
+
 const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"comments" | "activity">(
     "comments"
   );
   const [commentContent, setCommentContent] = useState("");
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [activitiesKey, setActivitiesKey] = useState(0);
 
-  // Prevent duplicate fetches
-  const isFetchingRef = useRef(false);
-  const lastFetchTimeRef = useRef<number>(0);
-  const currentLeadIdRef = useRef<string | null>(null);
-
-  // Store the latest toast function in a ref
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
-
-  // Memoized fetch function for comments
-  const fetchComments = useCallback(async () => {
-    if (!lead?._id) return;
-    if (isFetchingRef.current || currentLeadIdRef.current === lead._id) return;
-    const now = Date.now();
-    if (now - lastFetchTimeRef.current < 1000) return; // Debounce fetches
-
-    isFetchingRef.current = true;
-    currentLeadIdRef.current = lead._id;
-    lastFetchTimeRef.current = now;
-    setIsLoading(true);
-
-    try {
-      console.log("=== FETCHING COMMENTS ===");
+  // React Query for fetching comments
+  const {
+    data: comments = [],
+    isLoading: isLoadingComments,
+    error: commentsError,
+  } = useQuery({
+    queryKey: ["comments", lead._id],
+    queryFn: async (): Promise<Comment[]> => {
+      console.log("=== FETCHING COMMENTS WITH REACT QUERY ===");
       console.log("Lead ID:", lead._id);
-      console.log("Fetch URL:", `/api/leads/${lead._id}/comments`);
 
-      const commentsResponse = await fetch(`/api/leads/${lead._id}/comments`);
-      console.log("Response status:", commentsResponse.status);
-      console.log("Response ok:", commentsResponse.ok);
+      const response = await fetch(`/api/leads/${lead._id}/comments`);
+      console.log("Response status:", response.status);
 
-      if (commentsResponse.ok) {
-        const commentsData = await commentsResponse.json();
-        console.log("Raw comments data:", commentsData);
-        console.log("Comments data type:", typeof commentsData);
-        console.log("Is array:", Array.isArray(commentsData));
-
-        const transformedComments = commentsData.map(transformComment);
-        console.log("Transformed comments:", transformedComments);
-        setComments(transformedComments);
-      } else {
-        console.log(
-          "Comments response not ok, status:",
-          commentsResponse.status
-        );
-        const errorText = await commentsResponse.text();
-        console.log("Error response:", errorText);
-        setComments([]);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch comments: ${response.status}`);
       }
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-      toastRef.current({
-        title: "Error",
-        description: "Failed to fetch comments",
-        variant: "destructive",
-      });
-      setComments([]);
-    } finally {
-      setIsLoading(false);
-      isFetchingRef.current = false;
-      currentLeadIdRef.current = null;
-    }
-  }, [lead?._id]);
 
-  useEffect(() => {
-    if (lead?._id) {
-      fetchComments();
-    }
-  }, [lead?._id, fetchComments]);
+      const data = await response.json();
+      console.log("Raw comments data:", data);
 
-  const handleAddComment = useCallback(async () => {
-    if (!commentContent.trim() || !lead?._id) return;
-    setIsSaving(true);
-    try {
-      console.log("=== ADDING COMMENT ===");
+      const transformedComments = data.map(transformComment);
+      console.log("Transformed comments:", transformedComments);
+
+      return transformedComments;
+    },
+    enabled: !!lead._id,
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error) => {
+      console.error("Comments fetch error:", error);
+      return failureCount < 2;
+    },
+    refetchOnWindowFocus: false,
+  });
+
+  // Add comment mutation
+  const addCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      console.log("=== ADDING COMMENT WITH REACT QUERY ===");
       console.log("Lead ID:", lead._id);
-      console.log("Content:", commentContent);
+      console.log("Content:", content);
 
       const response = await fetch(`/api/leads/${lead._id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: commentContent }),
+        body: JSON.stringify({ content }),
       });
 
-      console.log("Add comment response status:", response.status);
-      console.log("Add comment response ok:", response.ok);
-
-      if (response.ok) {
-        const newComment = await response.json();
-        console.log("New comment response:", newComment);
-        const transformedComment = transformComment(newComment);
-        console.log("Transformed new comment:", transformedComment);
-
-        setComments((prev) => {
-          const updated = [transformedComment, ...prev];
-          console.log("Updated comments array:", updated);
-          return updated;
-        });
-        setCommentContent("");
-        setActivitiesKey((prev) => prev + 1);
-
-        toastRef.current({
-          title: "Success",
-          description: "Comment added successfully",
-          variant: "success",
-        });
-      } else {
+      if (!response.ok) {
         const errorText = await response.text();
-        console.log("Add comment error response:", errorText);
         throw new Error(`Failed to add comment: ${errorText}`);
       }
-    } catch (error) {
+
+      const newComment = await response.json();
+      return transformComment(newComment);
+    },
+    onSuccess: (newComment) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        ["comments", lead._id],
+        (oldComments: Comment[] = []) => [newComment, ...oldComments]
+      );
+
+      // Invalidate activities to refresh them
+      queryClient.invalidateQueries({ queryKey: ["activities", lead._id] });
+
+      setCommentContent("");
+      toast({
+        title: "Success",
+        description: "Comment added successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
       console.error("Error adding comment:", error);
-      toastRef.current({
+      toast({
         title: "Error",
         description: "Failed to add comment",
         variant: "destructive",
       });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [commentContent, lead]);
+    },
+  });
+
+  // Delete comment mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      console.log("=== DELETING COMMENT WITH REACT QUERY ===");
+      console.log("Comment ID:", commentId);
+
+      const response = await fetch(
+        `/api/leads/${lead._id}/comments/${commentId}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to delete comment: ${errorText}`);
+      }
+
+      return commentId;
+    },
+    onSuccess: (deletedCommentId) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        ["comments", lead._id],
+        (oldComments: Comment[] = []) =>
+          oldComments.filter((comment) => comment._id !== deletedCommentId)
+      );
+
+      // Invalidate activities to refresh them
+      queryClient.invalidateQueries({ queryKey: ["activities", lead._id] });
+
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("Error deleting comment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete comment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Edit comment mutation
+  const editCommentMutation = useMutation({
+    mutationFn: async ({
+      commentId,
+      content,
+    }: {
+      commentId: string;
+      content: string;
+    }) => {
+      console.log("=== EDITING COMMENT WITH REACT QUERY ===");
+      console.log("Comment ID:", commentId);
+      console.log("New content:", content);
+
+      const response = await fetch(
+        `/api/leads/${lead._id}/comments/${commentId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update comment: ${errorText}`);
+      }
+
+      const updatedComment = await response.json();
+      return transformComment(updatedComment);
+    },
+    onSuccess: (updatedComment) => {
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        ["comments", lead._id],
+        (oldComments: Comment[] = []) =>
+          oldComments.map((comment) =>
+            comment._id === updatedComment._id ? updatedComment : comment
+          )
+      );
+
+      // Invalidate activities to refresh them
+      queryClient.invalidateQueries({ queryKey: ["activities", lead._id] });
+
+      toast({
+        title: "Success",
+        description: "Comment updated successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating comment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update comment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle comment actions
+  const handleAddComment = useCallback(async () => {
+    if (!commentContent.trim()) return;
+    addCommentMutation.mutate(commentContent);
+  }, [commentContent, addCommentMutation]);
 
   const handleCommentDeleted = useCallback(
     async (commentId: string) => {
-      try {
-        console.log("=== DELETING COMMENT ===");
-        console.log("Comment ID:", commentId);
-        console.log("Lead ID:", lead._id);
-
-        const response = await fetch(
-          `/api/leads/${lead._id}/comments/${commentId}`,
-          { method: "DELETE" }
-        );
-
-        console.log("Delete comment response status:", response.status);
-        console.log("Delete comment response ok:", response.ok);
-
-        if (response.ok) {
-          setComments((prev) => {
-            const updated = prev.filter((comment) => comment._id !== commentId);
-            console.log("Comments after deletion:", updated);
-            return updated;
-          });
-          setActivitiesKey((prev) => prev + 1);
-
-          toastRef.current({
-            title: "Success",
-            description: "Comment deleted successfully",
-            variant: "success",
-          });
-        } else {
-          const errorText = await response.text();
-          console.log("Delete comment error response:", errorText);
-          throw new Error(`Failed to delete comment: ${errorText}`);
-        }
-      } catch (error) {
-        console.error("Error deleting comment:", error);
-        toastRef.current({
-          title: "Error",
-          description: "Failed to delete comment",
-          variant: "destructive",
-        });
-      }
+      deleteCommentMutation.mutate(commentId);
     },
-    [lead._id]
+    [deleteCommentMutation]
   );
 
   const handleCommentEdited = useCallback(
     async (updatedComment: Comment) => {
-      try {
-        console.log("=== EDITING COMMENT ===");
-        console.log("Comment ID:", updatedComment._id);
-        console.log("Lead ID:", lead._id);
-        console.log("New content:", updatedComment.content);
-
-        const response = await fetch(
-          `/api/leads/${lead._id}/comments/${updatedComment._id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: updatedComment.content }),
-          }
-        );
-
-        console.log("Edit comment response status:", response.status);
-        console.log("Edit comment response ok:", response.ok);
-
-        if (response.ok) {
-          const savedComment = await response.json();
-          console.log("Saved comment response:", savedComment);
-          const transformedComment = transformComment(savedComment);
-          console.log("Transformed saved comment:", transformedComment);
-
-          setComments((prev) => {
-            const updated = prev.map((comment) =>
-              comment._id === updatedComment._id ? transformedComment : comment
-            );
-            console.log("Comments after edit:", updated);
-            return updated;
-          });
-          setActivitiesKey((prev) => prev + 1);
-
-          toastRef.current({
-            title: "Success",
-            description: "Comment updated successfully",
-            variant: "success",
-          });
-        } else {
-          const errorText = await response.text();
-          console.log("Edit comment error response:", errorText);
-          throw new Error(`Failed to update comment: ${errorText}`);
-        }
-      } catch (error) {
-        console.error("Error updating comment:", error);
-        toastRef.current({
-          title: "Error",
-          description: "Failed to update comment",
-          variant: "destructive",
-        });
-      }
+      editCommentMutation.mutate({
+        commentId: updatedComment._id,
+        content: updatedComment.content,
+      });
     },
-    [lead._id]
+    [editCommentMutation]
   );
+
+  // Handle errors
+  React.useEffect(() => {
+    if (commentsError) {
+      console.error("Comments query error:", commentsError);
+      toast({
+        title: "Error",
+        description: "Failed to fetch comments",
+        variant: "destructive",
+      });
+    }
+  }, [commentsError, toast]);
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 h-full min-h-0">
@@ -286,7 +298,7 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
             }`}
           >
             <Notebook className="w-5 h-5" />
-            Comments
+            Comments ({comments.length})
           </button>
           <button
             onClick={() => setActiveTab("activity")}
@@ -304,7 +316,7 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
 
       {/* This is the scrollable/fill area */}
       <div className="flex-1 flex flex-col min-h-0">
-        {isLoading ? (
+        {isLoadingComments && activeTab === "comments" ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 animate-spin text-purple-500 dark:text-blue-400" />
           </div>
@@ -315,18 +327,17 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
                 comments={comments}
                 commentContent={commentContent}
                 setCommentContent={setCommentContent}
-                isSaving={isSaving}
+                isSaving={addCommentMutation.isPending}
                 handleAddComment={handleAddComment}
                 onCommentDeleted={handleCommentDeleted}
                 onCommentEdited={handleCommentEdited}
+                isDeleting={deleteCommentMutation.isPending}
+                isEditing={editCommentMutation.isPending}
               />
             )}
             {activeTab === "activity" && (
               <div className="flex-1 min-h-0 flex flex-col">
-                <Activities
-                  leadId={lead._id}
-                  key={`${lead._id}-${activitiesKey}`}
-                />
+                <Activities leadId={lead._id} />
               </div>
             )}
           </>
@@ -335,20 +346,5 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
     </div>
   );
 };
-
-function transformComment(apiComment: ApiComment): Comment {
-  const userId = apiComment.createdBy._id || apiComment.createdBy.id || "";
-  return {
-    _id: apiComment._id,
-    content: apiComment.content,
-    createdAt: apiComment.createdAt,
-    createdBy: {
-      _id: userId,
-      firstName: apiComment.createdBy.firstName,
-      lastName: apiComment.createdBy.lastName,
-      avatar: apiComment.createdBy.avatar,
-    },
-  };
-}
 
 export default CommentsAndActivities;
