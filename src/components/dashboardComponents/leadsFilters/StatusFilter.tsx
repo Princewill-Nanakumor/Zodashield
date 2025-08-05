@@ -45,13 +45,17 @@ export const StatusFilter = ({
     ? statusNames
     : ["NEW", ...statusNames];
 
-  const options = allStatuses.map((statusName: string) => ({
-    value: statusName,
-    label:
-      statusName === "NEW"
-        ? "New"
-        : statusName.charAt(0).toUpperCase() + statusName.slice(1),
-  }));
+  // Create options with "All Statuses" at the top
+  const options = [
+    { value: "all", label: "All Statuses" }, // Add this line
+    ...allStatuses.map((statusName: string) => ({
+      value: statusName,
+      label:
+        statusName === "NEW"
+          ? "New"
+          : statusName.charAt(0).toUpperCase() + statusName.slice(1),
+    })),
+  ];
 
   return (
     <FilterSelect
