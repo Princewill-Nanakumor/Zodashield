@@ -16,16 +16,24 @@ export const CountryFilter = ({
   onChange,
   disabled,
 }: CountryFilterProps) => {
-  const { data: leads = [], isLoading: isLoadingLeads } = useQuery<Lead[]>({
+  // React Query to get leads for countries
+  const {
+    data: leads = [],
+    isLoading,
+    error,
+  } = useQuery<Lead[]>({
     queryKey: ["leads", "all"],
     queryFn: async (): Promise<Lead[]> => {
+      console.log("🔍 CountryFilter: Fetching leads...");
       const response = await fetch("/api/leads/all", {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch leads");
-      return response.json();
+      const data = await response.json();
+      console.log("🔍 CountryFilter: Received leads:", data.length, "leads");
+      return data;
     },
-    staleTime: 30 * 60 * 1000,
+    staleTime: 30 * 60 * 1000, // 30 minutes
     refetchOnWindowFocus: false,
     retry: 2,
     refetchOnMount: false,
@@ -35,11 +43,18 @@ export const CountryFilter = ({
     ...new Set(leads.map((lead: Lead) => lead.country)),
   ].filter((country): country is string => Boolean(country));
 
+  console.log("🔍 CountryFilter render:", {
+    leadsCount: leads.length,
+    countries,
+    isLoading,
+    error,
+  });
+
   const options = [
     { value: "all", label: "All Countries" },
     ...countries.map((country: string) => ({
       value: country,
-      label: country.charAt(0).toUpperCase() + country.slice(1),
+      label: country,
     })),
   ];
 
@@ -50,7 +65,7 @@ export const CountryFilter = ({
       options={options}
       placeholder="All Countries"
       disabled={disabled}
-      isLoading={isLoadingLeads}
+      isLoading={isLoading}
     />
   );
 };

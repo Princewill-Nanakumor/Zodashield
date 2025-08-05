@@ -2,42 +2,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import StatusModal from "@/components/dashboardComponents/StatusModal";
 
 interface AddStatusButtonProps {
   disabled: boolean;
 }
 
-// Add Status Button Skeleton Component
-const AddStatusButtonSkeleton = () => (
-  <div className="w-[120px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
-);
-
 export const AddStatusButton = ({ disabled }: AddStatusButtonProps) => {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-
-  // Use React Query to get statuses to determine loading state
-  const {
-    isLoading: isLoadingStatuses,
-    isFetching: isFetchingStatuses,
-    isInitialLoading: isInitialLoadingStatuses,
-  } = useQuery<Array<{ id: string; name: string; color?: string }>>({
-    queryKey: ["statuses"],
-    queryFn: async (): Promise<
-      Array<{ id: string; name: string; color?: string }>
-    > => {
-      const response = await fetch("/api/statuses", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch statuses");
-      return response.json();
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: false,
-    retry: 2,
-    refetchOnMount: true,
-  });
 
   // Listen for custom event to open modal after page refresh
   useEffect(() => {
@@ -62,11 +34,6 @@ export const AddStatusButton = ({ disabled }: AddStatusButtonProps) => {
     setIsStatusModalOpen(false);
     localStorage.removeItem("statusModalOpen");
   };
-
-  // Show skeleton during loading
-  if (isLoadingStatuses || isFetchingStatuses || isInitialLoadingStatuses) {
-    return <AddStatusButtonSkeleton />;
-  }
 
   return (
     <>

@@ -15,47 +15,53 @@ export const StatusFilter = ({
   onChange,
   disabled,
 }: StatusFilterProps) => {
-  // Use React Query to get statuses
+  // React Query to get statuses
   const {
     data: statuses = [],
-    isLoading: isLoadingStatuses,
-    isFetching,
-    isInitialLoading,
+    isLoading,
+    error,
   } = useQuery<Array<{ id: string; name: string; color?: string }>>({
     queryKey: ["statuses"],
     queryFn: async (): Promise<
       Array<{ id: string; name: string; color?: string }>
     > => {
+      console.log("🔍 StatusFilter: Fetching statuses...");
       const response = await fetch("/api/statuses", {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch statuses");
-      return response.json();
+      const data = await response.json();
+      console.log("🔍 StatusFilter: Received statuses:", data);
+      return data;
     },
-    staleTime: 0, // Always consider data stale to trigger loading
+    staleTime: 60 * 60 * 1000, // 1 hour
     refetchOnWindowFocus: false,
     retry: 2,
-    refetchOnMount: true,
+    refetchOnMount: false,
+  });
+
+  console.log("🔍 StatusFilter render:", {
+    statuses,
+    isLoading,
+    error,
+    statusCount: statuses.length,
   });
 
   const statusNames = statuses.map((status) => status.name);
-
-  // Add "NEW" as a default status if it's not already in the list
   const allStatuses = statusNames.includes("NEW")
     ? statusNames
     : ["NEW", ...statusNames];
 
-  // Create options with "All Statuses" at the top
   const options = [
-    { value: "all", label: "All Statuses" }, // Add this line
+    { value: "all", label: "All Statuses" },
     ...allStatuses.map((statusName: string) => ({
       value: statusName,
       label:
-        statusName === "NEW"
-          ? "New"
-          : statusName.charAt(0).toUpperCase() + statusName.slice(1),
+        statusName.charAt(0).toUpperCase() + statusName.slice(1).toLowerCase(),
     })),
   ];
+
+  console.log("🔍 StatusFilter options:", options);
 
   return (
     <FilterSelect
@@ -64,7 +70,7 @@ export const StatusFilter = ({
       options={options}
       placeholder="All Statuses"
       disabled={disabled}
-      isLoading={isLoadingStatuses || isFetching || isInitialLoading}
+      isLoading={isLoading}
     />
   );
 };
