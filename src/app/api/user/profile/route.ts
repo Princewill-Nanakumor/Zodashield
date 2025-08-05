@@ -1,5 +1,4 @@
-//drivecrm/src/app/api/user/profile/route.ts
-
+// src/app/api/user/profile/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -29,8 +28,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Use case-insensitive search to handle email case differences
     const user = (await User.findOne({
-      email: session.user.email,
+      email: { $regex: new RegExp(`^${session.user.email}$`, "i") },
     }).lean()) as UserDocument | null;
 
     if (!user) {

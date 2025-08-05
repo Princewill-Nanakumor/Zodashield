@@ -1,102 +1,108 @@
 // src/components/user-leads/FilterLogic.tsx
-"use client";
-
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Lead } from "@/types/leads";
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt";
 type SortOrder = "asc" | "desc";
 
-// Optimized filter functions
-const filterLeadsByCountry = (
-  leads: Lead[],
-  filterByCountry: string
-): Lead[] => {
-  if (!filterByCountry || filterByCountry === "all") return leads;
-  return leads.filter(
-    (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
-  );
-};
-
 interface FilterLogicProps {
   leads: Lead[];
   filterByCountry: string;
+  filterByStatus: string;
   sortField: SortField;
   sortOrder: SortOrder;
   isDataReady: boolean;
-  children: (filteredData: {
+  children: (props: {
     filteredLeads: Lead[];
     sortedLeads: Lead[];
     availableCountries: string[];
-  }) => React.ReactNode;
+    availableStatuses: string[];
+  }) => React.ReactElement;
 }
 
-export function FilterLogic({
+export const FilterLogic: React.FC<FilterLogicProps> = ({
   leads,
   filterByCountry,
+  filterByStatus,
   sortField,
   sortOrder,
   isDataReady,
   children,
-}: FilterLogicProps) {
-  // Optimized available countries with memoization
+}) => {
+  // Get available countries - filter out undefined values and ensure string type
   const availableCountries = useMemo(() => {
-    if (!isDataReady) return [];
-
-    const countrySet = new Set<string>();
-    leads.forEach((lead) => {
-      if (lead.country?.trim()) {
-        countrySet.add(lead.country.toLowerCase());
-      }
-    });
-
-    return Array.from(countrySet).sort();
+    if (!isDataReady || leads.length === 0) return [];
+    return [...new Set(leads.map((lead) => lead.country))]
+      .filter((country): country is string => Boolean(country)) // Type guard to ensure string
+      .sort();
   }, [leads, isDataReady]);
 
-  // Optimized filtered leads
+  // Get available statuses - filter out undefined values and ensure string type
+  const availableStatuses = useMemo(() => {
+    if (!isDataReady || leads.length === 0) return [];
+    return [...new Set(leads.map((lead) => lead.status))]
+      .filter((status): status is string => Boolean(status)) // Type guard to ensure string
+      .sort();
+  }, [leads, isDataReady]);
+
+  // Filter leads by country and status
   const filteredLeads = useMemo(() => {
     if (!isDataReady) return [];
-    return filterLeadsByCountry(leads, filterByCountry);
-  }, [leads, filterByCountry, isDataReady]);
 
-  // Memoized sorted leads with early return
+    return leads.filter((lead) => {
+      const countryMatch =
+        filterByCountry === "all" || lead.country === filterByCountry;
+      const statusMatch =
+        filterByStatus === "all" || lead.status === filterByStatus;
+      return countryMatch && statusMatch;
+    });
+  }, [leads, filterByCountry, filterByStatus, isDataReady]);
+
+  // Sort filtered leads
   const sortedLeads = useMemo(() => {
     if (!isDataReady || filteredLeads.length === 0) return [];
 
     return [...filteredLeads].sort((a, b) => {
-      const multiplier = sortOrder === "asc" ? 1 : -1;
+      let aValue: string | number = "";
+      let bValue: string | number = "";
+
       switch (sortField) {
         case "name":
-          return (
-            `${a.firstName} ${a.lastName}`.localeCompare(
-              `${b.firstName} ${b.lastName}`
-            ) * multiplier
-          );
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
         case "country":
-          return (a.country || "").localeCompare(b.country || "") * multiplier;
+          aValue = a.country?.toLowerCase() || "";
+          bValue = b.country?.toLowerCase() || "";
+          break;
         case "status":
-          return (a.status || "").localeCompare(b.status || "") * multiplier;
+          aValue = a.status?.toLowerCase() || "";
+          bValue = b.status?.toLowerCase() || "";
+          break;
         case "source":
-          return a.source.localeCompare(b.source) * multiplier;
+          aValue = a.source?.toLowerCase() || "";
+          bValue = b.source?.toLowerCase() || "";
+          break;
         case "createdAt":
-          return (
-            (new Date(a.createdAt).getTime() -
-              new Date(b.createdAt).getTime()) *
-            multiplier
-          );
+          aValue = new Date(a.createdAt || "").getTime();
+          bValue = new Date(b.createdAt || "").getTime();
+          break;
         default:
           return 0;
+      }
+
+      if (sortOrder === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
       }
     });
   }, [filteredLeads, sortField, sortOrder, isDataReady]);
 
-  return (
-    <>
-      {children({
-        filteredLeads,
-        sortedLeads,
-        availableCountries,
-      })}
-    </>
-  );
-}
+  return children({
+    filteredLeads,
+    sortedLeads,
+    availableCountries,
+    availableStatuses,
+  });
+};

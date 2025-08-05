@@ -18,9 +18,6 @@ interface PlanDisplayProps {
   isAdmin: boolean;
 }
 export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
-  // ^^^ FIXED: Removed => and added return type annotation
-
-  // React Query to fetch subscription data
   const {
     data: subscriptionData,
     isLoading: subscriptionLoading,

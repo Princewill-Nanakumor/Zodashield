@@ -22,14 +22,13 @@ interface SubscriptionData {
   subscriptionStartDate?: string | null;
 }
 
-// Fetch functions outside hooks to prevent recreation
+// src/hooks/useNavbarData.ts
 const fetchUserProfile = async (): Promise<UserProfile> => {
   const response = await fetch("/api/user/profile");
 
   if (response.status === 404) {
-    // User not found - likely deleted from database
     console.log("User not found, signing out...");
-    await signOut({ callbackUrl: "/signin" });
+    await signOut({ callbackUrl: "/signin" }); // ✅ Uncomment this
     throw new Error("User not found");
   }
 
@@ -40,14 +39,13 @@ const fetchUserProfile = async (): Promise<UserProfile> => {
   const data = await response.json();
   return data.user;
 };
-
 const fetchSubscriptionData = async (): Promise<SubscriptionData> => {
   const response = await fetch("/api/subscription/status");
 
   if (response.status === 404) {
-    // User not found - likely deleted from database
-    console.log("User not found in database, signing out...");
-    await signOut({ callbackUrl: "/signin" });
+    // // User not found - likely deleted from database
+    // console.log("User not found in database, signing out...");
+    // await signOut({ callbackUrl: "/signin" });
     throw new Error("User not found");
   }
 

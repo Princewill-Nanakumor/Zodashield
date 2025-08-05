@@ -1,3 +1,4 @@
+// src/components/user-leads/UserLeadTableControls.tsx
 import {
   Select,
   SelectContent,
@@ -15,7 +16,8 @@ interface UserLeadTableControlsProps {
 
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 40, 50, 100, 200];
 
-export function UserLeadTableControls({
+// Changed to default export
+export default function UserLeadTableControls({
   pageSize,
   pageIndex,
   totalEntries,
