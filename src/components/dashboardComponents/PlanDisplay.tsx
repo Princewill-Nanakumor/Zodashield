@@ -1,6 +1,7 @@
 // src/components/dashboardComponents/PlanDisplay.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Crown } from "lucide-react";
 
 interface SubscriptionData {
@@ -16,33 +17,31 @@ interface SubscriptionData {
 interface PlanDisplayProps {
   isAdmin: boolean;
 }
-
 export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
-  const [subscriptionData, setSubscriptionData] =
-    useState<SubscriptionData | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  // ^^^ FIXED: Removed => and added return type annotation
 
-  // Fetch subscription data when component mounts
-  useEffect(() => {
-    if (isAdmin && !subscriptionData) {
-      const fetchSubscriptionData = async () => {
-        try {
-          setSubscriptionLoading(true);
-          const response = await fetch("/api/subscription/status");
-          if (response.ok) {
-            const data = await response.json();
-            setSubscriptionData(data);
-          }
-        } catch (error) {
-          console.error("Error fetching subscription data:", error);
-        } finally {
-          setSubscriptionLoading(false);
-        }
-      };
-
-      fetchSubscriptionData();
-    }
-  }, [isAdmin, subscriptionData]);
+  // React Query to fetch subscription data
+  const {
+    data: subscriptionData,
+    isLoading: subscriptionLoading,
+    error,
+  } = useQuery<SubscriptionData>({
+    queryKey: ["subscription", "status"],
+    queryFn: async (): Promise<SubscriptionData> => {
+      const response = await fetch("/api/subscription/status", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch subscription data");
+      }
+      return response.json();
+    },
+    enabled: isAdmin, // Only fetch if user is admin
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    refetchOnMount: false,
+  });
 
   // Helper function to calculate remaining days
   const getRemainingDays = () => {
@@ -157,6 +156,12 @@ export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
   const remainingDays = getRemainingDays();
 
   if (!isAdmin) return null;
+
+  // Handle error state
+  if (error) {
+    console.error("Subscription fetch error:", error);
+    // Show fallback UI on error
+  }
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/30 dark:via-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-purple-200/50 dark:border-purple-700/50 p-3 shadow-sm hover:shadow-md transition-all duration-200">

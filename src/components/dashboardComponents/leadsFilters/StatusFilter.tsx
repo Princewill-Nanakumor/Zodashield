@@ -61,8 +61,6 @@ export const StatusFilter = ({
     })),
   ];
 
-  console.log("🔍 StatusFilter options:", options);
-
   return (
     <FilterSelect
       value={value}
