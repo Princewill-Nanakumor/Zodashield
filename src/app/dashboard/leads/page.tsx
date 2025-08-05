@@ -1,7 +1,7 @@
 // src/app/dashboard/user-leads/page.tsx
 "use client";
 
-import UserLeadsContent from "@/components/leads/UserLeadsTableContent";
+import UserLeadsContent from "@/components/leads/UserLeadsContent";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";

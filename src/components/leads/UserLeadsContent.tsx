@@ -159,7 +159,7 @@ export default function UserLeadsContent() {
           <FilterLogic
             leads={leads}
             filterByCountry={filterByCountry}
-            filterByStatus={filterByStatus}
+            filterByStatus={filterByStatus} // Add this
             sortField={sortField}
             sortOrder={sortOrder}
             isDataReady={isDataReady}

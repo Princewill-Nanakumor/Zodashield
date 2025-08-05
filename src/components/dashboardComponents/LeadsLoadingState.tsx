@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Component, ReactNode } from "react";
 import { Shield, RefreshCw, Wifi, WifiOff } from "lucide-react";
 
 export const TableSkeleton = () => (
@@ -89,75 +89,73 @@ export const NetworkStatus = ({ isOnline }: { isOnline: boolean }) => (
   </div>
 );
 
-// Enhanced error boundary with retry functionality
-export const ErrorBoundary = ({
-  children,
-  onRetry,
-}: {
-  children: React.ReactNode;
-  fallback: React.ReactNode;
+// ✅ FIXED: Error Boundary as Class Component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
   onRetry?: () => void;
-}) => {
-  const [hasError, setHasError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+}
 
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      console.error("Error caught by boundary:", event.error);
-      setError(event.error);
-      setHasError(true);
-    };
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
 
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error("Unhandled promise rejection:", event.reason);
-      setError(new Error(event.reason));
-      setHasError(true);
-    };
-
-    window.addEventListener("error", handleError);
-    window.addEventListener("unhandledrejection", handleUnhandledRejection);
-
-    return () => {
-      window.removeEventListener("error", handleError);
-      window.removeEventListener(
-        "unhandledrejection",
-        handleUnhandledRejection
-      );
-    };
-  }, []);
-
-  const handleRetry = () => {
-    setHasError(false);
-    setError(null);
-    onRetry?.();
-  };
-
-  if (hasError) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="mb-4">
-            <Shield className="h-12 w-12 text-red-500 mx-auto" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Something went wrong
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            {error?.message || "An unexpected error occurred"}
-          </p>
-          <button
-            onClick={handleRetry}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
-  return <>{children}</>;
-};
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+    this.props.onRetry?.();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      // Use the fallback prop if provided, otherwise show default error UI
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="mb-4">
+              <Shield className="h-12 w-12 text-red-500 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Something went wrong
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              {this.state.error?.message || "An unexpected error occurred"}
+            </p>
+            <button
+              onClick={this.handleRetry}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // New component for data refresh indicator
 export const DataRefreshIndicator = ({
