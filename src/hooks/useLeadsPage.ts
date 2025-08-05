@@ -288,15 +288,21 @@ export const useLeadsPage = (
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
 
+  // Replace this useEffect in your useLeadsPage.ts:
   useEffect(() => {
     const urlCountry = searchParams.get("country");
     const urlStatus = searchParams.get("status");
 
-    if (urlCountry !== null && urlCountry !== uiState.filterByCountry) {
-      setUiState((prev) => ({ ...prev, filterByCountry: urlCountry }));
+    // Handle country filter - if URL param is null, set to "all"
+    const targetCountry = urlCountry || "all";
+    if (targetCountry !== uiState.filterByCountry) {
+      setUiState((prev) => ({ ...prev, filterByCountry: targetCountry }));
     }
-    if (urlStatus !== null && urlStatus !== uiState.filterByStatus) {
-      setUiState((prev) => ({ ...prev, filterByStatus: urlStatus }));
+
+    // Handle status filter - if URL param is null, set to "all"
+    const targetStatus = urlStatus || "all";
+    if (targetStatus !== uiState.filterByStatus) {
+      setUiState((prev) => ({ ...prev, filterByStatus: targetStatus }));
     }
   }, [searchParams, uiState.filterByCountry, uiState.filterByStatus]);
 
@@ -322,22 +328,55 @@ export const useLeadsPage = (
     return [...leads].sort((a, b) => a._id.localeCompare(b._id));
   }, [leads]);
 
+  // In your filteredLeads useMemo, replace the existing code with this debug version:
+
   const filteredLeads = useMemo(() => {
     let filtered = stableLeads;
 
+    console.log("🔍 FILTERING DEBUG START:", {
+      totalLeads: stableLeads.length,
+      searchQuery: uiState.searchQuery,
+      filterByUser,
+      filterByCountry: uiState.filterByCountry,
+      filterByStatus: uiState.filterByStatus,
+    });
+
     if (uiState.searchQuery.trim()) {
+      const beforeSearch = filtered.length;
       filtered = searchLeads(filtered, uiState.searchQuery);
+      console.log("✅ After search filter:", {
+        before: beforeSearch,
+        after: filtered.length,
+      });
     }
 
     if (filterByUser !== "all") {
+      const beforeUser = filtered.length;
       filtered = filterLeadsByUser(filtered, filterByUser);
+      console.log("✅ After user filter:", {
+        before: beforeUser,
+        after: filtered.length,
+        filterByUser,
+      });
+    } else {
+      console.log("⏭️ Skipping user filter (value is 'all')");
     }
 
     if (uiState.filterByCountry !== "all") {
+      const beforeCountry = filtered.length;
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
+      console.log("✅ After country filter:", {
+        before: beforeCountry,
+        after: filtered.length,
+        filterByCountry: uiState.filterByCountry,
+      });
+    } else {
+      console.log("⏭️ Skipping country filter (value is 'all')");
     }
 
     if (uiState.filterByStatus !== "all") {
+      const beforeStatus = filtered.length;
+
       const statusIdToName = statuses.reduce(
         (acc, status) => {
           if (status.id && status.name) {
@@ -364,11 +403,19 @@ export const useLeadsPage = (
           statusIdToName[lead.status] === uiState.filterByStatus;
         const reverseMatch =
           statusNameToId[uiState.filterByStatus] === lead.status;
-
         return directMatch || mappedMatch || reverseMatch;
       });
+
+      console.log("✅ After status filter:", {
+        before: beforeStatus,
+        after: filtered.length,
+        filterByStatus: uiState.filterByStatus,
+      });
+    } else {
+      console.log("⏭️ Skipping status filter (value is 'all')");
     }
 
+    console.log("🎯 FILTERING DEBUG END:", { finalCount: filtered.length });
     return filtered;
   }, [
     stableLeads,
@@ -464,35 +511,63 @@ export const useLeadsPage = (
 
   const handleCountryFilterChange = useCallback(
     (country: string) => {
-      setUiState((prev) => ({ ...prev, filterByCountry: country }));
+      console.log("🔍 Main component country filter change:", {
+        newCountry: country,
+        isAll: country === "all",
+      });
+
+      setUiState((prev) => ({
+        ...prev,
+        filterByCountry: country,
+      }));
 
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
+
       if (country === "all") {
-        params.delete("country");
+        params.delete("country"); // Remove country param when "all" is selected
       } else {
         params.set("country", country);
       }
+
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
     },
     [pathname, searchParams]
   );
-
   const handleStatusFilterChange = useCallback(
     (status: string) => {
-      setUiState((prev) => ({ ...prev, filterByStatus: status }));
+      console.log("🔍 handleStatusFilterChange called:", {
+        newStatus: status,
+      });
+
+      setUiState((prev) => {
+        console.log("🔍 setUiState callback:", {
+          prevFilterByStatus: prev.filterByStatus,
+          newFilterByStatus: status,
+        });
+        return { ...prev, filterByStatus: status };
+      });
 
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
       if (status === "all") {
         params.delete("status");
+        console.log("🔍 Removing status param from URL");
       } else {
         params.set("status", status);
+        console.log("🔍 Setting status param in URL:", status);
       }
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
     },
-    [pathname, searchParams]
+    [pathname, searchParams] // Removed uiState.filterByStatus from dependencies
   );
+
+  useEffect(() => {
+    console.log("🔍 uiState.filterByStatus changed:", {
+      newValue: uiState.filterByStatus,
+      timestamp: new Date().toISOString(),
+    });
+  }, [uiState.filterByStatus]);
 
   const handleFilterChange = useCallback(
     (value: string) => {

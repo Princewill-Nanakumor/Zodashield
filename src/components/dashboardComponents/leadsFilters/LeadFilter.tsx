@@ -3,7 +3,7 @@
 
 import { useState, Suspense, useEffect } from "react";
 import { BulkActions } from "@/components/dashboardComponents/BulkActions";
-import { UserFilter } from "../UserFilter";
+import { UserFilter } from "./UserFilter";
 import { StatusFilter } from "./StatusFilter";
 import { CountryFilter } from "./CountryFilter";
 import { AddStatusButton } from "./AddStatusButton";
@@ -98,6 +98,14 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
+  // Add debug logging
+  console.log("🔍 LeadsFilterControls props:", {
+    filterByUser,
+    filterByStatus,
+    filterByCountry,
+    timestamp: new Date().toISOString(),
+  });
+
   // Only show full skeleton during initial load (not when returning to page)
   if (isLocalInitializing && (isLoadingUsers || isLoading)) {
     return (
@@ -111,55 +119,57 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   }
 
   return (
-    <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <ErrorBoundary
-            fallback={
-              <div className="text-red-500">Bulk actions failed to load</div>
-            }
-          >
-            <BulkActions
-              selectedLeads={selectedLeads}
-              hasAssignedLeads={hasAssignedLeads}
-              assignedLeadsCount={assignedLeadsCount}
-              isUpdating={isUpdating}
-              onAssign={onAssign}
-              onUnassign={onUnassign}
-            />
-          </ErrorBoundary>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <ErrorBoundary fallback={<FilterSkeleton />}>
-            <Suspense fallback={<FilterSkeleton />}>
-              {/* Add Status Button */}
-              <AddStatusButton disabled={isLoading} />
-
-              {/* User Filter with React Query */}
-              <UserFilter
-                value={filterByUser}
-                onChange={onFilterChange}
-                disabled={isLoading}
+    <>
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <ErrorBoundary
+              fallback={
+                <div className="text-red-500">Bulk actions failed to load</div>
+              }
+            >
+              <BulkActions
+                selectedLeads={selectedLeads}
+                hasAssignedLeads={hasAssignedLeads}
+                assignedLeadsCount={assignedLeadsCount}
+                isUpdating={isUpdating}
+                onAssign={onAssign}
+                onUnassign={onUnassign}
               />
+            </ErrorBoundary>
+          </div>
 
-              {/* Status Filter with React Query */}
-              <StatusFilter
-                value={filterByStatus}
-                onChange={onStatusFilterChange}
-                disabled={isLoading}
-              />
+          <div className="flex items-center gap-3">
+            <ErrorBoundary fallback={<FilterSkeleton />}>
+              <Suspense fallback={<FilterSkeleton />}>
+                {/* Add Status Button */}
+                <AddStatusButton disabled={isLoading} />
 
-              {/* Country Filter with React Query */}
-              <CountryFilter
-                value={filterByCountry}
-                onChange={onCountryFilterChange}
-                disabled={isLoading}
-              />
-            </Suspense>
-          </ErrorBoundary>
+                {/* User Filter with React Query */}
+                <UserFilter
+                  value={filterByUser}
+                  onChange={onFilterChange}
+                  disabled={isLoading}
+                />
+
+                {/* Status Filter with React Query */}
+                <StatusFilter
+                  value={filterByStatus}
+                  onChange={onStatusFilterChange}
+                  disabled={isLoading}
+                />
+
+                {/* Country Filter with React Query */}
+                <CountryFilter
+                  value={filterByCountry}
+                  onChange={onCountryFilterChange}
+                  disabled={isLoading}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
