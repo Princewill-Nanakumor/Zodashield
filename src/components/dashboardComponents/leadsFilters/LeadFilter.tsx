@@ -112,9 +112,9 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
 
   return (
     <>
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8">
+        <div className="flex items-center justify-between gap-4 rounded-xl border py-4 px-4">
+          <div className="flex items-center gap-3 ">
             <ErrorBoundary
               fallback={
                 <div className="text-red-500">Bulk actions failed to load</div>
