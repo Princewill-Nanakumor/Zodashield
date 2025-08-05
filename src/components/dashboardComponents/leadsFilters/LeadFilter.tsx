@@ -98,14 +98,6 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // Add debug logging
-  console.log("🔍 LeadsFilterControls props:", {
-    filterByUser,
-    filterByStatus,
-    filterByCountry,
-    timestamp: new Date().toISOString(),
-  });
-
   // Only show full skeleton during initial load (not when returning to page)
   if (isLocalInitializing && (isLoadingUsers || isLoading)) {
     return (

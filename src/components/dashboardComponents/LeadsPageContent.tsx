@@ -1,7 +1,6 @@
-// src/components/dashboardComponents/LeadsPageContent.tsx
 "use client";
 
-import { useCallback, Suspense } from "react";
+import { useCallback, Suspense, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
@@ -62,11 +61,54 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     isRefetchingLeads,
   } = useLeadsPage(searchQuery, setLayoutLoading);
 
+  // ⚡ Memoized handlers to prevent unnecessary re-renders
   const handleLeadUpdate = useCallback(async () => {
     return true;
   }, []);
 
-  // Show offline message
+  const handleDialogClose = useCallback(() => {
+    setUiState((prev) => ({
+      ...prev,
+      isDialogOpen: false,
+      selectedUser: "",
+    }));
+  }, [setUiState]);
+
+  const handleAssignClick = useCallback(() => {
+    setUiState((prev) => ({ ...prev, isDialogOpen: true }));
+  }, [setUiState]);
+
+  const handleUnassignClick = useCallback(() => {
+    setUiState((prev) => ({ ...prev, isUnassignDialogOpen: true }));
+  }, [setUiState]);
+
+  const handleUserSelect = useCallback(
+    (user: string) => {
+      setUiState((prev) => ({ ...prev, selectedUser: user }));
+    },
+    [setUiState]
+  );
+
+  const handleUnassignDialogChange = useCallback(
+    (open: boolean) => {
+      setUiState((prev) => ({ ...prev, isUnassignDialogOpen: open }));
+    },
+    [setUiState]
+  );
+
+  // ⚡ Memoized table key to prevent unnecessary re-renders
+  const tableKey = useMemo(
+    () =>
+      `leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}-${uiState.filterByStatus}`,
+    [
+      leads.length,
+      filterByUser,
+      uiState.filterByCountry,
+      uiState.filterByStatus,
+    ]
+  );
+
+  // ⚡ Early returns for better performance
   if (!isOnline) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -76,7 +118,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
             Retry
           </button>
@@ -102,8 +144,12 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   return (
     <SubscriptionGuard>
       <div className="flex flex-col h-full bg-background dark:bg-gray-800 border-1 rounded-lg">
-        {/* Add refetch indicator */}
-        {isRefetchingLeads && <RefetchIndicator />}
+        {/* ⚡ Refetch indicator with transition */}
+        {isRefetchingLeads && (
+          <div className="animate-in slide-in-from-top-2 duration-200">
+            <RefetchIndicator />
+          </div>
+        )}
 
         <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
 
@@ -112,15 +158,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           hasAssignedLeads={hasAssignedLeads}
           assignedLeadsCount={counts.assigned}
           isUpdating={isAssigning || isUnassigning}
-          onAssign={() =>
-            setUiState((prev) => ({ ...prev, isDialogOpen: true }))
-          }
-          onUnassign={() =>
-            setUiState((prev) => ({
-              ...prev,
-              isUnassignDialogOpen: true,
-            }))
-          }
+          onAssign={handleAssignClick}
+          onUnassign={handleUnassignClick}
           filterByCountry={uiState.filterByCountry}
           onCountryFilterChange={handleCountryFilterChange}
           filterByStatus={uiState.filterByStatus}
@@ -134,7 +173,17 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 
         <div className="flex-1 overflow-auto px-8 py-6">
           <ErrorBoundary
-            fallback={<div className="text-red-500">Table failed to load</div>}
+            fallback={
+              <div className="text-red-500 p-4 text-center">
+                <p>Table failed to load</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                >
+                  Reload Page
+                </button>
+              </div>
+            }
           >
             <Suspense fallback={<TableSkeleton />}>
               {shouldShowLoading ? (
@@ -151,7 +200,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
               ) : (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <LeadsTable
-                    key={`leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}-${uiState.filterByStatus}`}
+                    key={tableKey}
                     leads={filteredLeads}
                     onLeadUpdated={handleLeadUpdate}
                     isLoading={isLoading}
@@ -171,27 +220,17 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 
         <LeadsDialogs
           isDialogOpen={uiState.isDialogOpen}
-          onDialogClose={() =>
-            setUiState((prev) => ({
-              ...prev,
-              isDialogOpen: false,
-              selectedUser: "",
-            }))
-          }
+          onDialogClose={handleDialogClose}
           users={users}
           selectedUser={uiState.selectedUser}
-          setSelectedUser={(user) =>
-            setUiState((prev) => ({ ...prev, selectedUser: user }))
-          }
+          setSelectedUser={handleUserSelect}
           isLoadingUsers={isLoadingUsers}
           isAssigning={isAssigning}
           onAssign={handleAssignLeads}
           onUnassign={handleUnassignLeads}
           selectedLeads={selectedLeads}
           isUnassignDialogOpen={uiState.isUnassignDialogOpen}
-          onUnassignDialogChange={(open) =>
-            setUiState((prev) => ({ ...prev, isUnassignDialogOpen: open }))
-          }
+          onUnassignDialogChange={handleUnassignDialogChange}
           isUnassigning={isUnassigning}
           assignedLeadsCount={counts.assigned}
         />

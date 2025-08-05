@@ -1,5 +1,4 @@
-// src/hooks/useLeadsPage.ts
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,6 +39,9 @@ export const useLeadsPage = (
   // Initialize state
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // ⚡ Performance: Ref to prevent concurrent mutations
+  const mutationInProgressRef = useRef(false);
+
   // ===== REACT QUERY HOOKS =====
   // Fetch leads with React Query
   const {
@@ -48,7 +50,7 @@ export const useLeadsPage = (
     isFetching: isRefetchingLeads,
     error: leadsError,
   } = useQuery({
-    queryKey: ["leads", "all"], // Same key as header
+    queryKey: ["leads", "all"],
     queryFn: async (): Promise<Lead[]> => {
       const response = await fetch("/api/leads/all", {
         credentials: "include",
@@ -148,7 +150,7 @@ export const useLeadsPage = (
     }
   }, [statusesError, toast]);
 
-  // ===== MUTATIONS =====
+  // ===== OPTIMIZED MUTATIONS =====
   const assignLeadsMutation = useMutation({
     mutationFn: async ({
       leadIds,
@@ -166,20 +168,81 @@ export const useLeadsPage = (
       if (!response.ok) throw new Error("Failed to assign leads");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
-      toast({
-        title: "Leads assigned successfully",
-        variant: "success",
+    onMutate: async ({ leadIds, userId }) => {
+      // Prevent concurrent mutations
+      if (mutationInProgressRef.current) {
+        throw new Error("Another operation is in progress");
+      }
+      mutationInProgressRef.current = true;
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["leads", "all"] });
+
+      // Snapshot the previous value
+      const previousLeads = queryClient.getQueryData<Lead[]>(["leads", "all"]);
+
+      // Find the user for assignment
+      const assignedUser = users.find((u) => u.id === userId);
+
+      // ⚡ OPTIMISTIC UPDATE - Instant UI feedback
+      queryClient.setQueryData<Lead[]>(["leads", "all"], (old = []) => {
+        return old.map((lead) => {
+          if (leadIds.includes(lead._id)) {
+            return {
+              ...lead,
+              assignedTo: assignedUser
+                ? {
+                    id: assignedUser.id,
+                    firstName: assignedUser.firstName,
+                    lastName: assignedUser.lastName,
+                  }
+                : null,
+            };
+          }
+          return lead;
+        });
       });
+
+      // Show immediate feedback
+      toast({
+        title: "Assigning leads...",
+        description: `Assigning ${leadIds.length} lead(s)...`,
+        variant: "default",
+      });
+
+      // Return context for rollback
+      return { previousLeads };
     },
-    onError: (error) => {
+    onError: (err, variables, context) => {
+      mutationInProgressRef.current = false;
+
+      // Rollback on error
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads", "all"], context.previousLeads);
+      }
       toast({
         title: "Assignment failed",
         description:
-          error instanceof Error ? error.message : "Failed to assign leads",
+          err instanceof Error ? err.message : "Failed to assign leads",
         variant: "destructive",
       });
+    },
+    onSuccess: (data, variables) => {
+      mutationInProgressRef.current = false;
+
+      toast({
+        title: "Success!",
+        description: `Successfully assigned ${variables.leadIds.length} lead(s)`,
+        variant: "success",
+      });
+    },
+    onSettled: () => {
+      // Background refresh after delay
+      setTimeout(() => {
+        if (!mutationInProgressRef.current) {
+          queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
+        }
+      }, 2000);
     },
   });
 
@@ -194,20 +257,71 @@ export const useLeadsPage = (
       if (!response.ok) throw new Error("Failed to unassign leads");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
-      toast({
-        title: "Leads unassigned successfully",
-        variant: "success",
+    onMutate: async ({ leadIds }) => {
+      // Prevent concurrent mutations
+      if (mutationInProgressRef.current) {
+        throw new Error("Another operation is in progress");
+      }
+      mutationInProgressRef.current = true;
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["leads", "all"] });
+
+      // Snapshot the previous value
+      const previousLeads = queryClient.getQueryData<Lead[]>(["leads", "all"]);
+
+      // ⚡ OPTIMISTIC UPDATE - Remove assignments instantly
+      queryClient.setQueryData<Lead[]>(["leads", "all"], (old = []) => {
+        return old.map((lead) => {
+          if (leadIds.includes(lead._id)) {
+            return {
+              ...lead,
+              assignedTo: null, // Clear assignment
+            };
+          }
+          return lead;
+        });
       });
+
+      // Show immediate feedback
+      toast({
+        title: "Unassigning leads...",
+        description: `Unassigning ${leadIds.length} lead(s)...`,
+        variant: "default",
+      });
+
+      return { previousLeads };
     },
-    onError: (error) => {
+    onError: (err, variables, context) => {
+      mutationInProgressRef.current = false;
+
+      // Rollback on error
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads", "all"], context.previousLeads);
+      }
       toast({
         title: "Unassignment failed",
         description:
-          error instanceof Error ? error.message : "Failed to unassign leads",
+          err instanceof Error ? err.message : "Failed to unassign leads",
         variant: "destructive",
       });
+    },
+    onSuccess: (data, variables) => {
+      mutationInProgressRef.current = false;
+
+      toast({
+        title: "Success!",
+        description: `Successfully unassigned ${variables.leadIds.length} lead(s)`,
+        variant: "success",
+      });
+    },
+    onSettled: () => {
+      // Background refresh after delay
+      setTimeout(() => {
+        if (!mutationInProgressRef.current) {
+          queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
+        }
+      }, 2000);
     },
   });
 
@@ -288,18 +402,15 @@ export const useLeadsPage = (
     setUiState((prev) => ({ ...prev, searchQuery }));
   }, [searchQuery]);
 
-  // Replace this useEffect in your useLeadsPage.ts:
   useEffect(() => {
     const urlCountry = searchParams.get("country");
     const urlStatus = searchParams.get("status");
 
-    // Handle country filter - if URL param is null, set to "all"
     const targetCountry = urlCountry || "all";
     if (targetCountry !== uiState.filterByCountry) {
       setUiState((prev) => ({ ...prev, filterByCountry: targetCountry }));
     }
 
-    // Handle status filter - if URL param is null, set to "all"
     const targetStatus = urlStatus || "all";
     if (targetStatus !== uiState.filterByStatus) {
       setUiState((prev) => ({ ...prev, filterByStatus: targetStatus }));
@@ -328,55 +439,23 @@ export const useLeadsPage = (
     return [...leads].sort((a, b) => a._id.localeCompare(b._id));
   }, [leads]);
 
-  // In your filteredLeads useMemo, replace the existing code with this debug version:
-
+  // ⚡ OPTIMIZED FILTERING - Reduced console.logs for performance
   const filteredLeads = useMemo(() => {
     let filtered = stableLeads;
 
-    console.log("🔍 FILTERING DEBUG START:", {
-      totalLeads: stableLeads.length,
-      searchQuery: uiState.searchQuery,
-      filterByUser,
-      filterByCountry: uiState.filterByCountry,
-      filterByStatus: uiState.filterByStatus,
-    });
-
     if (uiState.searchQuery.trim()) {
-      const beforeSearch = filtered.length;
       filtered = searchLeads(filtered, uiState.searchQuery);
-      console.log("✅ After search filter:", {
-        before: beforeSearch,
-        after: filtered.length,
-      });
     }
 
     if (filterByUser !== "all") {
-      const beforeUser = filtered.length;
       filtered = filterLeadsByUser(filtered, filterByUser);
-      console.log("✅ After user filter:", {
-        before: beforeUser,
-        after: filtered.length,
-        filterByUser,
-      });
-    } else {
-      console.log("⏭️ Skipping user filter (value is 'all')");
     }
 
     if (uiState.filterByCountry !== "all") {
-      const beforeCountry = filtered.length;
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
-      console.log("✅ After country filter:", {
-        before: beforeCountry,
-        after: filtered.length,
-        filterByCountry: uiState.filterByCountry,
-      });
-    } else {
-      console.log("⏭️ Skipping country filter (value is 'all')");
     }
 
     if (uiState.filterByStatus !== "all") {
-      const beforeStatus = filtered.length;
-
       const statusIdToName = statuses.reduce(
         (acc, status) => {
           if (status.id && status.name) {
@@ -405,17 +484,8 @@ export const useLeadsPage = (
           statusNameToId[uiState.filterByStatus] === lead.status;
         return directMatch || mappedMatch || reverseMatch;
       });
-
-      console.log("✅ After status filter:", {
-        before: beforeStatus,
-        after: filtered.length,
-        filterByStatus: uiState.filterByStatus,
-      });
-    } else {
-      console.log("⏭️ Skipping status filter (value is 'all')");
     }
 
-    console.log("🎯 FILTERING DEBUG END:", { finalCount: filtered.length });
     return filtered;
   }, [
     stableLeads,
@@ -445,7 +515,7 @@ export const useLeadsPage = (
   const showEmptyState =
     !shouldShowLoading && filteredLeads.length === 0 && leads.length === 0;
 
-  // ===== EVENT HANDLERS =====
+  // ===== OPTIMIZED EVENT HANDLERS =====
   const handleAssignLeads = useCallback(async () => {
     if (selectedLeads.length === 0 || !uiState.selectedUser) {
       toast({
@@ -461,6 +531,8 @@ export const useLeadsPage = (
         leadIds: selectedLeads.map((l) => l._id),
         userId: uiState.selectedUser,
       });
+
+      // ⚡ Clear selection immediately for instant feedback
       setSelectedLeads([]);
       setUiState((prev) => ({
         ...prev,
@@ -468,6 +540,7 @@ export const useLeadsPage = (
         selectedUser: "",
       }));
     } catch (error) {
+      // Error handling is done in mutation
       console.error("Assignment error:", error);
     }
   }, [
@@ -497,9 +570,12 @@ export const useLeadsPage = (
       await unassignLeadsMutation.mutateAsync({
         leadIds: leadsToUnassign.map((l) => l._id),
       });
+
+      // ⚡ Clear selection immediately for instant feedback
       setSelectedLeads([]);
       setUiState((prev) => ({ ...prev, isUnassignDialogOpen: false }));
     } catch (error) {
+      // Error handling is done in mutation
       console.error("Unassignment error:", error);
     }
   }, [selectedLeads, unassignLeadsMutation, setSelectedLeads, toast]);
@@ -511,11 +587,6 @@ export const useLeadsPage = (
 
   const handleCountryFilterChange = useCallback(
     (country: string) => {
-      console.log("🔍 Main component country filter change:", {
-        newCountry: country,
-        isAll: country === "all",
-      });
-
       setUiState((prev) => ({
         ...prev,
         filterByCountry: country,
@@ -525,7 +596,7 @@ export const useLeadsPage = (
       params.set("page", "1");
 
       if (country === "all") {
-        params.delete("country"); // Remove country param when "all" is selected
+        params.delete("country");
       } else {
         params.set("country", country);
       }
@@ -534,40 +605,25 @@ export const useLeadsPage = (
     },
     [pathname, searchParams]
   );
+
   const handleStatusFilterChange = useCallback(
     (status: string) => {
-      console.log("🔍 handleStatusFilterChange called:", {
-        newStatus: status,
-      });
-
-      setUiState((prev) => {
-        console.log("🔍 setUiState callback:", {
-          prevFilterByStatus: prev.filterByStatus,
-          newFilterByStatus: status,
-        });
-        return { ...prev, filterByStatus: status };
-      });
+      setUiState((prev) => ({
+        ...prev,
+        filterByStatus: status,
+      }));
 
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
       if (status === "all") {
         params.delete("status");
-        console.log("🔍 Removing status param from URL");
       } else {
         params.set("status", status);
-        console.log("🔍 Setting status param in URL:", status);
       }
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
     },
-    [pathname, searchParams] // Removed uiState.filterByStatus from dependencies
+    [pathname, searchParams]
   );
-
-  useEffect(() => {
-    console.log("🔍 uiState.filterByStatus changed:", {
-      newValue: uiState.filterByStatus,
-      timestamp: new Date().toISOString(),
-    });
-  }, [uiState.filterByStatus]);
 
   const handleFilterChange = useCallback(
     (value: string) => {
