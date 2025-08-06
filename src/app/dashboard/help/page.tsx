@@ -1,7 +1,9 @@
+// In your page component
 import React from "react";
+import { HelpPage } from "@/components/helpComponents";
 
-const page = () => {
-  return <div>coming soon</div>;
+const Page = () => {
+  return <HelpPage />;
 };
 
-export default page;
+export default Page;
