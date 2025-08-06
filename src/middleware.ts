@@ -1,4 +1,4 @@
-// middleware.ts
+// src/middleware.ts
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
@@ -12,6 +12,7 @@ export default withAuth(
     const isAdminPage = path.startsWith("/admin");
     const isDashboardPage = path.startsWith("/dashboard");
     const isResetPasswordPage = path.startsWith("/reset-password");
+    const isVerifyEmailPage = path.startsWith("/verify-email"); // Add this line
     const isAdminManagementPage = path.startsWith(
       "/dashboard/admin-management"
     );
@@ -22,9 +23,10 @@ export default withAuth(
       "/contact",
       "/signup",
       "/forgot-password",
+      "/verify-email",
     ];
 
-    const isPublicPage = publicPages.includes(path);
+    const isPublicPage = publicPages.includes(path) || isVerifyEmailPage; // Modified this line
 
     // ✅ Allow access to public pages
     if (isPublicPage) {
@@ -33,6 +35,11 @@ export default withAuth(
 
     // ✅ Allow access to reset password pages (no auth required)
     if (isResetPasswordPage) {
+      return NextResponse.next();
+    }
+
+    // ✅ Allow access to email verification pages (no auth required)
+    if (isVerifyEmailPage) {
       return NextResponse.next();
     }
 
@@ -81,10 +88,16 @@ export default withAuth(
           "/signup",
           "/forgot-password",
           "/signin",
+          "/verify-email", // Add email verification route here too
         ];
 
         // Allow reset password pages without authentication
         if (path.startsWith("/reset-password")) {
+          return true;
+        }
+
+        // Allow email verification pages without authentication
+        if (path.startsWith("/verify-email")) {
           return true;
         }
 
@@ -110,6 +123,7 @@ export const config = {
     "/signup",
     "/forgot-password",
     "/reset-password/:path*",
+    "/verify-email/:path*",
     "/dashboard/subscription",
     "/billing",
     "/",

@@ -105,7 +105,7 @@ interface UserDataToSave {
   permissions: string[];
   emailVerified: boolean;
   verificationToken: string;
-  verificationTokenExpiry: Date;
+  verificationExpires: Date;
   createdBy?: string | null;
 }
 
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
       ],
       emailVerified: false,
       verificationToken: crypto.randomBytes(32).toString("hex"),
-      verificationTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      verificationExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     };
 
     if (!isFirstUser) {
@@ -163,7 +163,7 @@ export async function POST(req: Request) {
     const user = await User.create(userDataToSave);
 
     // Send verification email
-    const verificationUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${userDataToSave.verificationToken}`;
+    const verificationUrl = `${process.env.NEXTAUTH_URL}/verify-email/${userDataToSave.verificationToken}`;
 
     try {
       await resend.emails.send({

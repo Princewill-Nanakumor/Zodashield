@@ -31,7 +31,6 @@ export default function AuthLayout({
             </div>
           </Link>
         </div>
-
         {children}
       </div>
     </div>

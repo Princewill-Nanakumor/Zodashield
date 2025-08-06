@@ -20,17 +20,6 @@ export default function AdsManager() {
           Stay tuned 🚀
         </span>
       </div>
-      <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 w-full text-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Want to be notified when Ads Manager launches?
-        </p>
-        <button
-          className="mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition"
-          disabled
-        >
-          Notify Me (Coming Soon)
-        </button>
-      </div>
     </div>
   );
 }
