@@ -92,7 +92,6 @@ const SignUpSchema = z
     path: ["confirmPassword"],
   });
 
-// Define interface for user data
 interface UserDataToSave {
   firstName: string;
   lastName: string;
@@ -107,6 +106,15 @@ interface UserDataToSave {
   verificationToken: string;
   verificationExpires: Date;
   createdBy?: string | null;
+  balance: number;
+  isOnTrial: boolean;
+  trialEndsAt: Date;
+  currentPlan?: string;
+  subscriptionStatus: string;
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
+  maxLeads: number;
+  maxUsers: number;
 }
 
 export async function POST(req: Request) {
@@ -134,6 +142,10 @@ export async function POST(req: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 12);
 
+    // ✅ Calculate trial end date (3 days from now)
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 3);
+
     const userDataToSave: UserDataToSave = {
       firstName: validatedData.firstName,
       lastName: validatedData.lastName,
@@ -154,6 +166,15 @@ export async function POST(req: Request) {
       emailVerified: false,
       verificationToken: crypto.randomBytes(32).toString("hex"),
       verificationExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      balance: 0,
+      isOnTrial: true,
+      trialEndsAt: trialEndDate,
+      currentPlan: undefined,
+      subscriptionStatus: "trial",
+      subscriptionStartDate: undefined,
+      subscriptionEndDate: undefined,
+      maxLeads: 50,
+      maxUsers: 1,
     };
 
     if (!isFirstUser) {
@@ -171,12 +192,11 @@ export async function POST(req: Request) {
         to: [user.email],
         subject: "Welcome to ZodaShield - Verify your email",
         html: createVerificationEmail(user.firstName, verificationUrl),
-        replyTo: "noreply@zodashield.com",
+        replyTo: "support@zodashield.com",
         tags: [{ name: "category", value: "email_verification" }],
       });
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
-      // Don't fail the signup if email fails
     }
 
     // Remove password from response
