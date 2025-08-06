@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         to: [user.email],
         subject: "Welcome to ZodaShield - Verify your email",
         html: createVerificationEmail(user.firstName, verificationUrl),
-        replyTo: "support@zodashield.com",
+        replyTo: "noreply@zodashield.com",
         tags: [{ name: "category", value: "email_verification" }],
       });
     } catch (emailError) {
