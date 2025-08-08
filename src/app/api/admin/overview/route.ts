@@ -1,12 +1,31 @@
+// src/app/api/admin/overview/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import User from "@/models/User";
 import Lead from "@/models/Lead";
-import Subscription from "@/models/Subscription";
 import Activity from "@/models/Activity";
 import Payment from "@/models/Payment";
+
+interface UserDocument {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: string;
+  lastLogin?: Date;
+  createdAt: Date;
+  balance?: number;
+  isOnTrial?: boolean;
+  trialEndsAt?: Date;
+  currentPlan?: string;
+  subscriptionStatus?: string;
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
+  maxLeads?: number;
+  maxUsers?: number;
+}
 
 // Define proper types for the subscription
 interface SubscriptionData {
@@ -17,20 +36,36 @@ interface SubscriptionData {
   endDate: Date;
 }
 
-// Helper function to safely access subscription properties
-function extractSubscriptionData(
-  subscription: unknown
+// Helper function to extract subscription data from User model
+function extractSubscriptionDataFromUser(
+  user: UserDocument | null
 ): SubscriptionData | null {
-  if (!subscription || typeof subscription !== "object") return null;
+  if (!user) return null;
 
-  const sub = subscription as Record<string, unknown>;
+  // Get subscription data from user fields (not separate Subscription collection)
+  const now = new Date();
+  const trialEndDate = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
+  const isOnTrial = user.isOnTrial && trialEndDate && now < trialEndDate;
+  const trialExpired = trialEndDate && now > trialEndDate;
+
+  // Determine subscription status (same logic as /api/subscription/status)
+  let subscriptionStatus: string;
+  if (user.subscriptionStatus === "active") {
+    subscriptionStatus = "ACTIVE"; // Use ACTIVE to match your filtering logic
+  } else if (isOnTrial) {
+    subscriptionStatus = "trial";
+  } else if (trialExpired) {
+    subscriptionStatus = "expired";
+  } else {
+    subscriptionStatus = "inactive";
+  }
 
   return {
-    plan: (sub.plan as string) || "BASIC",
-    status: (sub.status as string) || "PENDING",
-    maxUsers: (sub.maxUsers as number) || 0,
-    maxLeads: (sub.maxLeads as number) || 0,
-    endDate: (sub.endDate as Date) || new Date(),
+    plan: user.currentPlan || "trial",
+    status: subscriptionStatus,
+    maxUsers: user.maxUsers || 1,
+    maxLeads: user.maxLeads || 50,
+    endDate: user.subscriptionEndDate || user.trialEndsAt || new Date(),
   };
 }
 
@@ -70,14 +105,20 @@ export async function GET() {
 
     await connectMongoDB();
 
-    // Get all admins (users with role ADMIN)
+    // Get all admins with subscription fields included
     const admins = await User.find({ role: "ADMIN" })
-      .select("firstName lastName email status lastLogin createdAt balance")
-      .lean();
+      .select(
+        `
+        firstName lastName email status lastLogin createdAt balance
+        isOnTrial trialEndsAt currentPlan subscriptionStatus 
+        subscriptionStartDate subscriptionEndDate maxLeads maxUsers
+      `
+      )
+      .lean<UserDocument[]>();
 
     // Get stats for each admin
     const adminStats = await Promise.all(
-      admins.map(async (admin) => {
+      admins.map(async (admin: UserDocument) => {
         const adminId = admin._id;
 
         // Count agents under this admin
@@ -91,11 +132,8 @@ export async function GET() {
           adminId: adminId,
         });
 
-        // Get subscription info
-        const subscription = await Subscription.findOne({
-          adminId: adminId,
-          status: "ACTIVE",
-        }).lean();
+        // ✅ Get subscription info from User model instead of Subscription collection
+        const subscriptionData = extractSubscriptionDataFromUser(admin);
 
         // Get recent activity for this admin
         const recentActivity = await Activity.find({
@@ -158,9 +196,6 @@ export async function GET() {
           },
         ]);
 
-        // Safely access subscription properties
-        const subscriptionData = extractSubscriptionData(subscription);
-
         // Safely transform lastAgentLogin
         const lastAgentLogin = extractLastAgentLogin(lastAgentLoginRaw);
 
@@ -169,7 +204,7 @@ export async function GET() {
           agentCount,
           leadCount,
           activityCount,
-          subscription: subscriptionData,
+          subscription: subscriptionData, // ✅ Now properly includes subscription data
           recentActivity,
           recentLogins,
           subscriptionActivities,
@@ -179,13 +214,22 @@ export async function GET() {
       })
     );
 
+    // ✅ Calculate activeSubscriptions from User models instead of Subscription collection
+    const activeSubscriptionsCount = await User.countDocuments({
+      role: "ADMIN",
+      $or: [
+        { subscriptionStatus: "active" },
+        {
+          isOnTrial: true,
+          trialEndsAt: { $gt: new Date() },
+        },
+      ],
+    });
+
     // Overall platform stats
     const totalAdmins = admins.length;
     const totalAgents = await User.countDocuments({ role: "AGENT" });
     const totalLeads = await Lead.countDocuments();
-    const activeSubscriptions = await Subscription.countDocuments({
-      status: "ACTIVE",
-    });
 
     // Get total balance across all admins
     const totalBalance = await User.aggregate([
@@ -254,7 +298,7 @@ export async function GET() {
         totalAdmins,
         totalAgents,
         totalLeads,
-        activeSubscriptions,
+        activeSubscriptions: activeSubscriptionsCount, // ✅ Now calculated correctly
         totalActivities: await Activity.countDocuments({}),
         totalBalance: totalBalance[0]?.totalBalance || 0,
       },

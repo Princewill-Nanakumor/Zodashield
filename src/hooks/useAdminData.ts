@@ -1,189 +1,22 @@
 // src/hooks/useAdminData.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-
-// Types
-interface AdminDetails {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  country?: string;
-  status: string;
-  lastLogin?: string;
-  createdAt: string;
-  balance?: number;
-}
-
-interface Agent {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  lastLogin?: string;
-  createdAt: string;
-}
-
-interface Lead {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  createdAt: string;
-}
-
-interface Subscription {
-  _id: string;
-  plan: string;
-  status: string;
-  maxUsers: number;
-  maxLeads: number;
-  endDate: string;
-  amount: number;
-  currency: string;
-}
-
-interface ActivityType {
-  _id: string;
-  type: string;
-  userId: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-  };
-  details: string;
-  timestamp: string;
-  metadata: Record<string, unknown>;
-}
-
-interface ActivityData {
-  _id: string;
-  type: string;
-  userId: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-  };
-  details: string;
-  timestamp: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface Ad {
-  _id: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  status: string;
-  createdAt: string;
-}
-
-interface Payment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  method: string;
-  transactionId: string;
-  createdAt: string;
-  description?: string;
-  subscriptionId?: string;
-}
-
-interface AdminDetailsResponse {
-  admin: AdminDetails;
-  agents: Agent[];
-  leads: { data: Lead[] };
-  subscription: Subscription | null;
-  activities: ActivityType[];
-  ads: Ad[];
-  payments: Payment[];
-}
-
-interface PlatformStats {
-  totalAdmins: number;
-  totalAgents: number;
-  totalLeads: number;
-  activeSubscriptions: number;
-  totalBalance?: number;
-}
-
-// Complete AdminStats interface with all properties needed by components
-interface AdminStats {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  agentCount: number;
-  leadCount: number;
-  balance: number;
-  lastLogin?: string;
-  createdAt: string;
-  recentActivity: ActivityData[];
-  subscription?: {
-    _id: string;
-    plan: string;
-    status: string;
-    maxUsers: number;
-    maxLeads: number;
-    endDate: string;
-    amount: number;
-    currency: string;
-  };
-  lastAgentLogin?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    lastLogin: string;
-  };
-}
-
-// Raw API response interface
-interface RawAdminData {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  agentsCount?: number;
-  agentCount?: number;
-  leadsCount?: number;
-  leadCount?: number;
-  balance?: number;
-  lastLogin?: string;
-  createdAt: string;
-  recentActivity?: string | ActivityData[];
-  subscription?: {
-    _id: string;
-    plan: string;
-    status: string;
-    maxUsers: number;
-    maxLeads: number;
-    endDate: string;
-    amount: number;
-    currency: string;
-  };
-  lastAgentLogin?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    lastLogin: string;
-  };
-}
-
-interface AdminOverviewResponse {
-  admins: AdminStats[];
-  platformStats: PlatformStats;
-}
-
-interface RawAdminOverviewResponse {
-  admins: RawAdminData[];
-  platformStats: PlatformStats;
-}
+import {
+  AdminDetails,
+  Agent,
+  Lead,
+  Subscription,
+  ActivityType,
+  ActivityData,
+  Ad,
+  Payment,
+  AdminDetailsResponse,
+  PlatformStats,
+  AdminStats,
+  RawAdminData,
+  AdminOverviewResponse,
+  RawAdminOverviewResponse,
+} from "@/types/adminTypes";
 
 // Custom hooks
 
@@ -274,11 +107,16 @@ export function useAdminOverview() {
         totalLeads: transformedAdmins.reduce(
           (sum, admin) => sum + admin.leadCount,
           0
-        ), // Calculated total
-        activeSubscriptions: transformedAdmins.filter(
-          (admin) =>
-            admin.subscription && admin.subscription.status === "ACTIVE"
-        ).length,
+        ),
+        activeSubscriptions: transformedAdmins.filter((admin) => {
+          const hasActiveSubscription =
+            admin.subscription &&
+            (admin.subscription.status === "ACTIVE" ||
+              admin.subscription.status === "active" ||
+              admin.subscription.status === "Active");
+
+          return hasActiveSubscription;
+        }).length,
         totalBalance: transformedAdmins.reduce(
           (sum, admin) => sum + admin.balance,
           0
@@ -287,7 +125,7 @@ export function useAdminOverview() {
 
       return {
         admins: transformedAdmins,
-        platformStats: calculatedStats, // Use calculated stats instead of API stats
+        platformStats: calculatedStats,
       };
     },
     enabled: !!session?.user && session.user.role === "ADMIN",
@@ -339,7 +177,10 @@ export function useDeleteAdmin() {
             ),
             activeSubscriptions: remainingAdmins.filter(
               (admin) =>
-                admin.subscription && admin.subscription.status === "ACTIVE"
+                admin.subscription &&
+                (admin.subscription.status === "ACTIVE" ||
+                  admin.subscription.status === "active" ||
+                  admin.subscription.status === "Active")
             ).length,
             totalBalance: remainingAdmins.reduce(
               (sum, admin) => sum + admin.balance,
@@ -410,7 +251,10 @@ export function useUpdateAdminStatus() {
             ...oldData.platformStats,
             activeSubscriptions: updatedAdmins.filter(
               (admin) =>
-                admin.subscription && admin.subscription.status === "ACTIVE"
+                admin.subscription &&
+                (admin.subscription.status === "ACTIVE" ||
+                  admin.subscription.status === "active" ||
+                  admin.subscription.status === "Active")
             ).length,
           };
 
@@ -540,7 +384,7 @@ export function useOptimisticTeamUpdate() {
   };
 }
 
-// Export types
+// Export types for backward compatibility
 export type {
   AdminDetails,
   Agent,
