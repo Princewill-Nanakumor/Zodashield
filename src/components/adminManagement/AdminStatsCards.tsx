@@ -2,9 +2,9 @@
 "use client";
 
 import {
+  Users,
   UserCheck,
   Activity,
-  TrendingUp,
   FileImage,
   DollarSign,
   CreditCard,
@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AdminStatsCardsProps {
   agentsCount: number;
-  leadsCount: number;
+  leadsCount: number; // Now should be the real count
   activitiesCount: number;
   adsCount: number;
   balance?: number;
@@ -35,14 +35,17 @@ export default function AdminStatsCards({
       <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-            Total Agents
+            Agents
           </CardTitle>
-          <UserCheck className="h-4 w-4 text-muted-foreground" />
+          <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {agentsCount}
+            {agentsCount?.toLocaleString() || 0}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Team members
+          </p>
         </CardContent>
       </Card>
 
@@ -51,40 +54,49 @@ export default function AdminStatsCards({
           <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
             Total Leads
           </CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {leadsCount}
+            {leadsCount?.toLocaleString() || 0}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Total prospects
+          </p>
         </CardContent>
       </Card>
 
       <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-            Recent Activities
+            Activities
           </CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {activitiesCount}
+            {activitiesCount?.toLocaleString() || 0}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Recent actions
+          </p>
         </CardContent>
       </Card>
 
       <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
-            Total Ads
+            Ads
           </CardTitle>
-          <FileImage className="h-4 w-4 text-muted-foreground" />
+          <FileImage className="h-4 w-4 text-orange-600 dark:text-orange-400" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {adsCount}
+            {adsCount?.toLocaleString() || 0}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Marketing campaigns
+          </p>
         </CardContent>
       </Card>
 
@@ -93,12 +105,15 @@ export default function AdminStatsCards({
           <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
             Balance
           </CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
             {formatBalance(balance)}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Current balance
+          </p>
         </CardContent>
       </Card>
 
@@ -107,12 +122,15 @@ export default function AdminStatsCards({
           <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
             Payments
           </CardTitle>
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
+          <CreditCard className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {paymentsCount}
+            {paymentsCount?.toLocaleString() || 0}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Transaction history
+          </p>
         </CardContent>
       </Card>
     </div>

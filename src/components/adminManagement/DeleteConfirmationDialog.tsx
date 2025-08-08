@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AdminStats } from "@/types/adminManagement"; // Fix the import
+import { AdminStats } from "@/hooks/useAdminData"; // Import from the unified hook
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
@@ -49,10 +49,10 @@ export function DeleteConfirmationDialog({
               <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
                 <li>The administrator account</li>
                 <li>
-                  All associated agent accounts ({adminToDelete?.agentCount}{" "}
-                  agents)
+                  All associated agent accounts (
+                  {adminToDelete?.agentCount || 0} agents)
                 </li>
-                <li>All leads ({adminToDelete?.leadCount} leads)</li>
+                <li>All leads ({adminToDelete?.leadCount || 0} leads)</li>
                 <li>All uploaded files and data</li>
                 <li>All activity logs and history</li>
               </ul>

@@ -1,3 +1,4 @@
+// src/components/adminManagement/SubscriptionDetails.tsx
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ interface Subscription {
 }
 
 interface SubscriptionDetailsProps {
-  subscription: Subscription | null;
+  subscription: Subscription | null | undefined; // Accept undefined as well
 }
 
 export default function SubscriptionDetails({

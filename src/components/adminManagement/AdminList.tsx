@@ -6,21 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "../ui/use-toast";
 import { AdminCard } from "./AdminCard";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
-import { AdminStats } from "@/types/adminManagement"; // Fix the import
+import { AdminStats } from "@/hooks/useAdminData"; // Import from the hook instead
 
 interface AdminListProps {
   admins: AdminStats[];
   allowedEmails: string[];
   onAdminDeleted?: (adminId: string) => void;
+  isDeleting?: boolean;
 }
 
 export default function AdminList({
   admins,
   allowedEmails,
   onAdminDeleted,
+  isDeleting = false,
 }: AdminListProps) {
   const { toast } = useToast();
-  const [deletingAdminId, setDeletingAdminId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [adminToDelete, setAdminToDelete] = useState<AdminStats | null>(null);
 
@@ -32,35 +33,17 @@ export default function AdminList({
   const handleDeleteConfirm = async () => {
     if (!adminToDelete) return;
 
-    setDeletingAdminId(adminToDelete._id);
-    setShowDeleteDialog(false);
-
     try {
-      const response = await fetch(`/api/admin/delete-admin`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          adminId: adminToDelete._id,
-          adminEmail: adminToDelete.email,
-        }),
+      await onAdminDeleted?.(adminToDelete._id);
+
+      toast({
+        title: "Admin Deleted",
+        description: `Successfully deleted ${adminToDelete.firstName} ${adminToDelete.lastName} and all associated data.`,
+        variant: "success",
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Admin Deleted",
-          description: `Successfully deleted ${adminToDelete.firstName} ${adminToDelete.lastName} and all associated data.`,
-          variant: "success",
-        });
-
-        // Call the callback to update the parent component
-        onAdminDeleted?.(adminToDelete._id);
-      } else {
-        throw new Error(data.message || "Failed to delete admin");
-      }
+      setShowDeleteDialog(false);
+      setAdminToDelete(null);
     } catch (error) {
       console.error("Error deleting admin:", error);
       toast({
@@ -69,9 +52,6 @@ export default function AdminList({
           error instanceof Error ? error.message : "Failed to delete admin",
         variant: "destructive",
       });
-    } finally {
-      setDeletingAdminId(null);
-      setAdminToDelete(null);
     }
   };
 
@@ -103,7 +83,9 @@ export default function AdminList({
                   admin={admin}
                   allowedEmails={allowedEmails}
                   onDeleteClick={handleDeleteClick}
-                  deletingAdminId={deletingAdminId}
+                  deletingAdminId={
+                    isDeleting ? adminToDelete?._id || null : null
+                  }
                 />
               ))
             )}

@@ -32,7 +32,7 @@ interface Subscription {
 
 interface AdminInfoCardProps {
   admin: AdminDetails;
-  subscription: Subscription | null;
+  subscription: Subscription | null | undefined; // Allow undefined
   getStatusColor: (status: string) => string;
   formatLastLogin: (lastLogin?: string) => string;
 }
@@ -68,7 +68,7 @@ export default function AdminInfoCard({
                 <Badge className={getStatusColor(admin.status)}>
                   {admin.status}
                 </Badge>
-                {subscription && (
+                {subscription && ( // Only show if subscription exists
                   <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-200 dark:border-purple-800">
                     {subscription.plan}
                   </Badge>

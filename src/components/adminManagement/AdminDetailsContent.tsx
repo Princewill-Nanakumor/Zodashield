@@ -1,10 +1,10 @@
 // src/components/adminManagement/AdminDetailsContent.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminInfoCard from "./AdminInfoCard";
@@ -14,83 +14,7 @@ import AdsList from "@/components/adminManagement/AdsList";
 import ActivitiesList from "@/components/adminManagement/ActivitiesList";
 import AgentsList from "@/components/adminManagement/AgentsList";
 import PaymentDetails from "@/components/adminManagement/PaymentDetails";
-
-interface AdminDetails {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  country?: string;
-  status: string;
-  lastLogin?: string;
-  createdAt: string;
-  balance?: number;
-}
-
-interface Agent {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  lastLogin?: string;
-  createdAt: string;
-}
-
-interface Lead {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  status: string;
-  createdAt: string;
-}
-
-interface Subscription {
-  _id: string;
-  plan: string;
-  status: string;
-  maxUsers: number;
-  maxLeads: number;
-  endDate: string;
-  amount: number;
-  currency: string;
-}
-
-interface ActivityType {
-  _id: string;
-  type: string;
-  userId: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-  };
-  details: string;
-  timestamp: string;
-  metadata: Record<string, unknown>;
-}
-
-interface Ad {
-  _id: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  status: string;
-  createdAt: string;
-}
-
-interface Payment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: string;
-  method: string;
-  transactionId: string;
-  createdAt: string;
-  description?: string;
-  subscriptionId?: string;
-}
+import { useAdminDetails } from "@/hooks/useAdminData";
 
 export default function AdminDetailsContent() {
   const { data: session, status } = useSession();
@@ -101,54 +25,52 @@ export default function AdminDetailsContent() {
 
   const activeTab = searchParams.get("tab") || "agents";
 
-  const [admin, setAdmin] = useState<AdminDetails | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [activities, setActivities] = useState<ActivityType[]>([]);
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use React Query hook for admin details
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useAdminDetails(adminId);
 
-  const fetchAdminDetails = useCallback(async () => {
-    if (!adminId) {
-      setError("No admin ID provided");
-      setLoading(false);
-      return;
-    }
+  // Extract data from React Query response
+  const admin = data?.admin;
+  const agents = data?.agents || [];
+  const leads = data?.leads?.data || [];
+  const leadsResponse = data?.leads;
+  const subscription = data?.subscription;
+  const activities = data?.activities || [];
+  const ads = data?.ads || [];
+  const payments = data?.payments || [];
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(`/api/admin/${adminId}`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP error! status: ${response.status} - ${errorText}`
-        );
+  // Get the real lead count from multiple possible sources
+  const getRealLeadCount = () => {
+    // Method 1: Check if leads response has totalCount or total
+    if (leadsResponse && typeof leadsResponse === "object") {
+      if (
+        "totalCount" in leadsResponse &&
+        typeof leadsResponse.totalCount === "number"
+      ) {
+        return leadsResponse.totalCount;
       }
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-      if (!data.admin) throw new Error("Admin not found");
-
-      setAdmin(data.admin);
-      setAgents(data.agents || []);
-      setLeads(data.leads?.data || []);
-      setSubscription(data.subscription);
-      setActivities(data.activities || []);
-      setAds(data.ads || []);
-      setPayments(data.payments || []);
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to fetch admin details"
-      );
-    } finally {
-      setLoading(false);
+      if ("total" in leadsResponse && typeof leadsResponse.total === "number") {
+        return leadsResponse.total;
+      }
+      if ("count" in leadsResponse && typeof leadsResponse.count === "number") {
+        return leadsResponse.count;
+      }
     }
-  }, [adminId]);
+
+    // Method 2: Check if admin object has leadCount (if API is updated)
+    if (admin && "leadCount" in admin && typeof admin.leadCount === "number") {
+      return admin.leadCount;
+    }
+
+    // Method 3: Fall back to paginated count with warning
+    console.warn("⚠️ Using paginated lead count. Real count may be higher.", {
+      paginatedCount: leads.length,
+      adminId: adminId,
+    });
+    return leads.length;
+  };
+
+  const realLeadCount = getRealLeadCount();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -157,12 +79,6 @@ export default function AdminDetailsContent() {
       router.push("/dashboard");
     }
   }, [status, session, router]);
-
-  useEffect(() => {
-    if (session?.user?.role === "ADMIN" && adminId) {
-      fetchAdminDetails();
-    }
-  }, [session, adminId, fetchAdminDetails]);
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -202,30 +118,47 @@ export default function AdminDetailsContent() {
     }).format(balance);
   };
 
-  if (status === "loading" || loading) {
+  // Loading state
+  if (status === "loading" || isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">
-            Loading admin details...
-          </p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  // Error state
+  if (isError) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button onClick={fetchAdminDetails}>Retry</Button>
+          <p className="text-red-500 mb-4">
+            {error instanceof Error
+              ? error.message
+              : "Failed to fetch admin details"}
+          </p>
+          <div className="space-x-2">
+            <Button onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
+              />
+              Retry
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/dashboard/admin-management")}
+            >
+              Back to Admin Management
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // No admin found
   if (!admin) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -266,25 +199,36 @@ export default function AdminDetailsContent() {
             </p>
           </div>
         </div>
-      </div>
 
+        {/* Refresh button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="backdrop-blur-lg bg-white/70 dark:bg-gray-900/70"
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </Button>
+      </div>
       <AdminInfoCard
         admin={admin}
         subscription={subscription}
         getStatusColor={getStatusColor}
         formatLastLogin={formatLastLogin}
       />
-
       <AdminStatsCards
         agentsCount={agents.length}
-        leadsCount={leads.length}
+        leadsCount={realLeadCount} // ✅ Now uses the real lead count
         activitiesCount={activities.length}
         adsCount={ads.length}
         balance={admin.balance}
         paymentsCount={payments.length}
         formatBalance={formatBalance}
       />
-
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}

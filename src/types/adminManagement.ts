@@ -1,4 +1,4 @@
-// src/components/adminManagement/types.ts
+// src/types/adminManagement.ts
 export interface ActivityData {
   _id: string;
   type: string;
@@ -6,11 +6,10 @@ export interface ActivityData {
     _id: string;
     firstName: string;
     lastName: string;
-    email?: string;
   };
   details: string;
   timestamp: string;
-  metadata: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AdminStats {
@@ -19,22 +18,26 @@ export interface AdminStats {
   lastName: string;
   email: string;
   status: string;
-  lastLogin?: string;
-  createdAt: string;
   agentCount: number;
   leadCount: number;
-  balance?: number;
+  balance: number;
+  lastLogin?: string;
+  createdAt: string;
+  recentActivity: ActivityData[];
   subscription?: {
+    _id: string;
     plan: string;
     status: string;
     maxUsers: number;
     maxLeads: number;
     endDate: string;
+    amount: number;
+    currency: string;
   };
-  recentActivity: ActivityData[];
   lastAgentLogin?: {
-    lastLogin?: string;
+    _id: string;
     firstName: string;
     lastName: string;
+    lastLogin: string;
   };
 }
