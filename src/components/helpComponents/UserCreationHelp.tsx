@@ -115,11 +115,10 @@ const UserCreationHelp: React.FC = () => {
                     <p>• Email Address (used for login)</p>
                     <p>• Phone Number</p>
                     <p>• Country</p>
-                    <p>• Create a secure password for the user</p>
+                    <p>• Create a secure password for your user</p>
                   </div>
                 </div>
               </li>
-
               <li className="flex items-start space-x-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                   ✓
