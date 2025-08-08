@@ -64,9 +64,7 @@ export function UserCRUDOperations({
 
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           ...userData,
@@ -78,7 +76,6 @@ export function UserCRUDOperations({
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle usage limit errors
         if (response.status === 403 && data.upgradeRequired) {
           throw {
             message:
@@ -87,22 +84,16 @@ export function UserCRUDOperations({
             upgradeRequired: true,
           };
         }
-
-        // Field error for duplicate email
         if (response.status === 409) {
           throw {
             field: "email",
             message: data.message || "This email address is already in use.",
           };
         }
-
-        // General error for other cases
-        if (response.status === 400) {
+        if (response.status === 400)
           throw { message: data.message || "Invalid user data." };
-        }
-        if (response.status === 401) {
+        if (response.status === 401)
           throw { message: "You are not authorized to create users." };
-        }
         throw {
           message:
             data.message || "Something went wrong while creating the user.",
@@ -116,6 +107,7 @@ export function UserCRUDOperations({
       });
 
       await queryClient.invalidateQueries({ queryKey: ["users"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }); // <-- add this
       await onRefreshUsers();
       onUserCreated?.(data.user);
 
@@ -127,73 +119,38 @@ export function UserCRUDOperations({
   const handleUpdateUser = useCallback(
     async (userData: UserFormData, userId: string): Promise<User> => {
       try {
-        console.log("[Frontend] Sending update request:", { userId, userData });
-
         const response = await fetch(`/api/users`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            id: userId,
-            ...userData,
-          }),
+          body: JSON.stringify({ id: userId, ...userData }),
         });
 
-        console.log("[Frontend] Response status:", response.status);
         const data = await response.json();
-        console.log("[Frontend] Response data:", data);
 
         if (!response.ok) {
-          if (data.error && typeof data.error === "object") {
-            console.log("API returned structured error:", data.error);
-            throw data.error;
-          }
-
-          // Check if the API returned a simple error message
-          if (data.error && typeof data.error === "string") {
+          if (data.error && typeof data.error === "object") throw data.error;
+          if (data.error && typeof data.error === "string")
             throw { message: data.error };
-          }
-
-          // Check if the API returned a message field
-          if (data.message) {
-            throw { message: data.message };
-          }
-
-          // Fallback error
+          if (data.message) throw { message: data.message };
           throw { message: "Failed to update user" };
         }
-        if (data.success && data.data) {
-          toast({
-            title: "Success",
-            description: "User updated successfully",
-            variant: "success",
-          });
 
-          await queryClient.invalidateQueries({ queryKey: ["users"] });
-          await onRefreshUsers();
-          onUserUpdated?.(data.data);
+        const updated = data.data || data.user;
+        if (!updated) throw { message: "No user data returned from server." };
 
-          return data.data;
-        }
+        toast({
+          title: "Success",
+          description: "User updated successfully",
+          variant: "success",
+        });
 
-        // Fallback if structure is different
-        if (data.user) {
-          toast({
-            title: "Success",
-            description: "User updated successfully",
-            variant: "success",
-          });
+        await queryClient.invalidateQueries({ queryKey: ["users"] });
+        await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }); // optional but safe
+        await onRefreshUsers();
+        onUserUpdated?.(updated);
 
-          await queryClient.invalidateQueries({ queryKey: ["users"] });
-          await onRefreshUsers();
-          onUserUpdated?.(data.user);
-
-          return data.user;
-        }
-
-        throw { message: "No user data returned from server." };
+        return updated;
       } catch (error) {
         console.error("Update user error details:", error);
         throw error;
@@ -202,6 +159,7 @@ export function UserCRUDOperations({
     [toast, queryClient, onRefreshUsers, onUserUpdated]
   );
 
+  // handleDeleteUser
   const handleDeleteUser = useCallback(
     async (userId: string): Promise<void> => {
       if (
@@ -223,6 +181,7 @@ export function UserCRUDOperations({
         }
 
         await queryClient.invalidateQueries({ queryKey: ["users"] });
+        await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }); // <-- add this
 
         onRefreshUsers();
         toast({
@@ -231,9 +190,7 @@ export function UserCRUDOperations({
           variant: "success",
         });
 
-        if (onUserDeleted) {
-          onUserDeleted(userId);
-        }
+        onUserDeleted?.(userId);
       } catch (error) {
         console.error("Error deleting user:", error);
         toast({

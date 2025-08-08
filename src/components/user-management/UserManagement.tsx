@@ -61,34 +61,41 @@ export default function UsersManagement({
   } = useUsersData();
 
   // Use React Query for user usage data
-  const { userUsageData, isLoading: usageDataLoading } = useUserUsageData();
+  const {
+    userUsageData,
+    isLoading: usageDataLoading,
+    refreshUserUsageData,
+  } = useUserUsageData();
 
   const handleUserCreated = useCallback(
     (user: User) => {
       onUserCreated?.(user);
       refetchUsers(); // Refetch users after creation
+      refreshUserUsageData(); // Refetch usage immediately
       setShowModal(false);
       setSelectedUser(null);
     },
-    [onUserCreated, refetchUsers]
+    [onUserCreated, refetchUsers, refreshUserUsageData]
   );
 
   const handleUserUpdated = useCallback(
     (user: User) => {
       onUserUpdated?.(user);
       refetchUsers(); // Refetch users after update
+      refreshUserUsageData(); // Keep usage in sync if role/status changes matter
       setShowModal(false);
       setSelectedUser(null);
     },
-    [onUserUpdated, refetchUsers]
+    [onUserUpdated, refetchUsers, refreshUserUsageData]
   );
 
   const handleUserDeleted = useCallback(
     (userId: string) => {
       onUserDeleted?.(userId);
       refetchUsers(); // Refetch users after deletion
+      refreshUserUsageData(); // Refetch usage immediately
     },
-    [onUserDeleted, refetchUsers]
+    [onUserDeleted, refetchUsers, refreshUserUsageData]
   );
 
   const handleCreateUserClick = useCallback(() => {
