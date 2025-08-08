@@ -6,7 +6,6 @@ import { connectMongoDB } from "@/libs/dbConfig";
 import { ObjectId } from "mongodb";
 import Payment from "@/models/Payment";
 import User from "@/models/User";
-import mongoose from "mongoose";
 
 // Get wallet addresses from environment variables
 const WALLET_ADDRESSES = {
@@ -209,26 +208,6 @@ export async function POST(request: NextRequest) {
 
     // Save payment
     const savedPayment = await payment.save();
-
-    // Create notification for super admin
-    if (!mongoose.connection.db) {
-      throw new Error("Database connection not established");
-    }
-
-    await mongoose.connection.db.collection("notifications").insertOne({
-      _id: new ObjectId(),
-      id: new ObjectId().toString(),
-      type: "PAYMENT_PENDING_APPROVAL",
-      message: `New payment confirmation submitted: ${savedPayment.amount} ${savedPayment.currency} (${network})`,
-      role: "SUPER_ADMIN",
-      link: `/dashboard/billing/payments/${savedPayment._id}`,
-      paymentId: savedPayment._id.toString(),
-      amount: savedPayment.amount,
-      currency: savedPayment.currency,
-      userId: adminId.toString(),
-      createdAt: new Date().toISOString(),
-      read: false,
-    });
 
     // Return success response
     const createdPayment = {

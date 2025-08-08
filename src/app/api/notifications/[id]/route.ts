@@ -7,32 +7,53 @@ import mongoose from "mongoose";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> } // Changed: params is now a Promise
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await params; // Await the params
-    await connectMongoDB();
+    // Await the params Promise
+    const { id } = await params;
 
-    // Check if connection is established
-    if (!mongoose.connection.db) {
+    await connectMongoDB();
+    const { read } = await request.json();
+
+    const db = mongoose.connection.db;
+    if (!db) {
       throw new Error("Database connection not established");
     }
 
-    const { read } = await request.json();
-    await mongoose.connection.db
-      .collection("notifications")
-      .updateOne({ id }, { $set: { read } });
+    // Update notification as read
+    const result = await db.collection("notifications").updateOne(
+      {
+        $or: [{ id: id }, { _id: new mongoose.Types.ObjectId(id) }],
+      },
+      {
+        $set: {
+          read: read,
+          updatedAt: new Date(),
+        },
+      }
+    );
 
-    return NextResponse.json({ success: true });
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { error: "Notification not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Notification updated successfully",
+    });
   } catch (error) {
     console.error("Error updating notification:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to update notification" },
       { status: 500 }
     );
   }
@@ -40,29 +61,43 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> } // Changed: params is now a Promise
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await params; // Await the params
-    await connectMongoDB();
+    // Await the params Promise
+    const { id } = await params;
 
-    // Check if connection is established
-    if (!mongoose.connection.db) {
+    await connectMongoDB();
+    const db = mongoose.connection.db;
+    if (!db) {
       throw new Error("Database connection not established");
     }
 
-    await mongoose.connection.db.collection("notifications").deleteOne({ id });
+    // Delete notification
+    const result = await db.collection("notifications").deleteOne({
+      $or: [{ id: id }, { _id: new mongoose.Types.ObjectId(id) }],
+    });
 
-    return NextResponse.json({ success: true });
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: "Notification not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Notification deleted successfully",
+    });
   } catch (error) {
     console.error("Error deleting notification:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to delete notification" },
       { status: 500 }
     );
   }

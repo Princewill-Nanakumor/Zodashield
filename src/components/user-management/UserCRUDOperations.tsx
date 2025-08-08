@@ -159,7 +159,6 @@ export function UserCRUDOperations({
     [toast, queryClient, onRefreshUsers, onUserUpdated]
   );
 
-  // handleDeleteUser
   const handleDeleteUser = useCallback(
     async (userId: string): Promise<void> => {
       if (
@@ -181,7 +180,7 @@ export function UserCRUDOperations({
         }
 
         await queryClient.invalidateQueries({ queryKey: ["users"] });
-        await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }); // <-- add this
+        await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] });
 
         onRefreshUsers();
         toast({

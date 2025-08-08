@@ -1,7 +1,7 @@
 // src/components/billing/PaymentRequestDetails.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Copy,
   Check,
@@ -50,7 +50,8 @@ export default function PaymentRequestDetails({
   const { data: session } = useSession();
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notificationSent, setNotificationSent] = useState(false); // Add this state
+  const [notificationSent, setNotificationSent] = useState(false);
+  const processingRef = useRef(false);
 
   const handleCopy = (address: string) => {
     navigator.clipboard.writeText(address);
@@ -59,35 +60,34 @@ export default function PaymentRequestDetails({
   };
 
   const handleBackToDeposit = () => {
-    // Clear localStorage
     localStorage.removeItem("currentPayment");
     localStorage.removeItem("paymentNetwork");
     localStorage.removeItem("paymentConfirmed");
-    localStorage.removeItem(`notification_sent_${currentPayment._id}`); // Clear notification flag
-
-    // Call the parent handler
+    localStorage.removeItem(`notification_sent_${currentPayment._id}`);
     onBackToDeposit();
   };
 
   const handleConfirmPayment = async () => {
-    // Prevent double submission
-    if (isSubmitting || notificationSent) {
-      console.log("⚠️ Notification already sent or currently submitting");
-      return;
-    }
-
-    // Check if notification was already sent for this payment
     const notificationKey = `notification_sent_${currentPayment._id}`;
+
+    // Prevent double submission and re-entrancy
+    if (processingRef.current || isSubmitting || notificationSent) return;
+
+    // Idempotent guard
     const alreadySent = localStorage.getItem(notificationKey);
-    if (alreadySent) {
-      console.log("⚠️ Notification already sent for this payment");
+    if (alreadySent === "true") {
       onConfirmPayment();
       return;
     }
 
     try {
+      processingRef.current = true;
       setIsSubmitting(true);
       setNotificationSent(true);
+      // Lock immediately to avoid rapid double-clicks
+      localStorage.setItem(notificationKey, "true");
+
+      const deduplicationKey = `payment_confirmation_${currentPayment._id}`;
 
       console.log("🔄 Creating notification for payment:", {
         paymentId: currentPayment._id,
@@ -98,43 +98,46 @@ export default function PaymentRequestDetails({
         network: network,
       });
 
-      // Create notification for super admin
       const notificationResponse = await fetch("/api/notifications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Source": "USER_CONFIRMATION",
+          "X-Request-ID": `pc_${currentPayment._id}_${Date.now()}`,
+        },
         body: JSON.stringify({
           type: "PAYMENT_PENDING_APPROVAL",
           message: `New payment confirmation submitted: ${currentPayment.amount} ${currentPayment.currency} (${network}) by ${session?.user?.firstName} ${session?.user?.lastName}`,
           role: "SUPER_ADMIN",
-          link: `/dashboard/payments/${currentPayment._id}`, // Use the correct dynamic route format
+          link: `/dashboard/payment-details/${currentPayment._id}`, // ← FIXED: Changed from /payments/ to /payment-details/
           paymentId: currentPayment._id,
           amount: currentPayment.amount,
           currency: currentPayment.currency,
           userId: session?.user?.id,
+          deduplicationKey,
         }),
       });
 
       if (!notificationResponse.ok) {
         const errorText = await notificationResponse.text();
         console.error("❌ Failed to create notification:", errorText);
-        throw new Error(`Failed to create notification: ${errorText}`);
+        throw new Error(errorText || "Failed to create notification");
       } else {
         const notificationData = await notificationResponse.json();
         console.log("✅ Notification created successfully:", notificationData);
-
-        // Mark notification as sent in localStorage
-        localStorage.setItem(notificationKey, "true");
       }
 
-      // Call the parent handler
       onConfirmPayment();
     } catch (error) {
+      // Roll back the local lock if server failed
+      localStorage.removeItem(notificationKey);
+      setNotificationSent(false);
       console.error("❌ Error creating notification:", error);
-      setNotificationSent(false); // Reset flag on error
-      // Still proceed with confirmation even if notification fails
-      onConfirmPayment();
+      // Optionally still proceed:
+      // onConfirmPayment();
     } finally {
       setIsSubmitting(false);
+      processingRef.current = false;
     }
   };
 
@@ -237,7 +240,7 @@ export default function PaymentRequestDetails({
     );
   }
 
-  // Show the original payment request screen
+  // Original payment request view
   return (
     <div className="space-y-6">
       <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
@@ -365,7 +368,6 @@ export default function PaymentRequestDetails({
           </div>
         )}
 
-        {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={handleConfirmPayment}

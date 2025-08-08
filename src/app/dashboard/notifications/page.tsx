@@ -21,6 +21,23 @@ interface Notification {
   read: boolean;
 }
 
+// Raw notification from API that might have inconsistent id/_id
+interface RawNotification {
+  id?: string;
+  _id?: string;
+  type: string;
+  message: string;
+  role: string;
+  link?: string;
+  paymentId?: string;
+  amount?: number;
+  currency?: string;
+  userId?: string;
+  createdAt: string;
+  read: boolean;
+  [key: string]: unknown;
+}
+
 export default function NotificationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -28,16 +45,34 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Normalize notifications to ensure stable keys
+  const normalizeNotifications = useCallback(
+    (items: RawNotification[]): Notification[] => {
+      return (items || []).map((n, idx) => {
+        const safeId =
+          n.id ||
+          n._id ||
+          `${n.type || "unknown"}-${n.paymentId || "na"}-${n.createdAt || idx}`;
+        return { ...n, id: String(safeId) } as Notification;
+      });
+    },
+    []
+  );
+
+  // ... (keep all your existing code, just change the fetch URL)
+
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications/all", {
+        // Changed from "/api/notifications"
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch notifications");
-      const data = await response.json();
-      setNotifications(data);
+      const rawData: RawNotification[] = await response.json();
+      const normalizedData = normalizeNotifications(rawData);
+      setNotifications(normalizedData);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to fetch notifications"
@@ -45,7 +80,9 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [normalizeNotifications]);
+
+  // ... (rest of your component stays the same)
 
   const handleDeleteNotification = useCallback(
     async (notificationId: string) => {
@@ -83,7 +120,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-scree dark:bg-gray-800 rounded-xl border">
+    <div className="min-h-screen dark:bg-gray-800 rounded-xl border">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

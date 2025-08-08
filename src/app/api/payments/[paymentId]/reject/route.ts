@@ -1,4 +1,3 @@
-// /Users/safeconnection/Downloads/drivecrm/src/app/api/payments/[paymentId]/reject/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -7,7 +6,6 @@ import User from "@/models/User";
 import { connectMongoDB } from "@/libs/dbConfig";
 import { Types } from "mongoose";
 import mongoose from "mongoose";
-import { ObjectId } from "mongodb";
 
 interface PaymentDocument {
   _id: Types.ObjectId;
@@ -48,6 +46,14 @@ export async function POST(
 
     // Await the params to get the paymentId
     const { paymentId } = await params;
+
+    // Validate paymentId format
+    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+      return NextResponse.json(
+        { error: "Invalid payment ID" },
+        { status: 400 }
+      );
+    }
 
     // Get user info to check if they're a super admin
     const user = (await User.findOne({
@@ -93,8 +99,8 @@ export async function POST(
       paymentId,
       {
         status: "FAILED",
-        approvedAt: new Date(),
-        approvedBy: user._id,
+        approvedAt: new Date(), // Consider renaming this to 'processedAt' since it's used for both approve/reject
+        approvedBy: user._id, // Consider renaming this to 'processedBy'
       },
       { new: true, runValidators: true }
     ).lean()) as PaymentDocument | null;
@@ -106,25 +112,36 @@ export async function POST(
       );
     }
 
-    // Create notification for the admin who made the payment
+    // Create notification for the admin who made the payment (with deduplication)
     if (!mongoose.connection.db) {
       throw new Error("Database connection not established");
     }
 
-    await mongoose.connection.db.collection("notifications").insertOne({
-      _id: new ObjectId(),
-      id: new ObjectId().toString(),
+    const dedupKey = `payment_rejected_${paymentId}`;
+    const notificationsCol = mongoose.connection.db.collection("notifications");
+    const now = new Date();
+
+    const notificationDoc = {
       type: "PAYMENT_REJECTED",
-      message: `Your payment of ${payment.amount} ${payment.currency} has been rejected.`,
+      message: `Your payment of ${payment.amount} ${payment.currency} has been rejected`,
       role: "ADMIN",
-      link: `/dashboard/billing/payments/${paymentId}`,
+      link: `/dashboard/payment-details/${paymentId}`, // Fixed link to match your routes
       paymentId: paymentId,
       amount: payment.amount,
       currency: payment.currency,
       userId: payment.adminId?.toString(),
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
       read: false,
-    });
+      timestamp: now.getTime(),
+      deduplicationKey: dedupKey,
+    };
+
+    // Use atomic upsert to prevent duplicates
+    await notificationsCol.updateOne(
+      { deduplicationKey: dedupKey },
+      { $setOnInsert: notificationDoc },
+      { upsert: true }
+    );
 
     // Convert MongoDB ObjectId to string for JSON response
     const paymentResponse = {

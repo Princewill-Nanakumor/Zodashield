@@ -15,25 +15,35 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Notification } from "@/types/notifications";
 import { Button } from "@/components/ui/button";
 
+// Raw notification type from API (may have inconsistent id/_id)
+interface RawNotification {
+  id?: string;
+  _id?: string;
+  type: string;
+  message: string;
+  paymentId?: string;
+  createdAt: string;
+  read: boolean;
+  amount?: number;
+  currency?: string;
+  link?: string;
+  [key: string]: unknown;
+}
+
 // Loading skeleton component for notification dropdown
 const NotificationSkeleton = () => (
   <li className="flex items-start justify-between px-4 py-3 animate-pulse">
     <div className="flex items-start space-x-3 flex-1">
-      {/* Icon skeleton */}
       <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded-full flex-shrink-0"></div>
       <div className="flex-1 min-w-0">
-        {/* Message skeleton */}
         <div className="space-y-1">
           <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
           <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
         </div>
-        {/* Amount skeleton */}
         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-20 mt-1"></div>
-        {/* Date skeleton */}
         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-16 mt-1"></div>
       </div>
     </div>
-    {/* X button skeleton */}
     <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded ml-2 flex-shrink-0"></div>
   </li>
 );
@@ -43,10 +53,41 @@ export function NotificationBell() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [showSkeletonOnOpen, setShowSkeletonOnOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch notifications using React Query
+  // Normalize notifications to ensure stable keys and API compatibility
+  const normalizeNotifications = useCallback(
+    (items: RawNotification[]): Notification[] => {
+      console.log("🔍 Raw notifications received:", items); // DEBUG
+
+      if (!Array.isArray(items)) {
+        console.warn("⚠️ Notifications data is not an array:", items);
+        return [];
+      }
+
+      const normalized = items
+        .map((n, idx) => {
+          if (!n || typeof n !== "object") {
+            console.warn("⚠️ Invalid notification item:", n);
+            return null;
+          }
+
+          const safeId =
+            n.id ||
+            n._id ||
+            `${n.type || "unknown"}-${n.paymentId || "na"}-${n.createdAt || idx}`;
+
+          return { ...n, id: String(safeId) } as Notification;
+        })
+        .filter(Boolean) as Notification[];
+
+      console.log("✅ Normalized notifications:", normalized); // DEBUG
+      return normalized;
+    },
+    []
+  );
+
+  // CHANGED: Fetch ALL notifications, not just unread ones
   const {
     data: notifications = [],
     isLoading,
@@ -54,52 +95,60 @@ export function NotificationBell() {
     refetch,
     isFetching,
     isRefetching,
-    isStale,
-  } = useQuery({
+  } = useQuery<RawNotification[], Error, Notification[]>({
     queryKey: ["notifications"],
-    queryFn: async (): Promise<Notification[]> => {
-      const response = await fetch("/api/notifications", {
+    queryFn: async (): Promise<RawNotification[]> => {
+      console.log("🚀 Fetching ALL notifications from API..."); // DEBUG
+
+      // CHANGED: Use /api/notifications/all to get both read and unread
+      const response = await fetch("/api/notifications/all", {
         credentials: "include",
       });
+
       if (!response.ok) {
-        throw new Error("Failed to fetch notifications");
+        console.error("❌ API Error:", response.status, response.statusText);
+        throw new Error(
+          `HTTP ${response.status}: Failed to fetch notifications`
+        );
       }
-      return response.json();
+
+      const data = await response.json();
+      console.log("📦 API Response (ALL notifications):", data); // DEBUG
+      return data;
     },
+    select: (data) => normalizeNotifications(data),
     enabled: !!session?.user,
-    staleTime: 10000, // Consider data stale after 10 seconds
-    refetchInterval: 60000, // Refetch every 60 seconds
-    refetchIntervalInBackground: false, // Only refetch when tab is active
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-    refetchOnMount: true, // Always refetch on mount
-    retry: 1, // Reduce retry attempts
+    staleTime: 30000,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    retry: 2,
   });
 
-  // Handle dropdown opening - show skeleton if data is stale or no data
+  // Debug logging for render states
+  console.log("🎯 NotificationBell render state:", {
+    isLoading,
+    isFetching,
+    isRefetching,
+    notificationsCount: notifications.length,
+    unreadCount: notifications.filter((n) => !n.read).length,
+    hasSession: !!session?.user,
+    error: error?.message,
+    open,
+  });
+
+  // Simplified dropdown toggle
   const handleDropdownToggle = useCallback(() => {
-    if (!open) {
-      // Opening dropdown - check if we should show loading state
-      const shouldShowLoading = isStale || !notifications.length || isFetching;
-
-      if (shouldShowLoading) {
-        setShowSkeletonOnOpen(true);
-        // Trigger immediate refetch if data is stale
-        if (isStale) {
-          refetch();
-        }
-      } else {
-        setShowSkeletonOnOpen(false);
-      }
-    }
+    console.log("🖱️ Bell clicked, toggling from:", open);
     setOpen((prev) => !prev);
-  }, [open, isStale, notifications.length, isFetching, refetch]);
 
-  // Reset skeleton state when data loads
-  useEffect(() => {
-    if (!isLoading && !isFetching && !isRefetching) {
-      setShowSkeletonOnOpen(false);
+    // Always refetch when opening to ensure fresh data
+    if (!open) {
+      console.log("♻️ Refreshing notifications on open");
+      refetch();
     }
-  }, [isLoading, isFetching, isRefetching]);
+  }, [open, refetch]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -109,7 +158,6 @@ export function NotificationBell() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setOpen(false);
-        setShowSkeletonOnOpen(false);
       }
     }
     if (open) {
@@ -121,62 +169,97 @@ export function NotificationBell() {
   }, [open]);
 
   const handleNotificationClick = async (notification: Notification) => {
+    console.log("🔔 Notification clicked:", notification); // DEBUG
+
     try {
-      // Mark notification as read
-      await fetch(`/api/notifications/${notification.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ read: true }),
-      });
+      // Mark notification as read if not already read
+      if (!notification.read) {
+        const response = await fetch(`/api/notifications/${notification.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ read: true }),
+        });
 
-      // Update the cache optimistically
-      queryClient.setQueryData(
-        ["notifications"],
-        (oldData: Notification[] = []) =>
-          oldData.filter((n) => n.id !== notification.id)
-      );
+        if (!response.ok) {
+          throw new Error(
+            `Failed to mark notification as read: ${response.status}`
+          );
+        }
 
-      // Navigate to correct payment details page using dynamic route
+        // CHANGED: Update the notification to read: true instead of removing it
+        queryClient.setQueryData(
+          ["notifications"],
+          (oldData: Notification[] = []) => {
+            const updated = oldData.map((n) =>
+              n.id === notification.id ? { ...n, read: true } : n
+            );
+            console.log("🔄 Cache updated, marked as read:", notification.id);
+            return updated;
+          }
+        );
+      }
+
+      // Enhanced navigation logic
       if (notification.link) {
-        // Extract payment ID from the link
-        const paymentIdMatch = notification.link.match(/\/payments\/([^\/]+)$/);
+        console.log("🔗 Navigating to link:", notification.link);
+
+        const paymentIdMatch = notification.link.match(
+          /\/payment-details\/([^\/\?]+)/
+        );
+
         if (paymentIdMatch) {
           const paymentId = paymentIdMatch[1];
-          // Redirect to the new dynamic route
+          console.log("💰 Extracted payment ID:", paymentId);
           router.push(`/dashboard/payment-details/${paymentId}`);
         } else {
-          // Fallback to original link if pattern doesn't match
+          console.log("📍 Direct navigation to:", notification.link);
           router.push(notification.link);
         }
+      } else {
+        console.log("⚠️ No link found in notification");
       }
+
       setOpen(false);
-      setShowSkeletonOnOpen(false);
     } catch (error) {
-      console.error("Error marking notification as read:", error);
-      // Refetch on error to ensure consistency
+      console.error("❌ Error handling notification click:", error);
       refetch();
     }
   };
 
-  const handleDeleteNotification = useCallback(
+  const handleClearNotification = useCallback(
     async (notificationId: string, event: React.MouseEvent) => {
       event.stopPropagation();
+      console.log("❌ Clearing notification:", notificationId); // DEBUG
+
       try {
-        await fetch(`/api/notifications/${notificationId}`, {
-          method: "DELETE",
+        const response = await fetch(`/api/notifications/${notificationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
+          body: JSON.stringify({ read: true }),
         });
 
-        // Update the cache optimistically
+        if (!response.ok) {
+          throw new Error(`Failed to clear notification: ${response.status}`);
+        }
+
+        // CHANGED: Update the notification to read: true instead of removing it
         queryClient.setQueryData(
           ["notifications"],
-          (oldData: Notification[] = []) =>
-            oldData.filter((n) => n.id !== notificationId)
+          (oldData: Notification[] = []) => {
+            const updated = oldData.map((n) =>
+              n.id === notificationId ? { ...n, read: true } : n
+            );
+            console.log(
+              "🔄 Cache updated, cleared notification:",
+              notificationId
+            );
+            return updated;
+          }
         );
       } catch (error) {
-        console.error("Error deleting notification:", error);
-        // Refetch on error to ensure consistency
+        console.error("❌ Error clearing notification:", error);
         refetch();
       }
     },
@@ -204,21 +287,18 @@ export function NotificationBell() {
     }
   }, []);
 
+  // CHANGED: Count only unread notifications for the badge
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Determine if we should show loading state
+  // Simplified loading logic
   const shouldShowLoading =
-    showSkeletonOnOpen || (isLoading && notifications.length === 0);
+    isLoading || (isFetching && notifications.length === 0);
 
-  // Calculate appropriate number of skeleton items
-  const getSkeletonCount = () => {
-    // If we have existing notifications, show the same number of skeletons
-    if (notifications.length > 0) {
-      return Math.min(notifications.length, 5); // Cap at 5 to avoid too many skeletons
-    }
-    // If no notifications yet (first load), show 2-3 skeletons as placeholder
-    return 2;
-  };
+  console.log("🎭 Render decision:", {
+    shouldShowLoading,
+    notificationsLength: notifications.length,
+    unreadCount,
+  }); // DEBUG
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -229,12 +309,14 @@ export function NotificationBell() {
         onClick={handleDropdownToggle}
       >
         <Bell className="h-6 w-6 text-white dark:text-purple-300" />
+        {/* CHANGED: Only show badge if there are unread notifications */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
             {unreadCount}
           </span>
         )}
       </button>
+
       {open && (
         <div className="absolute right-0 mt-2 w-80 max-w-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
           <div className="p-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-800 dark:text-gray-100 flex justify-between items-center">
@@ -246,7 +328,6 @@ export function NotificationBell() {
                 onClick={() => {
                   router.push("/dashboard/notifications");
                   setOpen(false);
-                  setShowSkeletonOnOpen(false);
                 }}
                 className="text-xs h-6 px-2"
               >
@@ -260,16 +341,24 @@ export function NotificationBell() {
               )}
             </div>
           </div>
+
           <ul className="max-h-64 overflow-y-auto">
             {shouldShowLoading ? (
-              // Loading skeleton - show appropriate number based on existing notifications
+              // Show loading skeleton
               <>
-                {Array.from({ length: getSkeletonCount() }).map((_, index) => (
+                <div className="p-2 bg-yellow-100 text-yellow-800 text-xs text-center">
+                  Loading state - shouldShowLoading:{" "}
+                  {shouldShowLoading.toString()}
+                </div>
+                {Array.from({ length: 3 }).map((_, index) => (
                   <NotificationSkeleton key={`skeleton-${index}`} />
                 ))}
               </>
             ) : error ? (
               <li className="p-4 text-center text-red-500 dark:text-red-400">
+                <div className="p-2 bg-red-100 text-red-800 text-xs mb-2">
+                  Error - {error.message}
+                </div>
                 <p className="text-sm">Failed to load notifications</p>
                 <Button
                   variant="ghost"
@@ -281,42 +370,68 @@ export function NotificationBell() {
                 </Button>
               </li>
             ) : notifications.length === 0 ? (
-              <li className="p-4 text-center text-gray-500 dark:text-gray-400">
-                No notifications
-              </li>
-            ) : (
-              notifications.map((notification) => (
-                <li
-                  key={notification.id}
-                  className={`flex items-start justify-between px-4 py-3 hover:bg-purple-50 dark:hover:bg-gray-800 transition cursor-pointer ${
-                    !notification.read ? "bg-blue-50 dark:bg-blue-900/20" : ""
-                  }`}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex items-start space-x-3 flex-1">
-                    {getNotificationIcon(notification.type)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 dark:text-gray-100">
-                        {notification.message}
-                      </p>
-                      {notification.amount && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Amount: {notification.amount} {notification.currency}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        {new Date(notification.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <X
-                    className="h-4 w-4 text-gray-400 ml-2 flex-shrink-0 hover:text-red-500 transition-colors"
-                    onClick={(e) =>
-                      handleDeleteNotification(notification.id, e)
-                    }
-                  />
+              <>
+                <div className="p-2 bg-blue-100 text-blue-800 text-xs text-center">
+                  No notifications found
+                </div>
+                <li className="p-4 text-center text-gray-500 dark:text-gray-400">
+                  No notifications
                 </li>
-              ))
+              </>
+            ) : (
+              <>
+                <div className="p-2 bg-green-100 text-green-800 text-xs text-center">
+                  Showing {notifications.length} notifications ({unreadCount}{" "}
+                  unread)
+                </div>
+                {notifications.map((notification) => (
+                  <li
+                    key={notification.id}
+                    className={`flex items-start border-b justify-between px-4 py-3 hover:bg-purple-50 dark:hover:bg-gray-800 transition cursor-pointer ${
+                      // CHANGED: Only highlight unread notifications
+                      !notification.read ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                    }`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start space-x-3 flex-1">
+                      {getNotificationIcon(notification.type)}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm ${
+                            // CHANGED: Style unread notifications differently
+                            !notification.read
+                              ? "font-medium text-gray-900 dark:text-white"
+                              : "text-gray-600 dark:text-gray-300"
+                          }`}
+                        >
+                          {notification.message}
+                        </p>
+                        {notification.amount && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Amount: {notification.amount}{" "}
+                            {notification.currency}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    {/* CHANGED: Only show X button for unread notifications */}
+                    {!notification.read && (
+                      <div
+                        className="ml-2 flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                        onClick={(e) =>
+                          handleClearNotification(notification.id, e)
+                        }
+                        title="Mark as read"
+                      >
+                        <X className="h-4 w-4 text-gray-400 hover:text-red-500 transition-colors" />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </>
             )}
           </ul>
         </div>
