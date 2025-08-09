@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { Status } from "@/types/leads"; // Import the proper type
+import { Status } from "@/types/leads";
 
 interface StatusModalProps {
   isOpen: boolean;

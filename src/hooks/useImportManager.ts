@@ -3,15 +3,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { ImportHistoryItem, ProcessedLead } from "@/types/import";
 import { processFile } from "@/utils/FileProcessing";
-
-interface UsageData {
-  currentLeads: number;
-  maxLeads: number;
-  remainingLeads: number;
-  canImport: boolean;
-}
+import { useImportHistory } from "./useImportHistory";
 
 interface ImportLimitExceeded {
   attempted: number;
@@ -23,19 +18,25 @@ export const useImportManager = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
-  const [importHistory, setImportHistory] = useState<ImportHistoryItem[]>([]);
   const [missingFields, setMissingFields] = useState<string[]>([]);
-  const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [importLimitExceeded, setImportLimitExceeded] =
     useState<ImportLimitExceeded | null>(null);
+
+  // Use React Query hook for import history
+  const {
+    importHistory,
+    isLoading: historyLoading,
+    deleteImport,
+    refreshImportHistory,
+  } = useImportHistory();
 
   const waitForImportUpdate = useCallback(
     async (importId: string, maxTries = 10) => {
@@ -52,50 +53,6 @@ export const useImportManager = () => {
     []
   );
 
-  const fetchUsageData = useCallback(async () => {
-    try {
-      const response = await fetch("/api/usage", {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setUsageData(data);
-    } catch (error) {
-      console.error("Error fetching usage data:", error);
-      setUsageData(null);
-    }
-  }, []);
-
-  const fetchImportHistory = useCallback(async () => {
-    try {
-      const response = await fetch("/api/imports");
-      if (!response.ok) throw new Error("Failed to fetch import history");
-      const data = await response.json();
-      setImportHistory(data.imports);
-    } catch (error) {
-      console.error("Error fetching import history:", error);
-      setError("Failed to load import history");
-    }
-  }, []);
-
-  const initializeData = useCallback(async () => {
-    setIsInitialLoading(true);
-    try {
-      await Promise.all([fetchImportHistory(), fetchUsageData()]);
-    } catch (error) {
-      console.error("Error initializing data:", error);
-    } finally {
-      setIsInitialLoading(false);
-    }
-  }, [fetchImportHistory, fetchUsageData]);
-
   const handleDeleteImport = useCallback(
     async (id: string) => {
       if (
@@ -104,38 +61,15 @@ export const useImportManager = () => {
         )
       ) {
         try {
-          const response = await fetch(`/api/imports?id=${id}`, {
-            method: "DELETE",
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            throw new Error(result?.error || "Failed to delete import record");
-          }
-
-          await fetchImportHistory();
-          await fetchUsageData();
-
-          toast({
-            title: "Success",
-            description:
-              result?.message || "Import record and leads deleted successfully",
-            variant: "success",
-          });
+          await deleteImport(id);
+          // Invalidate usage data to refresh counts
+          queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
         } catch (error) {
-          toast({
-            title: "Error",
-            description:
-              error instanceof Error
-                ? error.message
-                : "Failed to delete import record",
-            variant: "destructive",
-          });
+          console.error("Error deleting import:", error);
         }
       }
     },
-    [fetchImportHistory, fetchUsageData, toast]
+    [deleteImport, queryClient]
   );
 
   const handleFileUpload = useCallback(
@@ -149,6 +83,14 @@ export const useImportManager = () => {
       setIsLoading(true);
 
       const handleSuccess = async (processedLeads: ProcessedLead[]) => {
+        // Get current usage data from React Query cache
+        const usageData = queryClient.getQueryData<{
+          currentLeads: number;
+          maxLeads: number;
+          remainingLeads: number;
+          canImport: boolean;
+        }>(["import-usage-data"]);
+
         // Check usage limits before importing
         if (usageData && !usageData.canImport) {
           setError(
@@ -256,25 +198,15 @@ export const useImportManager = () => {
           toast({
             title: "Import Success",
             description: successMsg,
-            variant: "success",
+            variant: "default",
           });
 
-          if (usageData) {
-            setUsageData({
-              ...usageData,
-              currentLeads: usageData.currentLeads + result.inserted,
-              remainingLeads: Math.max(
-                0,
-                usageData.remainingLeads - result.inserted
-              ),
-              canImport:
-                usageData.maxLeads === -1 ||
-                usageData.currentLeads + result.inserted < usageData.maxLeads,
-            });
-          }
+          // ✅ KEY FIX: Invalidate React Query caches to trigger automatic refresh
+          queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
+          queryClient.invalidateQueries({ queryKey: ["import-history"] });
 
           await waitForImportUpdate(importData.data._id);
-          await fetchImportHistory();
+          await refreshImportHistory();
         } catch (err) {
           const message =
             err instanceof Error
@@ -316,7 +248,7 @@ export const useImportManager = () => {
         }
       );
     },
-    [usageData, waitForImportUpdate, fetchImportHistory, toast]
+    [queryClient, waitForImportUpdate, refreshImportHistory, toast]
   );
 
   // Effects
@@ -333,26 +265,19 @@ export const useImportManager = () => {
     }
   }, [status, session, router, toast]);
 
-  useEffect(() => {
-    if (status === "authenticated" && session?.user?.role === "ADMIN") {
-      initializeData();
-    }
-  }, [status, session, initializeData]);
-
   return {
     // State
     session,
     status,
     fileInputRef,
     isLoading,
-    isInitialLoading,
+    isInitialLoading: historyLoading,
     error,
     successMessage,
     showModal,
     activeTab,
-    importHistory,
+    importHistory: importHistory || [],
     missingFields,
-    usageData,
     importLimitExceeded,
 
     // Setters

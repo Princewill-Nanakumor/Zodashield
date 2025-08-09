@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { ImportHistoryItem } from "@/types/import";
 import { RequiredFieldsModal } from "../importPageComponents/RequireFieldModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,8 +44,9 @@ export const FileUploadSection = ({
 }: FileUploadSectionProps) => {
   const [showRequiredFields, setShowRequiredFields] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Show success toast only (no error toast)
+  // Show success toast and invalidate cache
   useEffect(() => {
     if (successMessage) {
       toast({
@@ -52,8 +54,12 @@ export const FileUploadSection = ({
         description: successMessage,
         variant: "success",
       });
+
+      // ✅ Additional cache invalidation when success message appears
+      queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
+      queryClient.invalidateQueries({ queryKey: ["import-history"] });
     }
-  }, [successMessage, toast]);
+  }, [successMessage, toast, queryClient]);
 
   // Improved loading and disabled logic
   const isDisabled = Boolean(isLoading || (usageData && !usageData.canImport));
@@ -189,9 +195,8 @@ ${
           className="hidden"
           accept=".xlsx,.xls,.csv,.txt"
           onChange={handleFileUpload}
-          disabled={isDisabled || shouldShowSkeleton} // Use shouldShowSkeleton here too
+          disabled={isDisabled || shouldShowSkeleton}
           onClick={(e) => {
-            // Prevent the click from bubbling up
             e.stopPropagation();
           }}
         />

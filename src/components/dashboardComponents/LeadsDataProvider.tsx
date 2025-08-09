@@ -268,13 +268,6 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
       // Clear selection immediately
       setSelectedLeads([]);
 
-      // Show success toast immediately for better UX
-      toastRef.current({
-        title: "Assigning leads...",
-        description: `Assigning ${originalSelectedLeads.length} lead(s) to ${user.firstName}.`,
-        variant: "default",
-      });
-
       try {
         // Send the assignment request
         const leadsToAssign = originalSelectedLeads.map((lead) => ({

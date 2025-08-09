@@ -203,13 +203,6 @@ export const useLeadsPage = (
         });
       });
 
-      // Show immediate feedback
-      toast({
-        title: "Assigning leads...",
-        description: `Assigning ${leadIds.length} lead(s)...`,
-        variant: "default",
-      });
-
       // Return context for rollback
       return { previousLeads };
     },
@@ -281,13 +274,6 @@ export const useLeadsPage = (
           }
           return lead;
         });
-      });
-
-      // Show immediate feedback
-      toast({
-        title: "Unassigning leads...",
-        description: `Unassigning ${leadIds.length} lead(s)...`,
-        variant: "default",
       });
 
       return { previousLeads };

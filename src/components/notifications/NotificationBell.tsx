@@ -334,11 +334,6 @@ export function NotificationBell() {
                 <ExternalLink className="h-3 w-3 mr-1" />
                 View All
               </Button>
-              {(isFetching || isRefetching) && (
-                <div className="inline-block">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -380,7 +375,7 @@ export function NotificationBell() {
               </>
             ) : (
               <>
-                <div className="p-2 bg-green-100 text-green-800 text-xs text-center">
+                <div className="p-2 text-gray-800 dark:text-white text-xs text-center border-b">
                   Showing {notifications.length} notifications ({unreadCount}{" "}
                   unread)
                 </div>
