@@ -58,6 +58,7 @@ export default function ComingSoon() {
           Upcoming Features
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Email Automation */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 text-xs font-medium rounded-full">
@@ -88,6 +89,7 @@ export default function ComingSoon() {
             </p>
           </div>
 
+          {/* Advanced Analytics */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 text-xs font-medium rounded-full">
@@ -118,6 +120,7 @@ export default function ComingSoon() {
             </p>
           </div>
 
+          {/* Live Chat Integration */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 text-xs font-medium rounded-full">
@@ -148,6 +151,7 @@ export default function ComingSoon() {
             </p>
           </div>
 
+          {/* Enhanced Payment Options */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 text-xs font-medium rounded-full">
@@ -170,14 +174,15 @@ export default function ComingSoon() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">
-              Payment Integration
+              Enhanced Payment Options
             </h3>
             <p className="text-indigo-900/70 dark:text-gray-300">
-              Secure payment processing to handle transactions and track revenue
-              directly within your lead management workflow.
+              Additional secure payment methods including cryptocurrency and
+              international payment gateways for global transactions.
             </p>
           </div>
 
+          {/* Lead Scoring */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 text-xs font-medium rounded-full">
@@ -208,6 +213,7 @@ export default function ComingSoon() {
             </p>
           </div>
 
+          {/* API Integration */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 text-xs font-medium rounded-full">
@@ -238,10 +244,11 @@ export default function ComingSoon() {
             </p>
           </div>
 
+          {/* Advertising Platform */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-green-500/20 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
-                Ads Coming
+                Ads Platform
               </span>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 dark:from-green-400/20 dark:to-emerald-400/20 rounded-lg flex items-center justify-center mb-4">
@@ -268,10 +275,11 @@ export default function ComingSoon() {
             </p>
           </div>
 
+          {/* Ad Analytics */}
           <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
             <div className="absolute top-4 right-4">
               <span className="px-3 py-1 bg-green-500/20 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
-                Ads Coming
+                Ads Platform
               </span>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 dark:from-green-400/20 dark:to-emerald-400/20 rounded-lg flex items-center justify-center mb-4">
@@ -388,7 +396,7 @@ export default function ComingSoon() {
           <h2 className="text-3xl font-bold text-indigo-900 dark:text-white mb-6 text-center">
             Get in Touch
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <svg
@@ -425,70 +433,19 @@ export default function ComingSoon() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                Address
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Kyiv
-                <br />
-                Ukraine
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-12 h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-6 h-6 text-indigo-600 dark:text-indigo-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                Hours
+                Support Hours
               </h3>
               <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Mon-Fri: 9AM-6PM
+                Mon-Fri: 9AM-6PM UTC
                 <br />
-                Sat: 10AM-4PM
+                Weekend: On-demand
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Feedback Section */}
-      <section className="text-center">
-        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 dark:from-yellow-400 dark:to-orange-400 rounded-2xl p-8 text-white">
-          <h2 className="text-3xl font-bold mb-4">Help Shape Our Future</h2>
-          <p className="text-xl mb-8 opacity-90">
-            We would love to hear your feedback and feature requests to make
-            ZodaShield even better for your business needs.
-          </p>
-          <div className="flex justify-center space-x-4">
-            <button className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg transition-all duration-200 font-medium">
-              Request Feature
-            </button>
-            <button className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-lg transition-all duration-200 font-medium">
-              Join Beta Testing
-            </button>
           </div>
         </div>
       </section>
