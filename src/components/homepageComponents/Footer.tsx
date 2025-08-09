@@ -40,7 +40,7 @@ export default function Footer() {
                   href="mailto:support@zodashield.com"
                   className="hover:text-white transition-colors"
                 >
-                  info@zodashield.com
+                  support@zodashield.com
                 </a>
               </div>
             </div>
