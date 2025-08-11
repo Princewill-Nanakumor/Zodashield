@@ -149,9 +149,6 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      console.log("=== DELETING COMMENT WITH REACT QUERY ===");
-      console.log("Comment ID:", commentId);
-
       const response = await fetch(
         `/api/leads/${lead._id}/comments/${commentId}`,
         { method: "DELETE" }
@@ -200,10 +197,6 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
       commentId: string;
       content: string;
     }) => {
-      console.log("=== EDITING COMMENT WITH REACT QUERY ===");
-      console.log("Comment ID:", commentId);
-      console.log("New content:", content);
-
       const response = await fetch(
         `/api/leads/${lead._id}/comments/${commentId}`,
         {
@@ -298,7 +291,7 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
             }`}
           >
             <Notebook className="w-5 h-5" />
-            Comments ({comments.length})
+            Comments
           </button>
           <button
             onClick={() => setActiveTab("activity")}
