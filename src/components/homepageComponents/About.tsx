@@ -154,7 +154,6 @@ export default function AboutComponent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             "Lead & Contact Management",
-            "Sales Pipeline Tracking",
             "Bulk Excel/CSV Import",
             "Automated Workflows",
             "Duplicate Detection",
@@ -163,9 +162,8 @@ export default function AboutComponent() {
             "Bulk Operations",
             "Data Export (Excel/CSV)",
             "Activity Logging",
-            "Custom Status & Tags",
+            "Custom Status",
             "Search & Filtering",
-            "Mobile Responsive",
             "Data Validation",
             "Lead Assignment",
             "Reminders & Notifications",
