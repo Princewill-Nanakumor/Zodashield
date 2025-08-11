@@ -1,5 +1,6 @@
 // src/hooks/useSubscriptionCheck.ts
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 interface SubscriptionData {
   isOnTrial: boolean;
@@ -7,9 +8,13 @@ interface SubscriptionData {
   currentPlan: string | null;
   subscriptionStatus: "active" | "inactive" | "trial" | "expired";
   balance: number;
+  // Additional fields for agents
+  adminName?: string;
+  adminEmail?: string;
 }
 
 export const useSubscriptionCheck = (status: string) => {
+  const { data: session } = useSession();
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [subscriptionData, setSubscriptionData] =
@@ -17,9 +22,23 @@ export const useSubscriptionCheck = (status: string) => {
 
   useEffect(() => {
     const checkSubscription = async () => {
+      if (status !== "authenticated" || !session?.user) {
+        setSubscriptionLoading(false);
+        setHasActiveSubscription(false);
+        return;
+      }
+
       try {
         setSubscriptionLoading(true);
-        const response = await fetch("/api/subscription/status", {
+
+        // For agents, check their admin's subscription status
+        // For admins, check their own subscription status
+        const endpoint =
+          session.user.role === "AGENT"
+            ? "/api/subscription/agent-status"
+            : "/api/subscription/status";
+
+        const response = await fetch(endpoint, {
           credentials: "include",
         });
 
@@ -49,10 +68,8 @@ export const useSubscriptionCheck = (status: string) => {
       }
     };
 
-    if (status === "authenticated") {
-      checkSubscription();
-    }
-  }, [status]);
+    checkSubscription();
+  }, [status, session?.user]);
 
   return { subscriptionLoading, hasActiveSubscription, subscriptionData };
 };
