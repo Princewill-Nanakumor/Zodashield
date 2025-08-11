@@ -22,7 +22,7 @@ export default function PricingSection() {
       popular: true,
       features: [
         "Up to 30,000 leads",
-        "5 tean members",
+        "5 team members",
         "More Team collaboration",
         "Custom fields",
         "Bulk operations",
