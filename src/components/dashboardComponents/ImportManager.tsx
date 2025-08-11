@@ -3,7 +3,7 @@
 
 import { Loader2 } from "lucide-react";
 import FileUploadSection from "../importPageComponents/FileUploadSection";
-import { HelpSection } from "../importPageComponents/HelpSection";
+// import { HelpSection } from "../importPageComponents/HelpSection";
 import { ImportTabs } from "../importPageComponents/ImportTabs";
 import { ImportContent } from "../importPageComponents/ImportContent";
 import { UsageLimitsDisplay } from "@/components/importPageComponents/UsageLimitsDisplay";
@@ -102,8 +102,8 @@ export const ImportManager = () => {
             errorMessage={error ?? undefined}
             importLimitExceeded={importLimitExceeded}
           />
-
-          <HelpSection />
+          {/* 
+          <HelpSection /> */}
         </div>
       </div>
     </div>
