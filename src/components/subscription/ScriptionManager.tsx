@@ -56,7 +56,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: "enterprise",
     name: "Enterprise",
-    price: 199,
+    price: 199.99,
     billingCycle: "monthly",
     features: [
       "Unlimited leads",

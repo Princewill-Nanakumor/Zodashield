@@ -25,7 +25,7 @@ const SUBSCRIPTION_PLANS = {
   enterprise: {
     id: "enterprise",
     name: "Enterprise",
-    price: 199,
+    price: 199.99,
     maxLeads: -1,
     maxUsers: -1,
   },

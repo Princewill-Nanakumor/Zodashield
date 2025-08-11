@@ -57,7 +57,7 @@ const BillingSubscriptionHelp: React.FC = () => {
     },
     {
       name: "Enterprise",
-      price: "$199",
+      price: "$199.99",
       leads: "Unlimited",
       users: "Unlimited",
       features: [

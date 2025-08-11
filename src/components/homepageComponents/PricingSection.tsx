@@ -12,7 +12,7 @@ export default function PricingSection() {
       period: "per month",
       description: "Perfect for small businesses getting started",
       popular: false,
-      features: ["Up to 10,000 leads", "1 team member", "CSV/Excel import"],
+      features: ["Up to 10,000 leads", "2 team member", "CSV/Excel import"],
     },
     {
       name: "Professional",
@@ -30,7 +30,7 @@ export default function PricingSection() {
     },
     {
       name: "Enterprise",
-      price: "$199",
+      price: "$199.99",
       period: "per month",
       description: "For large organizations",
       popular: false,
