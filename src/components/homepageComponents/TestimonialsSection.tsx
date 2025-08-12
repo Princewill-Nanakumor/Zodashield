@@ -113,38 +113,86 @@ export default function TestimonialsSection() {
   // Calculate slide width based on visible count
   const slideWidth = `${100 / visibleCount}%`;
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  };
+
+  const cardVariants = {
+    hidden: {
+      opacity: 0,
+      y: 50,
+      scale: 0.9,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+    },
+  };
+
+  const buttonVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+    },
+    hover: {
+      scale: 1.1,
+      transition: { duration: 0.2 },
+    },
+    tap: {
+      scale: 0.9,
+    },
+  };
+
   return (
     <section className="py-16 bg-gradient-to-b from-white/50 to-white/20 dark:from-gray-900/50 dark:to-gray-800/20">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-16">
+        <motion.div
+          className="text-center mb-16"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+        >
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            variants={cardVariants}
             transition={{ duration: 0.6 }}
             className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent mb-6"
           >
             What Our Customers Say
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            variants={cardVariants}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"
           >
-            Don&rsquo;t just take our word for it. Here“s what businesses say
-            about ZodaShield.
+            Don&rsquo;t just take our word for it. Here&rsquo;s what businesses
+            say about ZodaShield.
           </motion.p>
-        </div>
+        </motion.div>
 
         {/* Slider Container */}
         <div className="relative">
           {/* Navigation Buttons */}
-          <button
+          <motion.button
             onClick={prevSlide}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group -ml-6"
             aria-label="Previous testimonials"
+            variants={buttonVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            whileHover="hover"
+            whileTap="tap"
+            transition={{ duration: 0.4, delay: 0.3 }}
           >
             <svg
               className="w-6 h-6 text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors"
@@ -159,12 +207,19 @@ export default function TestimonialsSection() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-          </button>
+          </motion.button>
 
-          <button
+          <motion.button
             onClick={nextSlide}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg rounded-full flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group -mr-6"
             aria-label="Next testimonials"
+            variants={buttonVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            whileHover="hover"
+            whileTap="tap"
+            transition={{ duration: 0.4, delay: 0.4 }}
           >
             <svg
               className="w-6 h-6 text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors"
@@ -179,7 +234,7 @@ export default function TestimonialsSection() {
                 d="M9 5l7 7-7 7"
               />
             </svg>
-          </button>
+          </motion.button>
 
           {/* Slides Container */}
           <div className="overflow-hidden px-4 md:px-8 lg:px-12">
@@ -197,15 +252,23 @@ export default function TestimonialsSection() {
                   style={{ width: slideWidth }}
                 >
                   <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 h-full flex flex-col"
+                    variants={cardVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg rounded-2xl p-6 border border-gray-200 dark:border-gray-700 transition-all duration-300 h-full flex flex-col"
                   >
                     <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-4">
+                      <motion.div
+                        className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-4"
+                        whileHover={{
+                          rotate: 360,
+                          transition: { duration: 0.6 },
+                        }}
+                      >
                         {testimonial.image}
-                      </div>
+                      </motion.div>
                       <div>
                         <div className="font-semibold text-gray-900 dark:text-white">
                           {testimonial.name}
@@ -221,17 +284,32 @@ export default function TestimonialsSection() {
                     <blockquote className="text-gray-700 dark:text-gray-300 italic text-base leading-relaxed mb-6 flex-grow">
                       &ldquo;{testimonial.content}&rdquo;
                     </blockquote>
-                    <div className="flex text-yellow-400">
+                    <motion.div
+                      className="flex text-yellow-400"
+                      initial={{ opacity: 0, x: -20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: 0.3 }}
+                    >
                       {[...Array(5)].map((_, i) => (
-                        <svg
+                        <motion.svg
                           key={i}
                           className="w-5 h-5 fill-current"
                           viewBox="0 0 20 20"
+                          initial={{ scale: 0 }}
+                          whileInView={{ scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{
+                            duration: 0.3,
+                            delay: 0.4 + i * 0.1,
+                            type: "spring",
+                            stiffness: 200,
+                          }}
                         >
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
+                        </motion.svg>
                       ))}
-                    </div>
+                    </motion.div>
                   </motion.div>
                 </div>
               ))}
@@ -239,9 +317,15 @@ export default function TestimonialsSection() {
           </div>
 
           {/* Dots Indicator */}
-          <div className="flex justify-center mt-8 space-x-2">
+          <motion.div
+            className="flex justify-center mt-8 space-x-2"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
             {Array.from({ length: totalSlides }, (_, index) => (
-              <button
+              <motion.button
                 key={index}
                 onClick={() => goToSlide(index)}
                 className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${
@@ -250,16 +334,18 @@ export default function TestimonialsSection() {
                     : "bg-indigo-200 dark:bg-indigo-800 hover:bg-indigo-400 dark:hover:bg-indigo-600"
                 }`}
                 aria-label={`View testimonials ${index + 1}-${index + visibleCount}`}
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
               />
             ))}
-          </div>
+          </motion.div>
 
           {/* Progress Bar */}
           <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 5 }}
-            key={currentIndex}
+            initial={{ opacity: 0, scaleX: 0 }}
+            whileInView={{ opacity: 1, scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.6 }}
             className="mt-6 max-w-md mx-auto h-1 bg-indigo-200 dark:bg-indigo-800 rounded-full overflow-hidden"
           >
             <motion.div
@@ -267,6 +353,7 @@ export default function TestimonialsSection() {
               initial={{ width: "100%" }}
               animate={{ width: 0 }}
               transition={{ duration: 5, ease: "linear" }}
+              key={currentIndex}
             />
           </motion.div>
         </div>
