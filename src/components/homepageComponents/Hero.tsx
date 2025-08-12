@@ -217,7 +217,7 @@ export default function Hero() {
 
       {/* Features Section */}
       <motion.div
-        className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10"
+        className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10"
         initial="hidden"
         animate="visible"
         transition={{

@@ -4,13 +4,12 @@ import { motion } from "framer-motion";
 import {
   Users,
   FileSpreadsheet,
-  Zap,
+  Workflow,
   Search,
   BarChart3,
   UserPlus,
   RotateCcw,
-  Download,
-  FileText,
+  Activity,
   Tag,
   Filter,
   CheckCircle,
@@ -54,7 +53,7 @@ export default function KeyFeatures() {
     },
     {
       name: "Automated Workflows",
-      icon: Zap,
+      icon: Workflow,
       color: "from-yellow-500 to-orange-500",
     },
     {
@@ -78,14 +77,9 @@ export default function KeyFeatures() {
       color: "from-red-500 to-pink-500",
     },
     {
-      name: "Data Export (Excel/CSV)",
-      icon: Download,
-      color: "from-blue-500 to-indigo-500",
-    },
-    {
       name: "Activity Logging",
-      icon: FileText,
-      color: "from-gray-500 to-slate-500",
+      icon: Activity,
+      color: "from-gray-500 to-gray-100",
     },
     {
       name: "Custom Status",
@@ -108,7 +102,7 @@ export default function KeyFeatures() {
       color: "from-indigo-500 to-purple-500",
     },
     {
-      name: "Reminders & Notifications",
+      name: "Notifications",
       icon: Bell,
       color: "from-orange-500 to-red-500",
     },
