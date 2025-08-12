@@ -62,8 +62,8 @@ export default function StatsSection() {
           className="grid grid-cols-2 md:grid-cols-4 gap-8"
           variants={containerVariants}
           initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          animate="visible"
+          transition={{ duration: 0.8, ease: "easeOut" }}
         >
           {stats.map((stat, index) => (
             <motion.div
