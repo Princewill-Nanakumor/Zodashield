@@ -1,8 +1,6 @@
-// src/components/dashboardComponents/LeadHeader.tsx
 "use client";
 
-import { Users, Globe } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Globe } from "lucide-react";
 
 interface Lead {
   _id: string;
@@ -27,6 +25,8 @@ interface LeadsHeaderProps {
     filtered: number;
     countries: number;
   };
+  filteredLeads?: Lead[]; // Add this prop to receive filtered leads
+  allLeads?: Lead[]; // Add this prop to receive all leads
 }
 
 // Loading skeleton components
@@ -52,40 +52,25 @@ const CountriesSkeleton = () => (
 export const LeadsHeader: React.FC<LeadsHeaderProps> = ({
   shouldShowLoading,
   counts,
+  filteredLeads = [],
+  allLeads = [],
 }) => {
-  // React Query hooks for leads data - using the same query key as the main page
-  const { data: leads = [], isLoading: isLoadingLeads } = useQuery<Lead[]>({
-    queryKey: ["leads", "all"], // Same key as useLeadsPage
-    queryFn: async (): Promise<Lead[]> => {
-      const response = await fetch("/api/leads/all", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch leads");
-      return response.json();
-    },
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    refetchOnWindowFocus: false,
-    retry: 2,
-    refetchOnMount: false,
-  });
-
-  // Calculate counts from React Query data
+  // Calculate counts based on the provided data
   const calculatedCounts = {
-    total: leads.length,
-    filtered: leads.length,
-    countries: [...new Set(leads.map((lead: Lead) => lead.country))].length,
+    total: allLeads.length,
+    filtered: filteredLeads.length,
+    countries: [...new Set(allLeads.map((lead: Lead) => lead.country))].length,
   };
 
-  // Determine loading state
-  const isLoading = shouldShowLoading || isLoadingLeads;
-  const displayCounts = leads.length > 0 ? calculatedCounts : counts;
+  // Use calculated counts if we have data, otherwise fall back to props
+  const displayCounts = allLeads.length > 0 ? calculatedCounts : counts;
+  const isLoading = shouldShowLoading;
 
   return (
     <div className="bg-white dark:bg-gray-800  dark:border-gray-700 px-8 py-6 rounded-t-xl ">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <Users className="h-8 w-8 text-blue-600" />
             Leads Management
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
