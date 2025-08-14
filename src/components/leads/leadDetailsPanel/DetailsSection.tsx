@@ -35,6 +35,15 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
     return "Unknown User";
   };
 
+  // Helper function to format date as DD/MM/YYYY
+  const formatDate = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div
@@ -71,7 +80,7 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Created
               </p>
-              <p>{new Date(lead.createdAt).toLocaleDateString()}</p>
+              <p>{formatDate(lead.createdAt)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
