@@ -1,15 +1,19 @@
-// /Users/safeconnection/Downloads/drivecrm-main/src/components/dashboardComponents/DashboardSearchBar.tsx
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { Search, X } from "lucide-react";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
     return () => clearTimeout(handler);
   }, [value, delay]);
+
   return debouncedValue;
 }
 
@@ -20,72 +24,63 @@ interface DashboardSearchBarProps {
   placeholder?: string;
 }
 
-// Update DashboardSearchBar.tsx to add debug logging:
-
-export const DashboardSearchBar: React.FC<DashboardSearchBarProps> = ({
+export function DashboardSearchBar({
   onSearch,
   searchQuery = "",
   isLoading = false,
-  placeholder = "Search leads by name, email, or phone...",
-}) => {
-  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-  const debouncedSearchQuery = useDebounce(localSearchQuery, 300);
+  placeholder = "Search...",
+}: DashboardSearchBarProps) {
+  const [inputValue, setInputValue] = useState(searchQuery);
+  const debouncedValue = useDebounce(inputValue, 300);
 
-  // Sync with external searchQuery prop
+  // Update input value when searchQuery prop changes
   useEffect(() => {
-    setLocalSearchQuery(searchQuery);
+    setInputValue(searchQuery);
   }, [searchQuery]);
 
+  // Trigger search when debounced value changes
   useEffect(() => {
-    onSearch(debouncedSearchQuery.trim());
-  }, [debouncedSearchQuery, onSearch]);
+    onSearch(debouncedValue);
+  }, [debouncedValue, onSearch]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
 
   const handleClear = useCallback(() => {
-    console.log("DashboardSearchBar: Clearing search");
-    setLocalSearchQuery("");
+    setInputValue("");
     onSearch("");
   }, [onSearch]);
 
   return (
-    <div className="relative w-full max-w-xs">
+    <div className="relative w-full max-w-md">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <Search className="h-5 w-5 text-purple-300 dark:text-purple-400" />
+      </div>
+
       <input
         type="text"
-        value={localSearchQuery}
-        onChange={(e) => {
-          console.log("DashboardSearchBar: Input changed to:", e.target.value);
-          setLocalSearchQuery(e.target.value);
-        }}
+        value={inputValue}
+        onChange={handleInputChange}
+        className="block w-full pl-10 pr-10 py-2 rounded-lg bg-white/90 dark:bg-gray-800/90 border border-purple-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
         placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
         disabled={isLoading}
       />
-      {/* Search icon */}
-      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      </div>
-      {/* Clear button */}
-      {localSearchQuery && !isLoading && (
+
+      {inputValue && (
         <button
           onClick={handleClear}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="absolute inset-y-0 right-0 pr-3 flex items-center"
         >
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
         </button>
+      )}
+
+      {isLoading && (
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
+        </div>
       )}
     </div>
   );
-};
+}

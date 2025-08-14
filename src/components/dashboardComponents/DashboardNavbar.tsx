@@ -1,4 +1,3 @@
-// src/components/dashboardComponents/DashboardNavbar.tsx
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -44,11 +43,13 @@ export default function DashboardNavbar({
         setDropdownOpen(false);
       }
     }
+
     if (dropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
     }
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -56,6 +57,7 @@ export default function DashboardNavbar({
 
   const handleSearch = useCallback(
     (query: string) => {
+      console.log("DashboardNavbar: Search triggered with query:", query);
       onSearch(query);
     },
     [onSearch]
@@ -101,7 +103,7 @@ export default function DashboardNavbar({
             onSearch={handleSearch}
             searchQuery={searchQuery}
             isLoading={isLoading}
-            placeholder="Search by name or email or phone..."
+            placeholder="Search by name, email, or phone..."
           />
         </div>
       </div>
