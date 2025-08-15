@@ -7,12 +7,11 @@ const nextConfig = {
         hostname: "res.cloudinary.com",
         pathname: "/dcqnikitw/image/upload/**",
       },
-      // Uncomment and update this block when you know your production domain:
-      // {
-      //   protocol: "https",
-      //   hostname: "yourdomain.com",
-      //   pathname: "/**",
-      // },
+      {
+        protocol: "https",
+        hostname: "https://zodashield.com/",
+        pathname: "/**",
+      },
       {
         protocol: "https",
         hostname: "flagcdn.com",
