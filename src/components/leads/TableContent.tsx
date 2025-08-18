@@ -168,13 +168,17 @@ export function TableContent({
   const renderStatus = (leadStatus: string) => {
     if (isStatusLoading) {
       return (
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1.5 dark:border-gray-700"
-        >
-          <Loader2 className="h-3 w-3 animate-spin dark:text-gray-400" />
-          <span className="dark:text-gray-400">Loading...</span>
-        </Badge>
+        <div className="min-w-0 w-full">
+          <Badge
+            variant="outline"
+            className="flex items-center gap-1.5 dark:border-gray-700 w-full max-w-[120px] justify-center"
+          >
+            <Loader2 className="h-3 w-3 animate-spin dark:text-gray-400 flex-shrink-0" />
+            <span className="dark:text-gray-400 text-xs truncate">
+              Loading...
+            </span>
+          </Badge>
+        </div>
       );
     }
 
@@ -183,17 +187,22 @@ export function TableContent({
     const statusName = status?.name || "New";
 
     return (
-      <Badge
-        variant="outline"
-        style={getStatusStyle(leadStatus)}
-        className="flex items-center gap-1.5 dark:border-gray-700"
-      >
-        <div
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: statusColor }}
-        />
-        <span className="dark:text-gray-300">{statusName}</span>
-      </Badge>
+      <div className="min-w-0 w-full">
+        <Badge
+          variant="outline"
+          style={getStatusStyle(leadStatus)}
+          className="flex items-center gap-1.5 dark:border-gray-700 w-full max-w-[120px] justify-center"
+          title={statusName} // Tooltip for full text
+        >
+          <div
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: statusColor }}
+          />
+          <span className="dark:text-gray-300 text-xs truncate">
+            {statusName}
+          </span>
+        </Badge>
+      </div>
     );
   };
 
@@ -216,6 +225,7 @@ export function TableContent({
           <TableRow key={generateUniqueKey("header-group", headerGroup.id)}>
             {headerGroup.headers.map((header) => {
               const isSelectColumn = header.column.id === "select";
+              const isStatusColumn = header.column.id === "status";
               return (
                 <TableHead
                   key={generateUniqueKey("header", header.id)}
@@ -224,7 +234,9 @@ export function TableContent({
                     ${
                       isSelectColumn
                         ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
-                        : "px-4"
+                        : isStatusColumn
+                          ? "w-32 min-w-[120px] px-4"
+                          : "px-4"
                     }
                   `}
                 >
@@ -274,29 +286,34 @@ export function TableContent({
                     : "1px solid var(--tw-prose-invert-borders, #374151)",
                 }}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={`
-                      py-3.5
-                      ${isSelected ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-300"}
-                      ${
-                        cell.column.id === "select"
-                          ? "px-3 border-r border-gray-200 dark:border-gray-700"
-                          : "px-4"
-                      }
-                    `}
-                  >
-                    {cell.column.id === "status"
-                      ? renderStatus(lead.status)
-                      : cell.column.id === "createdAt"
-                        ? formatDateDMY(lead.createdAt)
-                        : flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                  </TableCell>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const isStatusCell = cell.column.id === "status";
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      className={`
+                        py-3.5
+                        ${isSelected ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-300"}
+                        ${
+                          cell.column.id === "select"
+                            ? "px-3 border-r border-gray-200 dark:border-gray-700"
+                            : isStatusCell
+                              ? "w-32 min-w-[120px] px-4"
+                              : "px-4"
+                        }
+                      `}
+                    >
+                      {cell.column.id === "status"
+                        ? renderStatus(lead.status)
+                        : cell.column.id === "createdAt"
+                          ? formatDateDMY(lead.createdAt)
+                          : flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             );
           })

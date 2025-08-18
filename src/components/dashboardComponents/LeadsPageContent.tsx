@@ -161,22 +161,30 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           </div>
         )}
 
-        {/* Conditionally render LeadsHeader with smooth transition */}
+        {/* Conditionally render LeadsHeader with simple fade transition */}
         <div
-          className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            showHeader ? "max-h-96 opacity-100" : "max-h-0 opacity-0 mb-5"
+          className={`transition-opacity duration-300 ease-in-out ${
+            showHeader ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
+          style={{
+            marginBottom: showHeader ? "0" : "-100px",
+            transition:
+              "opacity 300ms ease-in-out, margin-bottom 300ms ease-in-out",
+          }}
         >
           <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
         </div>
 
-        {/* Auto-show controls when leads are selected OR when manually toggled on */}
+        {/* Auto-show controls with simple fade transition */}
         <div
-          className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            shouldShowControls
-              ? "max-h-96 opacity-100 mb-5"
-              : "max-h-0 opacity-0"
+          className={`transition-opacity duration-300 ease-in-out ${
+            shouldShowControls ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
+          style={{
+            marginBottom: shouldShowControls ? "0" : "-80px", // Smooth height transition
+            transition:
+              "opacity 300ms ease-in-out, margin-bottom 300ms ease-in-out",
+          }}
         >
           <LeadsFilterControls
             selectedLeads={selectedLeads}
@@ -197,7 +205,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           />
         </div>
 
-        <div className="flex-1 overflow-auto px-8 mb-4">
+        <div className="flex-1 overflow-auto px-8 pb-4 ">
           <ErrorBoundary
             fallback={
               <div className="text-red-500 p-4 text-center">
@@ -224,7 +232,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                   />
                 </div>
               ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden ">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <LeadsTable
                     key={tableKey}
                     leads={filteredLeads}

@@ -112,7 +112,7 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
 
   return (
     <>
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-8 mt-8 pb-5">
         <div className="flex items-center justify-between gap-4 rounded-xl border py-4 px-4">
           <div className="flex items-center gap-3 ">
             <ErrorBoundary
