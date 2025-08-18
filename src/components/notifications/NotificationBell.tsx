@@ -58,17 +58,13 @@ export function NotificationBell() {
   // Normalize notifications to ensure stable keys and API compatibility
   const normalizeNotifications = useCallback(
     (items: RawNotification[]): Notification[] => {
-      console.log("🔍 Raw notifications received:", items); // DEBUG
-
       if (!Array.isArray(items)) {
-        console.warn("⚠️ Notifications data is not an array:", items);
         return [];
       }
 
       const normalized = items
         .map((n, idx) => {
           if (!n || typeof n !== "object") {
-            console.warn("⚠️ Invalid notification item:", n);
             return null;
           }
 
@@ -81,39 +77,32 @@ export function NotificationBell() {
         })
         .filter(Boolean) as Notification[];
 
-      console.log("✅ Normalized notifications:", normalized); // DEBUG
       return normalized;
     },
     []
   );
 
-  // CHANGED: Fetch ALL notifications, not just unread ones
+  // Fetch ALL notifications, not just unread ones
   const {
     data: notifications = [],
     isLoading,
     error,
     refetch,
     isFetching,
-    isRefetching,
   } = useQuery<RawNotification[], Error, Notification[]>({
     queryKey: ["notifications"],
     queryFn: async (): Promise<RawNotification[]> => {
-      console.log("🚀 Fetching ALL notifications from API..."); // DEBUG
-
-      // CHANGED: Use /api/notifications/all to get both read and unread
       const response = await fetch("/api/notifications/all", {
         credentials: "include",
       });
 
       if (!response.ok) {
-        console.error("❌ API Error:", response.status, response.statusText);
         throw new Error(
           `HTTP ${response.status}: Failed to fetch notifications`
         );
       }
 
       const data = await response.json();
-      console.log("📦 API Response (ALL notifications):", data); // DEBUG
       return data;
     },
     select: (data) => normalizeNotifications(data),
@@ -126,26 +115,12 @@ export function NotificationBell() {
     retry: 2,
   });
 
-  // Debug logging for render states
-  console.log("🎯 NotificationBell render state:", {
-    isLoading,
-    isFetching,
-    isRefetching,
-    notificationsCount: notifications.length,
-    unreadCount: notifications.filter((n) => !n.read).length,
-    hasSession: !!session?.user,
-    error: error?.message,
-    open,
-  });
-
   // Simplified dropdown toggle
   const handleDropdownToggle = useCallback(() => {
-    console.log("🖱️ Bell clicked, toggling from:", open);
     setOpen((prev) => !prev);
 
     // Always refetch when opening to ensure fresh data
     if (!open) {
-      console.log("♻️ Refreshing notifications on open");
       refetch();
     }
   }, [open, refetch]);
@@ -169,8 +144,6 @@ export function NotificationBell() {
   }, [open]);
 
   const handleNotificationClick = async (notification: Notification) => {
-    console.log("🔔 Notification clicked:", notification); // DEBUG
-
     try {
       // Mark notification as read if not already read
       if (!notification.read) {
@@ -187,14 +160,13 @@ export function NotificationBell() {
           );
         }
 
-        // CHANGED: Update the notification to read: true instead of removing it
+        // Update the notification to read: true instead of removing it
         queryClient.setQueryData(
           ["notifications"],
           (oldData: Notification[] = []) => {
             const updated = oldData.map((n) =>
               n.id === notification.id ? { ...n, read: true } : n
             );
-            console.log("🔄 Cache updated, marked as read:", notification.id);
             return updated;
           }
         );
@@ -202,27 +174,21 @@ export function NotificationBell() {
 
       // Enhanced navigation logic
       if (notification.link) {
-        console.log("🔗 Navigating to link:", notification.link);
-
         const paymentIdMatch = notification.link.match(
           /\/payment-details\/([^\/\?]+)/
         );
 
         if (paymentIdMatch) {
           const paymentId = paymentIdMatch[1];
-          console.log("💰 Extracted payment ID:", paymentId);
           router.push(`/dashboard/payment-details/${paymentId}`);
         } else {
-          console.log("📍 Direct navigation to:", notification.link);
           router.push(notification.link);
         }
-      } else {
-        console.log("⚠️ No link found in notification");
       }
 
       setOpen(false);
     } catch (error) {
-      console.error("❌ Error handling notification click:", error);
+      console.error("Error handling notification click:", error);
       refetch();
     }
   };
@@ -230,7 +196,6 @@ export function NotificationBell() {
   const handleClearNotification = useCallback(
     async (notificationId: string, event: React.MouseEvent) => {
       event.stopPropagation();
-      console.log("❌ Clearing notification:", notificationId); // DEBUG
 
       try {
         const response = await fetch(`/api/notifications/${notificationId}`, {
@@ -244,22 +209,18 @@ export function NotificationBell() {
           throw new Error(`Failed to clear notification: ${response.status}`);
         }
 
-        // CHANGED: Update the notification to read: true instead of removing it
+        // Update the notification to read: true instead of removing it
         queryClient.setQueryData(
           ["notifications"],
           (oldData: Notification[] = []) => {
             const updated = oldData.map((n) =>
               n.id === notificationId ? { ...n, read: true } : n
             );
-            console.log(
-              "🔄 Cache updated, cleared notification:",
-              notificationId
-            );
             return updated;
           }
         );
       } catch (error) {
-        console.error("❌ Error clearing notification:", error);
+        console.error("Error clearing notification:", error);
         refetch();
       }
     },
@@ -287,18 +248,12 @@ export function NotificationBell() {
     }
   }, []);
 
-  // CHANGED: Count only unread notifications for the badge
+  // Count only unread notifications for the badge
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // Simplified loading logic
   const shouldShowLoading =
     isLoading || (isFetching && notifications.length === 0);
-
-  console.log("🎭 Render decision:", {
-    shouldShowLoading,
-    notificationsLength: notifications.length,
-    unreadCount,
-  }); // DEBUG
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -309,7 +264,7 @@ export function NotificationBell() {
         onClick={handleDropdownToggle}
       >
         <Bell className="h-6 w-6 text-white dark:text-purple-300" />
-        {/* CHANGED: Only show badge if there are unread notifications */}
+        {/* Only show badge if there are unread notifications */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5">
             {unreadCount}
@@ -318,7 +273,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-80 max-w-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[9999]">
           <div className="p-3 border-b border-gray-100 dark:border-gray-800 font-semibold text-gray-800 dark:text-gray-100 flex justify-between items-center">
             <span>Notifications</span>
             <div className="flex items-center space-x-2">
@@ -341,19 +296,12 @@ export function NotificationBell() {
             {shouldShowLoading ? (
               // Show loading skeleton
               <>
-                <div className="p-2 bg-yellow-100 text-yellow-800 text-xs text-center">
-                  Loading state - shouldShowLoading:{" "}
-                  {shouldShowLoading.toString()}
-                </div>
                 {Array.from({ length: 3 }).map((_, index) => (
                   <NotificationSkeleton key={`skeleton-${index}`} />
                 ))}
               </>
             ) : error ? (
               <li className="p-4 text-center text-red-500 dark:text-red-400">
-                <div className="p-2 bg-red-100 text-red-800 text-xs mb-2">
-                  Error - {error.message}
-                </div>
                 <p className="text-sm">Failed to load notifications</p>
                 <Button
                   variant="ghost"
@@ -365,14 +313,9 @@ export function NotificationBell() {
                 </Button>
               </li>
             ) : notifications.length === 0 ? (
-              <>
-                <div className="p-2 bg-blue-100 text-blue-800 text-xs text-center">
-                  No notifications found
-                </div>
-                <li className="p-4 text-center text-gray-500 dark:text-gray-400">
-                  No notifications
-                </li>
-              </>
+              <li className="p-4 text-center text-gray-500 dark:text-gray-400">
+                No notifications
+              </li>
             ) : (
               <>
                 <div className="p-2 text-gray-800 dark:text-white text-xs text-center border-b">
@@ -383,7 +326,7 @@ export function NotificationBell() {
                   <li
                     key={notification.id}
                     className={`flex items-start border-b justify-between px-4 py-3 hover:bg-purple-50 dark:hover:bg-gray-800 transition cursor-pointer ${
-                      // CHANGED: Only highlight unread notifications
+                      // Only highlight unread notifications
                       !notification.read ? "bg-blue-50 dark:bg-blue-900/20" : ""
                     }`}
                     onClick={() => handleNotificationClick(notification)}
@@ -393,7 +336,7 @@ export function NotificationBell() {
                       <div className="flex-1 min-w-0">
                         <p
                           className={`text-sm ${
-                            // CHANGED: Style unread notifications differently
+                            // Style unread notifications differently
                             !notification.read
                               ? "font-medium text-gray-900 dark:text-white"
                               : "text-gray-600 dark:text-gray-300"
@@ -412,7 +355,7 @@ export function NotificationBell() {
                         </p>
                       </div>
                     </div>
-                    {/* CHANGED: Only show X button for unread notifications */}
+                    {/* Only show X button for unread notifications */}
                     {!notification.read && (
                       <div
                         className="ml-2 flex-shrink-0 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
