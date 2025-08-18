@@ -18,7 +18,7 @@ export function TablePagination({
   onPageChange,
 }: TablePaginationProps) {
   return (
-    <div className="flex w-full items-center justify-between px-2 py-4">
+    <div className="flex w-full items-center justify-between px-2 mt-4">
       <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
         Page {pageIndex + 1} of {pageCount}
       </div>

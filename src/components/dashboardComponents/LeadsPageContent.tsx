@@ -17,6 +17,7 @@ import {
 import { useLeadsPage } from "@/hooks/useLeadsPage";
 import { SubscriptionGuard } from "./SubscriptionGuard";
 import { RefetchIndicator } from "@/components/ui/RefetchIndicator";
+import { useToggleContext } from "@/context/ToggleContext";
 
 const USER_ROLES = {
   ADMIN: "ADMIN",
@@ -36,6 +37,9 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const { data: session, status } = useSession();
   const router = useRouter();
   const isOnline = useNetworkStatus();
+
+  // Get toggle state from context
+  const { showHeader, showControls } = useToggleContext();
 
   const {
     leads,
@@ -60,6 +64,12 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     hasAssignedLeads,
     isRefetchingLeads,
   } = useLeadsPage(searchQuery, setLayoutLoading);
+
+  // Check if any leads are selected
+  const hasSelectedLeads = selectedLeads && selectedLeads.length > 0;
+
+  // Auto-show controls when leads are selected, OR respect the manual toggle
+  const shouldShowControls = showControls || hasSelectedLeads;
 
   // ⚡ Memoized handlers to prevent unnecessary re-renders
   const handleLeadUpdate = useCallback(async () => {
@@ -151,27 +161,43 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
           </div>
         )}
 
-        <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
+        {/* Conditionally render LeadsHeader with smooth transition */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            showHeader ? "max-h-96 opacity-100" : "max-h-0 opacity-0 mb-5"
+          }`}
+        >
+          <LeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
+        </div>
 
-        <LeadsFilterControls
-          selectedLeads={selectedLeads}
-          hasAssignedLeads={hasAssignedLeads}
-          assignedLeadsCount={counts.assigned}
-          isUpdating={isAssigning || isUnassigning}
-          onAssign={handleAssignClick}
-          onUnassign={handleUnassignClick}
-          filterByCountry={uiState.filterByCountry}
-          onCountryFilterChange={handleCountryFilterChange}
-          filterByStatus={uiState.filterByStatus}
-          onStatusFilterChange={handleStatusFilterChange}
-          isLoading={isLoading}
-          filterByUser={filterByUser}
-          onFilterChange={handleFilterChange}
-          users={users}
-          isLoadingUsers={isLoadingUsers}
-        />
+        {/* Auto-show controls when leads are selected OR when manually toggled on */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            shouldShowControls
+              ? "max-h-96 opacity-100 mb-5"
+              : "max-h-0 opacity-0"
+          }`}
+        >
+          <LeadsFilterControls
+            selectedLeads={selectedLeads}
+            hasAssignedLeads={hasAssignedLeads}
+            assignedLeadsCount={counts.assigned}
+            isUpdating={isAssigning || isUnassigning}
+            onAssign={handleAssignClick}
+            onUnassign={handleUnassignClick}
+            filterByCountry={uiState.filterByCountry}
+            onCountryFilterChange={handleCountryFilterChange}
+            filterByStatus={uiState.filterByStatus}
+            onStatusFilterChange={handleStatusFilterChange}
+            isLoading={isLoading}
+            filterByUser={filterByUser}
+            onFilterChange={handleFilterChange}
+            users={users}
+            isLoadingUsers={isLoadingUsers}
+          />
+        </div>
 
-        <div className="flex-1 overflow-auto px-8 py-6">
+        <div className="flex-1 overflow-auto px-8 mb-4">
           <ErrorBoundary
             fallback={
               <div className="text-red-500 p-4 text-center">
@@ -198,7 +224,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                   />
                 </div>
               ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden ">
                   <LeadsTable
                     key={tableKey}
                     leads={filteredLeads}
