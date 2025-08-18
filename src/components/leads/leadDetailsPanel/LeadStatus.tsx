@@ -1,4 +1,3 @@
-// src/components/leads/leadDetailsPanel/LeadStatus.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -154,8 +153,47 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
     : currentStatusColor;
   const triggerTextColor = "#fff";
 
+  // Calculate max height based on number of statuses
+  const maxHeight = statuses.length > 7 ? "280px" : "auto";
+
   return (
     <div className="flex items-center">
+      <style jsx>{`
+        .smooth-scroll-content {
+          scroll-behavior: smooth;
+          scrollbar-width: thin;
+          scrollbar-color: ${isDark ? "#6b7280 #374151" : "#cbd5e1 #f1f5f9"};
+        }
+
+        .smooth-scroll-content::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .smooth-scroll-content::-webkit-scrollbar-track {
+          background: ${isDark ? "#374151" : "#f1f5f9"};
+          border-radius: 4px;
+        }
+
+        .smooth-scroll-content::-webkit-scrollbar-thumb {
+          background: ${isDark ? "#6b7280" : "#cbd5e1"};
+          border-radius: 4px;
+          transition: background-color 0.2s ease;
+        }
+
+        .smooth-scroll-content::-webkit-scrollbar-thumb:hover {
+          background: ${isDark ? "#9ca3af" : "#94a3b8"};
+        }
+
+        .status-item {
+          transition: all 0.2s ease-in-out;
+        }
+
+        .status-item:hover {
+          transform: translateX(2px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
+
       <div className="flex-1">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
         {isLoadingStatuses ? (
@@ -169,7 +207,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
             disabled={isUpdating}
           >
             <SelectTrigger
-              className="w-[200px] border rounded-md cursor-pointer dark:border-gray-600"
+              className="w-[200px] border rounded-md cursor-pointer dark:border-gray-600 transition-all duration-200 ease-in-out"
               style={{
                 backgroundColor: triggerBg,
                 color: triggerTextColor,
@@ -178,7 +216,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
             >
               <div className="flex items-center gap-2">
                 <div
-                  className="w-2 h-2 rounded-full"
+                  className="w-2 h-2 rounded-full transition-all duration-200 ease-in-out"
                   style={{
                     backgroundColor: "#fff",
                     border: `2px solid ${currentStatusColor}`,
@@ -202,9 +240,18 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
                 )}
               </div>
             </SelectTrigger>
-            <SelectContent className="border-gray-200 dark:border-gray-700">
+            <SelectContent
+              className={`border-gray-300 dark:border-gray-600 ${
+                statuses.length > 7 ? "smooth-scroll-content" : ""
+              }`}
+              style={{
+                maxHeight: maxHeight,
+                overflowY: statuses.length > 7 ? "auto" : "visible",
+                scrollBehavior: "smooth",
+              }}
+            >
               {statuses.map((status) => {
-                const statusColor = status.color || "#3b82f6"; // Provide default color
+                const statusColor = status.color || "#3b82f6";
                 const itemBg = isDark
                   ? hexWithAlpha(statusColor, darkAlpha)
                   : statusColor;
@@ -213,7 +260,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
                   <SelectItem
                     key={status._id || status.id || `status-${status.name}`}
                     value={status._id || status.id || ""}
-                    className="my-1 rounded-md transition-colors font-medium cursor-pointer"
+                    className="status-item my-1 rounded-md transition-all duration-200 ease-in-out font-medium cursor-pointer"
                     style={{
                       backgroundColor: itemBg,
                       color: textColor,
@@ -221,7 +268,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
                   >
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-2 h-2 rounded-full"
+                        className="w-2 h-2 rounded-full transition-all duration-200 ease-in-out"
                         style={{
                           backgroundColor: "#fff",
                           border: `2px solid ${statusColor}`,
