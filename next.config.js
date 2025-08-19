@@ -1,12 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Performance optimizations
+  experimental: {
+    optimizePackageImports: ["framer-motion", "lucide-react"],
+    serverActions: {
+      allowedOrigins: ["localhost:3000"],
+      bodySizeLimit: "2mb",
+    },
+  },
+
+  // Optimize bundle and performance
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-        pathname: "/dcqnikitw/image/upload/**",
-      },
       {
         protocol: "https",
         hostname: "https://zodashield.com/",
@@ -19,21 +28,19 @@ const nextConfig = {
       },
     ],
     formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 31536000, // Updated: 1 year cache for better performance
   },
+
   typescript: {
     ignoreBuildErrors: false,
   },
+
   eslint: {
     ignoreDuringBuilds: false,
   },
-  experimental: {
-    serverActions: {
-      allowedOrigins: ["localhost:3000"],
-      bodySizeLimit: "2mb",
-    },
-  },
+
   webpack: (config, { dev, isServer }) => {
+    // Video file handling
     config.module.rules.push({
       test: /\.(mp4|webm|mov)$/,
       use: {
@@ -55,19 +62,21 @@ const nextConfig = {
       };
     }
 
+    // Enhanced optimization for production builds
     if (!dev && !isServer) {
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: "all",
           minSize: 20000,
-          maxSize: 244000,
+          maxSize: 200000, // Reduced for better loading
           minChunks: 1,
           maxAsyncRequests: 30,
           maxInitialRequests: 30,
           cacheGroups: {
             default: false,
             vendors: false,
+            // Framework chunk (React, Next.js)
             framework: {
               name: "framework",
               chunks: "all",
@@ -75,6 +84,7 @@ const nextConfig = {
               priority: 40,
               enforce: true,
             },
+            // Common chunks across pages
             commons: {
               name: "commons",
               chunks: "all",
@@ -82,6 +92,7 @@ const nextConfig = {
               priority: 20,
               reuseExistingChunk: true,
             },
+            // Large libraries
             lib: {
               test(module) {
                 return (
@@ -90,21 +101,44 @@ const nextConfig = {
                 );
               },
               name(module) {
-                return `chunk-${
-                  module.identifier().split("/").slice(-1)[0].split(".")[0]
-                }`;
+                const packageName = module
+                  .identifier()
+                  .split("/")
+                  .slice(-1)[0]
+                  .split(".")[0];
+                return `chunk-${packageName}`;
               },
               priority: 30,
               minChunks: 1,
               reuseExistingChunk: true,
             },
+            // Framer Motion optimization
+            framerMotion: {
+              name: "framer-motion",
+              chunks: "all",
+              test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+              priority: 35,
+              enforce: true,
+            },
+            // Lucide icons optimization
+            lucide: {
+              name: "lucide-react",
+              chunks: "all",
+              test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+              priority: 35,
+              enforce: true,
+            },
           },
         },
         runtimeChunk: { name: "runtime" },
+        // Additional performance optimizations
+        usedExports: true,
+        sideEffects: false,
       };
     }
     return config;
   },
+
   async headers() {
     return [
       {
@@ -146,6 +180,31 @@ const nextConfig = {
               "connect-src 'self' https://*.cloudinary.com",
               "frame-src 'self'",
             ].join("; "),
+          },
+          // Performance headers
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      // Static assets caching
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      // API routes caching
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=60, s-maxage=60",
           },
         ],
       },

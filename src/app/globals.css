@@ -3,16 +3,64 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Add to your global CSS file */
+/* Add these performance optimizations to your existing globals.css */
+
+/* Performance optimizations */
 .performance-optimized {
   /* Use transform3d for hardware acceleration */
   transform: translate3d(0, 0, 0);
-
-  /* Optimize animations */
   will-change: transform, opacity;
-
-  /* Enable GPU acceleration */
   backface-visibility: hidden;
   perspective: 1000px;
+}
+
+/* Optimize loading states */
+.animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Intersection observer optimization */
+.lazy-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 400px;
+}
+
+/* Reduce motion for accessibility and performance */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .motion-safe\:animate-pulse {
+    animation: none;
+  }
+}
+
+/* Hardware acceleration for smooth animations */
+.motion-safe\:transform {
+  transform: translateZ(0);
+}
+
+@supports not (backdrop-filter: blur(10px)) {
+  .backdrop-blur-lg {
+    background-color: rgba(255, 255, 255, 0.8);
+  }
+
+  .dark .backdrop-blur-lg {
+    background-color: rgba(31, 41, 55, 0.8);
+  }
 }
 
 /* Reduce motion for users who prefer it */
