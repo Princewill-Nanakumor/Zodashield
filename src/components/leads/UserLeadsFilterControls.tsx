@@ -34,8 +34,6 @@ export const UserLeadsFilterControls: React.FC<
   onCountryFilterChange,
   onStatusFilterChange,
   availableCountries,
-
-  counts,
 }) => {
   // Add safety checks and default values
   const safeFilterByCountry = filterByCountry || "all";
@@ -65,10 +63,6 @@ export const UserLeadsFilterControls: React.FC<
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 ">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filters:
-          </span>
-
           {/* Country Filter */}
           <FilterSelect
             value={safeFilterByCountry}
@@ -85,12 +79,6 @@ export const UserLeadsFilterControls: React.FC<
             onChange={onStatusFilterChange}
             disabled={shouldShowLoading}
           />
-        </div>
-
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Showing {counts?.filtered || 0} of {counts?.total || 0} leads
-          {(filterByCountry !== "all" || filterByStatus !== "all") &&
-            " (filtered)"}
         </div>
       </div>
     </div>

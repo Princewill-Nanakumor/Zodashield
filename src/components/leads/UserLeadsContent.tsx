@@ -21,6 +21,8 @@ import { UserLeadsTableContainer } from "@/components/user-leads/UserLeadsTableC
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { useLeadsURLManagement } from "@/hooks/useLeadsURLManagement";
 import { usePagination } from "@/hooks/paginationUtils";
+import { useSearchContext } from "@/context/SearchContext";
+import { useToggleContext } from "@/context/ToggleContext";
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt";
 type SortOrder = "asc" | "desc";
@@ -29,6 +31,12 @@ export default function UserLeadsContent() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { searchQuery } = useSearchContext(); // Get search from context
+  const toggleContext = useToggleContext(); // Get toggle state from context
+
+  // Use toggle context if available, otherwise default values
+  const showHeader = toggleContext?.showHeader ?? true;
+  const showControls = toggleContext?.showControls ?? true;
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +44,7 @@ export default function UserLeadsContent() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filterByCountry, setFilterByCountry] = useState<string>("all");
-  const [filterByStatus, setFilterByStatus] = useState<string>("all"); // Add status filter
+  const [filterByStatus, setFilterByStatus] = useState<string>("all");
 
   // Get sort parameters from URL or use defaults
   const [sortField, setSortField] = useState<SortField>(() => {
@@ -159,10 +167,11 @@ export default function UserLeadsContent() {
           <FilterLogic
             leads={leads}
             filterByCountry={filterByCountry}
-            filterByStatus={filterByStatus} // Add this
+            filterByStatus={filterByStatus}
             sortField={sortField}
             sortOrder={sortOrder}
             isDataReady={isDataReady}
+            searchQuery={searchQuery} // Pass search query to filter logic
           >
             {({
               filteredLeads,
@@ -177,14 +186,16 @@ export default function UserLeadsContent() {
                   filteredLeads={filteredLeads}
                   sortedLeads={sortedLeads}
                   availableCountries={availableCountries}
-                  availableStatuses={availableStatuses} // Add this
+                  availableStatuses={availableStatuses}
                   selectedLead={selectedLead}
                   isPanelOpen={isPanelOpen}
                   filterByCountry={filterByCountry}
-                  filterByStatus={filterByStatus} // Add this
+                  filterByStatus={filterByStatus}
                   sortField={sortField}
                   sortOrder={sortOrder}
                   shouldShowLoading={loading && leads.length === 0}
+                  showHeader={showHeader} // Pass toggle props
+                  showControls={showControls} // Pass toggle props
                   currentIndex={
                     selectedLead && isDataReady
                       ? leads.findIndex((lead) => lead._id === selectedLead._id)
@@ -192,7 +203,7 @@ export default function UserLeadsContent() {
                   }
                   totalLeads={leads.length}
                   handleCountryFilterChange={handleCountryFilterChange}
-                  handleStatusFilterChange={handleStatusFilterChange} // Add this
+                  handleStatusFilterChange={handleStatusFilterChange}
                   handleLeadClick={handleLeadClick}
                   handleSort={handleSort}
                   handlePanelClose={handlePanelClose}
@@ -208,25 +219,27 @@ export default function UserLeadsContent() {
   );
 }
 
-// Update the interface to include status filtering
+// Update the interface to include toggle props
 interface UserLeadsMainContentProps {
   loading: boolean;
   isDataReady: boolean;
   filteredLeads: Lead[];
   sortedLeads: Lead[];
   availableCountries: string[];
-  availableStatuses: string[]; // Add this
+  availableStatuses: string[];
   selectedLead: Lead | null;
   isPanelOpen: boolean;
   filterByCountry: string;
-  filterByStatus: string; // Add this
+  filterByStatus: string;
   sortField: SortField;
   sortOrder: SortOrder;
   shouldShowLoading: boolean;
+  showHeader: boolean; // Add toggle props
+  showControls: boolean; // Add toggle props
   currentIndex: number;
   totalLeads: number;
   handleCountryFilterChange: (country: string) => void;
-  handleStatusFilterChange: (status: string) => void; // Add this
+  handleStatusFilterChange: (status: string) => void;
   handleLeadClick: (lead: Lead) => void;
   handleSort: (field: SortField) => void;
   handlePanelClose: () => void;
@@ -244,18 +257,20 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
   filteredLeads,
   sortedLeads,
   availableCountries,
-  availableStatuses, // Add this
+  availableStatuses,
   selectedLead,
   isPanelOpen,
   filterByCountry,
-  filterByStatus, // Add this
+  filterByStatus,
   sortField,
   sortOrder,
   shouldShowLoading,
+  showHeader, // Add toggle props
+  showControls, // Add toggle props
   currentIndex,
   totalLeads,
   handleCountryFilterChange,
-  handleStatusFilterChange, // Add this
+  handleStatusFilterChange,
   handleLeadClick,
   handleSort,
   handlePanelClose,
@@ -279,8 +294,8 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
         filtered: filteredLeads.length,
         currentPage: paginatedLeads.length,
         totalPages,
-        countries: 0,
-        statuses: 0,
+        countries: availableCountries.length,
+        statuses: availableStatuses.length,
       }
     : {
         total: 0,
@@ -292,40 +307,73 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
       };
 
   return (
-    <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border-1">
-      <UserLeadsHeader shouldShowLoading={shouldShowLoading} counts={counts} />
-
-      <UserLeadsFilterControls
-        shouldShowLoading={shouldShowLoading}
-        filterByCountry={filterByCountry}
-        filterByStatus={filterByStatus} // Add this
-        onCountryFilterChange={handleCountryFilterChange}
-        onStatusFilterChange={handleStatusFilterChange} // Add this
-        availableCountries={availableCountries}
-        availableStatuses={availableStatuses} // Add this
-        counts={counts}
-      />
-
-      {shouldShowLoading ? (
-        <TableSkeleton />
-      ) : (
-        <UserLeadsTableContainer
-          loading={loading}
-          paginatedLeads={paginatedLeads}
-          pageSize={pageSize}
-          pageIndex={pageIndex}
-          totalEntries={counts.filtered}
-          totalPages={totalPages}
-          selectedLead={selectedLead}
-          sortField={sortField}
-          sortOrder={sortOrder}
-          onLeadClick={handleLeadClick}
-          onSort={handleSort}
-          onPageSizeChange={handlePageSizeChange}
-          onPageChange={handlePageChange}
+    <div className="flex flex-col h-full bg-background dark:bg-gray-800 border-1 rounded-lg">
+      {/* Conditionally render header with smooth fade transition */}
+      <div
+        className={`transition-opacity duration-300 ease-in-out px-8 mt-4 ${
+          showHeader ? "opacity-100" : "opacity-0 pointer-events-none mt-10"
+        }`}
+        style={{
+          marginBottom: showHeader ? "0" : "-100px",
+          transition:
+            "opacity 300ms ease-in-out, margin-bottom 300ms ease-in-out",
+        }}
+      >
+        <UserLeadsHeader
+          shouldShowLoading={shouldShowLoading}
+          counts={counts}
         />
-      )}
+      </div>
 
+      {/* Conditionally render filter controls with smooth fade transition */}
+      <div
+        className={`transition-opacity duration-300 ease-in-out px-8 py-6 ${
+          showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        style={{
+          marginBottom: showControls ? "0" : "-80px", // Smooth height transition
+          transition:
+            "opacity 300ms ease-in-out, margin-bottom 300ms ease-in-out",
+        }}
+      >
+        <UserLeadsFilterControls
+          shouldShowLoading={shouldShowLoading}
+          filterByCountry={filterByCountry}
+          filterByStatus={filterByStatus}
+          onCountryFilterChange={handleCountryFilterChange}
+          onStatusFilterChange={handleStatusFilterChange}
+          availableCountries={availableCountries}
+          availableStatuses={availableStatuses}
+          counts={counts}
+        />
+      </div>
+
+      {/* Main content area */}
+      <div className="flex-1 overflow-auto px-8 pb-4">
+        {shouldShowLoading ? (
+          <TableSkeleton />
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-2">
+            <UserLeadsTableContainer
+              loading={loading}
+              paginatedLeads={paginatedLeads}
+              pageSize={pageSize}
+              pageIndex={pageIndex}
+              totalEntries={counts.filtered}
+              totalPages={totalPages}
+              selectedLead={selectedLead}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onLeadClick={handleLeadClick}
+              onSort={handleSort}
+              onPageSizeChange={handlePageSizeChange}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Lead Details Panel */}
       {isPanelOpen && selectedLead && isDataReady && (
         <LeadDetailsPanel
           lead={selectedLead}

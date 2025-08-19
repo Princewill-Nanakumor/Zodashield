@@ -53,7 +53,7 @@ export default function UserLeadsPage() {
     return null;
   }
 
-  // Only render for non-admin users - REMOVED StatusProvider
+  // Only render for non-admin users
   return (
     <QueryClientProvider client={queryClient}>
       <UserLeadsContent />

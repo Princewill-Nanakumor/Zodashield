@@ -47,9 +47,6 @@ export default function DashboardNavbar({
   // Use React Query for user profile data
   const { userProfile, isLoading: profileLoading } = useUserProfileData();
 
-  // Check if user is ADMIN
-  const isAdmin = session?.user?.role === "ADMIN";
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -117,9 +114,9 @@ export default function DashboardNavbar({
 
   return (
     <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
-      {/* Left side - Toggle buttons for leads pages (ADMIN ONLY) */}
+      {/* Left side - Toggle buttons for leads pages */}
       <div className="flex items-center space-x-2 flex-shrink-0">
-        {showLeadsToggles && isAdmin && (
+        {showLeadsToggles && (
           <>
             <button
               onClick={onToggleHeader}

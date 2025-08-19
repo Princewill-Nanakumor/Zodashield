@@ -14,7 +14,7 @@ import { ToggleProvider } from "@/context/ToggleContext";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { searchQuery, setSearchQuery, isLoading } = useSearchContext();
-  const { status, data: session } = useSession(); // Add data: session
+  const { status, data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -28,10 +28,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     true
   );
 
-  // Check if we're on a leads page AND user is admin
-  const isLeadsPage = pathname?.includes("/all-leads");
+  // Check if we're on any leads page (admin or user)
+  const isAdminLeadsPage = pathname?.includes("/all-leads");
+  const isUserLeadsPage = pathname?.includes("/leads");
+
   const isAdmin = session?.user?.role === "ADMIN";
-  const showLeadsToggles = isLeadsPage && isAdmin;
+
+  // Show toggle buttons for:
+  // - Admin users on admin leads pages (/all-leads)
+  // - Regular users on user leads pages (/user-leads)
+  const showLeadsToggles =
+    (isAdminLeadsPage && isAdmin) || (isUserLeadsPage && !isAdmin);
 
   useEffect(() => {
     if (status === "unauthenticated") {
