@@ -31,8 +31,8 @@ export default function UserLeadsContent() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { searchQuery } = useSearchContext(); // Get search from context
-  const toggleContext = useToggleContext(); // Get toggle state from context
+  const { searchQuery } = useSearchContext();
+  const toggleContext = useToggleContext();
 
   // Use toggle context if available, otherwise default values
   const showHeader = toggleContext?.showHeader ?? true;
@@ -171,7 +171,7 @@ export default function UserLeadsContent() {
             sortField={sortField}
             sortOrder={sortOrder}
             isDataReady={isDataReady}
-            searchQuery={searchQuery} // Pass search query to filter logic
+            searchQuery={searchQuery}
           >
             {({
               filteredLeads,
@@ -194,11 +194,13 @@ export default function UserLeadsContent() {
                   sortField={sortField}
                   sortOrder={sortOrder}
                   shouldShowLoading={loading && leads.length === 0}
-                  showHeader={showHeader} // Pass toggle props
-                  showControls={showControls} // Pass toggle props
+                  showHeader={showHeader}
+                  showControls={showControls}
                   currentIndex={
                     selectedLead && isDataReady
-                      ? leads.findIndex((lead) => lead._id === selectedLead._id)
+                      ? sortedLeads.findIndex(
+                          (lead) => lead._id === selectedLead._id
+                        )
                       : -1
                   }
                   totalLeads={leads.length}
@@ -219,7 +221,7 @@ export default function UserLeadsContent() {
   );
 }
 
-// Update the interface to include toggle props
+// Rest of the component remains exactly the same...
 interface UserLeadsMainContentProps {
   loading: boolean;
   isDataReady: boolean;
@@ -234,8 +236,8 @@ interface UserLeadsMainContentProps {
   sortField: SortField;
   sortOrder: SortOrder;
   shouldShowLoading: boolean;
-  showHeader: boolean; // Add toggle props
-  showControls: boolean; // Add toggle props
+  showHeader: boolean;
+  showControls: boolean;
   currentIndex: number;
   totalLeads: number;
   handleCountryFilterChange: (country: string) => void;
@@ -265,8 +267,8 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
   sortField,
   sortOrder,
   shouldShowLoading,
-  showHeader, // Add toggle props
-  showControls, // Add toggle props
+  showHeader,
+  showControls,
   currentIndex,
   totalLeads,
   handleCountryFilterChange,
@@ -277,7 +279,7 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
   handleLeadUpdated,
   handleNavigation,
 }) => {
-  // NOW we can safely use the pagination hook here
+  // Use the updated pagination hook with URL sync
   const {
     pageSize,
     pageIndex,
@@ -331,7 +333,7 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
           showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         style={{
-          marginBottom: showControls ? "0" : "-80px", // Smooth height transition
+          marginBottom: showControls ? "0" : "-80px",
           transition:
             "opacity 300ms ease-in-out, margin-bottom 300ms ease-in-out",
         }}
