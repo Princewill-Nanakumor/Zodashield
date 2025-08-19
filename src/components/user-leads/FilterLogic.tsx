@@ -12,7 +12,7 @@ interface FilterLogicProps {
   sortField: SortField;
   sortOrder: SortOrder;
   isDataReady: boolean;
-  searchQuery?: string; // Add searchQuery prop
+  searchQuery?: string;
   children: (props: {
     filteredLeads: Lead[];
     sortedLeads: Lead[];
@@ -24,24 +24,19 @@ interface FilterLogicProps {
 // Helper function to normalize phone numbers for search
 const normalizePhoneNumber = (phone: string): string => {
   if (!phone) return "";
-  // Remove all non-digit characters
   const digitsOnly = phone.replace(/\D/g, "");
-  // If it starts with 1 and has 11 digits (US format), remove the leading 1
   if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
     return digitsOnly.substring(1);
   }
-  // If it has 10 digits, return as is
   if (digitsOnly.length === 10) {
     return digitsOnly;
   }
-  // Return the original digits for other cases
   return digitsOnly;
 };
 
 // Helper function to check if query looks like a phone number
 const isPhoneNumber = (query: string): boolean => {
   const digitsOnly = query.replace(/\D/g, "");
-  // Consider it a phone number if it has 7+ digits
   return digitsOnly.length >= 7;
 };
 
@@ -52,14 +47,14 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
   sortField,
   sortOrder,
   isDataReady,
-  searchQuery = "", // Default to empty string
+  searchQuery = "",
   children,
 }) => {
   // Get available countries - filter out undefined values and ensure string type
   const availableCountries = useMemo(() => {
     if (!isDataReady || leads.length === 0) return [];
     return [...new Set(leads.map((lead) => lead.country))]
-      .filter((country): country is string => Boolean(country)) // Type guard to ensure string
+      .filter((country): country is string => Boolean(country))
       .sort();
   }, [leads, isDataReady]);
 
@@ -67,7 +62,7 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
   const availableStatuses = useMemo(() => {
     if (!isDataReady || leads.length === 0) return [];
     return [...new Set(leads.map((lead) => lead.status))]
-      .filter((status): status is string => Boolean(status)) // Type guard to ensure string
+      .filter((status): status is string => Boolean(status))
       .sort();
   }, [leads, isDataReady]);
 
@@ -76,29 +71,23 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
     if (!isDataReady) return [];
 
     return leads.filter((lead) => {
-      // Filter by country
       const countryMatch =
         filterByCountry === "all" || lead.country === filterByCountry;
 
-      // Filter by status
       const statusMatch =
         filterByStatus === "all" || lead.status === filterByStatus;
 
-      // Filter by search query
       let searchMatch = true;
       if (searchQuery && searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase().trim();
 
-        // Check if the query looks like a phone number
         if (isPhoneNumber(query)) {
           const normalizedQuery = normalizePhoneNumber(query);
           const leadPhone = normalizePhoneNumber(lead.phone || "");
           searchMatch = leadPhone.includes(normalizedQuery);
         } else {
-          // Text search in name and email
           const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
           const email = (lead.email || "").toLowerCase();
-
           searchMatch = fullName.includes(query) || email.includes(query);
         }
       }
@@ -109,7 +98,9 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
 
   // Sort filtered leads
   const sortedLeads = useMemo(() => {
-    if (!isDataReady || filteredLeads.length === 0) return [];
+    if (!isDataReady || filteredLeads.length === 0) {
+      return [];
+    }
 
     return [...filteredLeads].sort((a, b) => {
       let aValue: string | number = "";

@@ -13,16 +13,17 @@ import {
   LoadingSpinner,
   TableSkeleton,
 } from "@/components/leads/UserLeadsLoadingStates";
-import { LeadDataManager } from "@/components/user-leads/LeadDataManager";
 import { FilterLogic } from "@/components/user-leads/FilterLogic";
 import { URLStateManager } from "../user-leads/URLStatemanager";
 import { SubscriptionGuard } from "@/components/user-leads/SubscriptionGuard";
 import { UserLeadsTableContainer } from "@/components/user-leads/UserLeadsTableContainer";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
+import { useSubscriptionData } from "@/hooks/useSubscriptionData";
 import { useLeadsURLManagement } from "@/hooks/useLeadsURLManagement";
 import { usePagination } from "@/hooks/paginationUtils";
 import { useSearchContext } from "@/context/SearchContext";
 import { useToggleContext } from "@/context/ToggleContext";
+import { useAssignedLeads } from "@/hooks/useAssignedLeads";
+import { RefetchIndicator } from "@/components/ui/RefetchIndicator";
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt";
 type SortOrder = "asc" | "desc";
@@ -38,9 +39,18 @@ export default function UserLeadsContent() {
   const showHeader = toggleContext?.showHeader ?? true;
   const showControls = toggleContext?.showControls ?? true;
 
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isDataReady, setIsDataReady] = useState(false);
+  // React Query hook for leads data
+  const { leads, isLoading, isFetching, isError, error, updateLead } =
+    useAssignedLeads();
+
+  // React Query hook for subscription (prevents flashing)
+  const {
+    subscriptionData,
+    hasActiveSubscription,
+    isLoading: subscriptionLoading,
+  } = useSubscriptionData();
+
+  // Local state for UI
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filterByCountry, setFilterByCountry] = useState<string>("all");
@@ -65,8 +75,6 @@ export default function UserLeadsContent() {
   }, [searchParams]);
 
   // Custom hooks - called at component level
-  const { subscriptionLoading, hasActiveSubscription, subscriptionData } =
-    useSubscriptionCheck(status);
   const {
     handleSort: handleURLSort,
     handleLeadClick,
@@ -76,15 +84,10 @@ export default function UserLeadsContent() {
     handleNavigation,
   } = useLeadsURLManagement();
 
-  // Set data ready state when initial load completes
-  useEffect(() => {
-    setIsDataReady(!loading);
-  }, [loading]);
-
   // Lead selection effect
   useEffect(() => {
     const leadId = searchParams.get("lead");
-    if (leadId && isDataReady) {
+    if (leadId && leads.length > 0) {
       const lead = leads.find((l) => l._id === leadId);
       if (lead) {
         setSelectedLead(lead);
@@ -97,27 +100,29 @@ export default function UserLeadsContent() {
       setIsPanelOpen(false);
       setSelectedLead(null);
     }
-  }, [leads, searchParams, isDataReady]);
+  }, [leads, searchParams]);
 
-  // Lead update handler
+  // Lead update handler with React Query mutation
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
-      setLeads((prevLeads) =>
-        prevLeads.map((lead) =>
-          lead._id === updatedLead._id ? updatedLead : lead
-        )
-      );
+      try {
+        await updateLead(updatedLead);
 
-      if (selectedLead?._id === updatedLead._id) {
-        setSelectedLead(updatedLead);
+        // Update local selected lead state
+        if (selectedLead?._id === updatedLead._id) {
+          setSelectedLead(updatedLead);
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Failed to update lead:", error);
+        return false;
       }
-
-      return true;
     },
-    [selectedLead?._id]
+    [updateLead, selectedLead?._id]
   );
 
-  // Sort handler
+  // Sort handler - Fixed to provide all required arguments
   const handleSort = useCallback(
     (field: SortField) => {
       const { newField, newOrder } = handleURLSort(field, sortField, sortOrder);
@@ -152,17 +157,42 @@ export default function UserLeadsContent() {
     }
   }, [status, router]);
 
+  // Loading states - Only show loading on first load, not on navigation back
+  const isDataReady = !isLoading || leads.length > 0;
+  const shouldShowLoading = isLoading && leads.length === 0;
+
   if (status === "loading") {
     return <LoadingSpinner />;
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">
+            Failed to load leads: {error?.message}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <SubscriptionGuard
       subscriptionLoading={subscriptionLoading}
       hasActiveSubscription={hasActiveSubscription}
-      subscriptionData={subscriptionData}
+      subscriptionData={subscriptionData || null}
     >
-      <LeadDataManager onLeadsLoaded={setLeads} onLoadingChange={setLoading}>
+      <div className="flex flex-col h-full bg-background dark:bg-gray-800 border-1 rounded-lg">
+        {/* RefetchIndicator positioned like all-leads */}
+        <RefetchIndicator />
+
         <URLStateManager>
           <FilterLogic
             leads={leads}
@@ -181,7 +211,7 @@ export default function UserLeadsContent() {
             }) => {
               return (
                 <UserLeadsMainContent
-                  loading={loading}
+                  loading={isFetching && !isDataReady}
                   isDataReady={isDataReady}
                   filteredLeads={filteredLeads}
                   sortedLeads={sortedLeads}
@@ -193,7 +223,7 @@ export default function UserLeadsContent() {
                   filterByStatus={filterByStatus}
                   sortField={sortField}
                   sortOrder={sortOrder}
-                  shouldShowLoading={loading && leads.length === 0}
+                  shouldShowLoading={shouldShowLoading}
                   showHeader={showHeader}
                   showControls={showControls}
                   currentIndex={
@@ -216,12 +246,12 @@ export default function UserLeadsContent() {
             }}
           </FilterLogic>
         </URLStateManager>
-      </LeadDataManager>
+      </div>
     </SubscriptionGuard>
   );
 }
 
-// Rest of the component remains exactly the same...
+// ... rest of the component stays the same
 interface UserLeadsMainContentProps {
   loading: boolean;
   isDataReady: boolean;
@@ -287,7 +317,7 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
     totalPages,
     handlePageSizeChange,
     handlePageChange,
-  } = usePagination(filteredLeads);
+  } = usePagination(sortedLeads);
 
   // Calculate counts with proper typing
   const counts: CountsData = isDataReady

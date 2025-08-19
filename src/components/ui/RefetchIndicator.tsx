@@ -1,30 +1,24 @@
 // src/components/ui/RefetchIndicator.tsx
-import { useEffect, useState } from "react";
+import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
-export const RefetchIndicator = () => {
-  const [isRefetching, setIsRefetching] = useState(false);
+interface RefetchIndicatorProps {
+  className?: string;
+}
 
-  useEffect(() => {
-    const handleRefetch = () => {
-      setIsRefetching(true);
-      setTimeout(() => setIsRefetching(false), 2000);
-    };
+export const RefetchIndicator = ({ className = "" }: RefetchIndicatorProps) => {
+  const isFetching = useIsFetching();
+  const isMutating = useIsMutating();
 
-    // Listen for query refetch events
-    window.addEventListener("query-refetch", handleRefetch);
+  const isActive = isFetching > 0 || isMutating > 0;
 
-    return () => {
-      window.removeEventListener("query-refetch", handleRefetch);
-    };
-  }, []);
-
-  if (!isRefetching) return null;
+  if (!isActive) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 bg-blue-500 text-white px-3 py-2 rounded-md shadow-lg flex items-center gap-2">
+    <div
+      className={`fixed top-4 right-4 z-50 text-white px-3 py-2 rounded-md shadow-lg flex items-center gap-2 ${className}`}
+    >
       <Loader2 className="h-4 w-4 animate-spin" />
-      <span className="text-sm">Updating...</span>
     </div>
   );
 };

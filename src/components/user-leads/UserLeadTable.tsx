@@ -1,3 +1,4 @@
+// src/components/user-leads/UserLeadTable.tsx
 "use client";
 
 import {
@@ -12,8 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowUpDown } from "lucide-react";
 import { Lead } from "@/types/leads";
-import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useStatuses } from "@/hooks/useStatuses"; // Import the new hook
 
 // Define the actual status format from API
 interface Status {
@@ -54,116 +54,30 @@ interface UserLeadRowProps {
   lead: Lead;
   onLeadClick: (lead: Lead) => void;
   selectedLead: Lead | null;
+  statuses: Status[];
+  statusesLoading: boolean;
 }
 
-function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
-  const { toast } = useToast();
-  const [statuses, setStatuses] = useState<Status[]>([]);
-  const [currentStatus, setCurrentStatus] = useState<Status | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
+function UserLeadRow({
+  lead,
+  onLeadClick,
+  selectedLead,
+  statuses,
+  statusesLoading,
+}: UserLeadRowProps) {
   const isSelected = selectedLead?._id === lead._id;
 
-  const fetchStatuses = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch("/api/statuses");
-      if (!response.ok) throw new Error("Failed to fetch statuses");
-      let data = await response.json();
-
-      const hasNewStatus = data.some((status: Status) => status._id === "NEW");
-      if (!hasNewStatus) {
-        data.unshift({
-          _id: "NEW",
-          name: "New",
-          color: "#3B82F6",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-
-      data = data.sort((a: Status, b: Status) => {
-        if (a._id === "NEW") return -1;
-        if (b._id === "NEW") return 1;
-        return (
-          new Date(b.createdAt || "").getTime() -
-          new Date(a.createdAt || "").getTime()
-        );
-      });
-
-      setStatuses(data);
-    } catch (error) {
-      console.error("Error fetching statuses:", error);
-      // Set default statuses on error
-      const defaultStatuses = [
-        {
-          _id: "NEW",
-          name: "New",
-          color: "#3B82F6",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: "CONTACTED",
-          name: "Contacted",
-          color: "#10B981",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: "QUALIFIED",
-          name: "Qualified",
-          color: "#F59E0B",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: "CONVERTED",
-          name: "Converted",
-          color: "#EF4444",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-      setStatuses(defaultStatuses);
-      toast({
-        title: "Error",
-        description: "Failed to load statuses",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    fetchStatuses();
-  }, [fetchStatuses]);
-
-  useEffect(() => {
-    if (statuses && statuses.length > 0) {
-      let status = statuses.find((s) => s._id === lead.status);
-      if (!status && lead.status !== "NEW") {
-        status = statuses.find((s) => s._id === "NEW") || {
-          _id: "NEW",
-          name: "New",
-          color: "#3B82F6",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      setCurrentStatus(status || null);
-    }
-  }, [lead.status, statuses]);
+  // Find the current status from the passed statuses
+  const currentStatus = statuses.find((s) => s._id === lead.status) ||
+    statuses.find((s) => s._id === "NEW") || {
+      _id: "NEW",
+      name: "New",
+      color: "#3B82F6",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
   const getStatusStyle = () => {
-    if (!currentStatus) {
-      return {
-        backgroundColor: "#3B82F615",
-        color: "#3B82F6",
-        borderColor: "#3B82F630",
-      };
-    }
     return {
       backgroundColor: `${currentStatus.color}15`,
       color: currentStatus.color,
@@ -172,8 +86,7 @@ function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
   };
 
   const renderStatus = () => {
-    // Use isLoading state instead of checking statuses length
-    if (isLoading) {
+    if (statusesLoading) {
       return (
         <Badge variant="outline" className="flex items-center gap-1.5">
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -181,18 +94,6 @@ function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
         </Badge>
       );
     }
-
-    // Add null check for statuses as fallback
-    if (!statuses || statuses.length === 0) {
-      return (
-        <Badge variant="outline" className="flex items-center gap-1.5">
-          <span>No Status</span>
-        </Badge>
-      );
-    }
-
-    const statusColor = currentStatus?.color || "#3B82F6";
-    const statusName = currentStatus?.name || "New";
 
     return (
       <Badge
@@ -202,9 +103,9 @@ function UserLeadRow({ lead, onLeadClick, selectedLead }: UserLeadRowProps) {
       >
         <div
           className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: statusColor }}
+          style={{ backgroundColor: currentStatus.color }}
         />
-        {statusName}
+        {currentStatus.name}
       </Badge>
     );
   };
@@ -302,6 +203,9 @@ export function UserLeadTable({
   sortOrder,
   onSort,
 }: UserLeadTableProps) {
+  // Use React Query hook for statuses - this will cache the data!
+  const { statuses, isLoading: statusesLoading } = useStatuses();
+
   const SortableHeader = ({
     field,
     children,
@@ -352,10 +256,12 @@ export function UserLeadTable({
         ) : (
           paginatedLeads.map((lead: Lead) => (
             <UserLeadRow
-              key={`${lead._id}-${lead.status}`} // Force re-render when status changes
+              key={`${lead._id}-${lead.status}`}
               lead={lead}
               onLeadClick={onLeadClick}
               selectedLead={selectedLead}
+              statuses={statuses}
+              statusesLoading={statusesLoading}
             />
           ))
         )}

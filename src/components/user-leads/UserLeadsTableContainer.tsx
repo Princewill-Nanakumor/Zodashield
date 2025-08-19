@@ -61,7 +61,7 @@ export const UserLeadsTableContainer: React.FC<
       />
 
       {totalEntries > 0 && (
-        <div className="border-t border-gray-200 dark:border-gray-700 mb-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 mb-4 px-2">
           <TablePagination
             pageIndex={pageIndex}
             pageCount={totalPages}
