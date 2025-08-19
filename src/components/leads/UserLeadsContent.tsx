@@ -251,7 +251,6 @@ export default function UserLeadsContent() {
   );
 }
 
-// ... rest of the component stays the same
 interface UserLeadsMainContentProps {
   loading: boolean;
   isDataReady: boolean;

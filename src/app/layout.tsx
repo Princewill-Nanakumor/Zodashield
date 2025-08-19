@@ -8,6 +8,7 @@ import { StatusProvider } from "@/context/StatusContext";
 import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
 import { Providers } from "@/app/providers";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import PerformanceMonitor from "@/components/dashboardComponents/PerformanceMonitor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -163,13 +164,15 @@ export default function RootLayout({
       >
         <Providers>
           <ThemeProvider>
-            <Toaster />
-            <ClientProviders>
-              <StatusProvider>
-                {children}
-                <ConnectionStatus />
-              </StatusProvider>
-            </ClientProviders>
+            <PerformanceMonitor>
+              <Toaster />
+              <ClientProviders>
+                <StatusProvider>
+                  {children}
+                  <ConnectionStatus />
+                </StatusProvider>
+              </ClientProviders>
+            </PerformanceMonitor>
           </ThemeProvider>
         </Providers>
       </body>
