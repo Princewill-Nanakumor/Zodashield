@@ -1,4 +1,4 @@
-// scripts/compare-performance.ts
+///progamming/zodashield/src/scripts/compate-reports.ts
 import * as fs from "fs";
 import * as path from "path";
 

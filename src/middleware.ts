@@ -20,6 +20,7 @@ export default withAuth(
     const publicPages = [
       "/",
       "/about",
+      "/test-performance",
       "/contact",
       "/signup",
       "/forgot-password",
@@ -84,11 +85,12 @@ export default withAuth(
         const publicPages = [
           "/",
           "/about",
+          "/test-performance",
           "/contact",
           "/signup",
           "/forgot-password",
           "/signin",
-          "/verify-email", // Add email verification route here too
+          "/verify-email",
         ];
 
         // Allow reset password pages without authentication
