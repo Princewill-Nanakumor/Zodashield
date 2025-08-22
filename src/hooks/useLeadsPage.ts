@@ -144,7 +144,7 @@ export const useLeadsPage = (
         description:
           statusesError instanceof Error
             ? statusesError.message
-            : "Failed to load statuses",
+            : "Failed to load statuses 1",
         variant: "destructive",
       });
     }

@@ -60,7 +60,7 @@ export function UserLeadRow({
       console.error("Error fetching statuses:", error);
       toast({
         title: "Error",
-        description: "Failed to load statuses",
+        description: "Failed to load statuses 3",
         variant: "destructive",
       });
     } finally {

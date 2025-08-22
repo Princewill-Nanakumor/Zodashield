@@ -59,7 +59,7 @@ const StatusModal = ({
       setStatuses(data);
     } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to load statuses";
+        error instanceof Error ? error.message : "Failed to load statuses 2";
       toast({
         title: "Error",
         description: errorMessage,
