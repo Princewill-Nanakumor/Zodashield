@@ -2,9 +2,8 @@
 "use client";
 
 import UserLeadsContent from "@/components/leads/UserLeadsContent";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -12,41 +11,9 @@ export default function UserLeadsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Enhanced QueryClient configuration
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes
-            gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-            retry: (failureCount, error) => {
-              // Don't retry auth errors
-              if (
-                error?.message?.includes("Unauthorized") ||
-                error?.message?.includes("401") ||
-                error?.message?.includes("403")
-              ) {
-                return false;
-              }
-              return failureCount < 2;
-            },
-            refetchOnWindowFocus: false, // Prevent unnecessary refetches
-            refetchOnMount: false, // Changed from "always" to prevent refetch on navigation
-            refetchOnReconnect: "always", // Refetch when reconnecting
-            retryDelay: (attemptIndex) =>
-              Math.min(1000 * 2 ** attemptIndex, 30000),
-          },
-          mutations: {
-            retry: 1,
-          },
-        },
-      })
-  );
-
   // Redirect admins away from this page
   useEffect(() => {
-    if (status === "loading") return; // Wait for session to load
+    if (status === "loading") return;
 
     if (status === "unauthenticated") {
       router.push("/signin");
@@ -75,7 +42,7 @@ export default function UserLeadsPage() {
 
   // Only render for non-admin users
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       <UserLeadsContent />
 
       {/* Development: React Query DevTools for debugging */}
@@ -86,6 +53,6 @@ export default function UserLeadsPage() {
           position="bottom"
         />
       )}
-    </QueryClientProvider>
+    </>
   );
 }
