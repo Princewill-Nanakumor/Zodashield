@@ -4,11 +4,9 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
 import LeadsPageContent from "@/components/dashboardComponents/LeadsPageContent";
 import { useSearchContext } from "@/context/SearchContext";
 import { Shield } from "lucide-react";
-import { queryClient } from "@/lib/queryClient";
 
 const AllLeadsPage: React.FC = () => {
   const { data: session, status } = useSession();
@@ -47,13 +45,11 @@ const AllLeadsPage: React.FC = () => {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <LeadsPageContent
-        searchQuery={searchQuery}
-        isLoading={isLoading}
-        setLayoutLoading={setLayoutLoading}
-      />
-    </QueryClientProvider>
+    <LeadsPageContent
+      searchQuery={searchQuery}
+      isLoading={isLoading}
+      setLayoutLoading={setLayoutLoading}
+    />
   );
 };
 

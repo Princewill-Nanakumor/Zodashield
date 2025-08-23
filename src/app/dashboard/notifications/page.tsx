@@ -82,8 +82,6 @@ export default function NotificationsPage() {
     }
   }, [normalizeNotifications]);
 
-  // ... (rest of your component stays the same)
-
   const handleDeleteNotification = useCallback(
     async (notificationId: string) => {
       try {

@@ -106,8 +106,14 @@ export function UserCRUDOperations({
         variant: "success",
       });
 
-      await queryClient.invalidateQueries({ queryKey: ["users"] });
-      await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }); // <-- add this
+      // Invalidate and refetch all user-related queries globally
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["users"] }),
+        queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }),
+        // Force immediate refetch for components that need fresh data
+        queryClient.refetchQueries({ queryKey: ["users"] }),
+      ]);
+
       await onRefreshUsers();
       onUserCreated?.(data.user);
 
@@ -145,8 +151,13 @@ export function UserCRUDOperations({
           variant: "success",
         });
 
-        await queryClient.invalidateQueries({ queryKey: ["users"] });
-        await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }); // optional but safe
+        // Invalidate and refetch all user-related queries globally
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["users"] }),
+          queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }),
+          queryClient.refetchQueries({ queryKey: ["users"] }),
+        ]);
+
         await onRefreshUsers();
         onUserUpdated?.(updated);
 
@@ -179,8 +190,12 @@ export function UserCRUDOperations({
           throw new Error(error.message || "Failed to delete user");
         }
 
-        await queryClient.invalidateQueries({ queryKey: ["users"] });
-        await queryClient.invalidateQueries({ queryKey: ["user-usage-data"] });
+        // Invalidate and refetch all user-related queries globally
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["users"] }),
+          queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }),
+          queryClient.refetchQueries({ queryKey: ["users"] }),
+        ]);
 
         onRefreshUsers();
         toast({
