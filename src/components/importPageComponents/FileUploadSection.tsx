@@ -55,9 +55,16 @@ export const FileUploadSection = ({
         variant: "success",
       });
 
-      // ✅ Additional cache invalidation when success message appears
-      queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
-      queryClient.invalidateQueries({ queryKey: ["import-history"] });
+      // ✅ COMPREHENSIVE CACHE INVALIDATION when success message appears
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["import-usage-data"] }),
+        queryClient.invalidateQueries({ queryKey: ["import-history"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads"] }),
+        // Invalidate any other leads-related queries
+        queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey[0] === "leads",
+        }),
+      ]);
     }
   }, [successMessage, toast, queryClient]);
 

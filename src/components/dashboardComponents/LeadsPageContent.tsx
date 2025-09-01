@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, Suspense, useMemo } from "react";
+import { useCallback, Suspense, useMemo, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import LeadsTable from "@/components/dashboardComponents/LeadsTable";
 import EmptyState from "@/components/dashboardComponents/EmptyState";
 import { LeadsHeader } from "./LeadHeader";
@@ -37,6 +38,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const { data: session, status } = useSession();
   const router = useRouter();
   const isOnline = useNetworkStatus();
+  const queryClient = useQueryClient();
 
   // Get toggle state from context
   const { showHeader, showControls } = useToggleContext();
@@ -64,6 +66,14 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     hasAssignedLeads,
     isRefetchingLeads,
   } = useLeadsPage(searchQuery, setLayoutLoading);
+
+  // ✅ ADD: Route-based refetch for navigation
+  useEffect(() => {
+    // Refetch leads when component mounts or when search query changes
+    if (status === "authenticated" && session?.user?.role === "ADMIN") {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    }
+  }, [status, session, queryClient]);
 
   // Check if any leads are selected
   const hasSelectedLeads = selectedLeads && selectedLeads.length > 0;

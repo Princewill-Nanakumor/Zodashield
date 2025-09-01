@@ -1,4 +1,3 @@
-// src/hooks/useImportManager.ts
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -64,6 +63,8 @@ export const useImportManager = () => {
           await deleteImport(id);
           // Invalidate usage data to refresh counts
           queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
+          // ✅ ADD: Invalidate leads queries when deleting imports
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
         } catch (error) {
           console.error("Error deleting import:", error);
         }
@@ -201,9 +202,19 @@ export const useImportManager = () => {
             variant: "default",
           });
 
-          // ✅ KEY FIX: Invalidate React Query caches to trigger automatic refresh
-          queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
-          queryClient.invalidateQueries({ queryKey: ["import-history"] });
+          // ✅ COMPREHENSIVE CACHE INVALIDATION + FORCE REFETCH
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["import-usage-data"] }),
+            queryClient.invalidateQueries({ queryKey: ["import-history"] }),
+            queryClient.invalidateQueries({ queryKey: ["leads"] }),
+            // Invalidate any other leads-related queries
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey[0] === "leads",
+            }),
+          ]);
+
+          // ✅ FORCE REFETCH to update Zustand store
+          await queryClient.refetchQueries({ queryKey: ["leads"] });
 
           await waitForImportUpdate(importData.data._id);
           await refreshImportHistory();

@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lead, LeadSource } from "@/types/leads";
 import { User } from "@/types/user.types";
 
@@ -60,53 +61,28 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
   searchQuery = "",
 }) => {
   const { toast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const queryClient = useQueryClient();
   const [filterByUser, setFilterByUser] = useState(initialFilter);
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [internalSearchQuery, setInternalSearchQuery] = useState(searchQuery);
 
   // Use ref to store toast function to avoid dependency issues
   const toastRef = useRef(toast);
   toastRef.current = toast;
 
-  // Ref to prevent concurrent fetches
-  const fetchingRef = useRef(false);
-
   // Sync external searchQuery with internal state
   useEffect(() => {
     setInternalSearchQuery(searchQuery);
   }, [searchQuery]);
 
-  // Search function with memoization
-  const searchLeads = useCallback((leads: Lead[], query: string): Lead[] => {
-    if (!query.trim()) return leads;
-
-    const searchTerm = query.toLowerCase().trim();
-
-    return leads.filter((lead) => {
-      const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
-      const email = lead.email.toLowerCase();
-      const phone = (lead.phone || "").toLowerCase();
-
-      return (
-        fullName.includes(searchTerm) ||
-        email.includes(searchTerm) ||
-        phone.includes(searchTerm)
-      );
-    });
-  }, []);
-
-  const fetchLeads = useCallback(async (currentUsers: User[]) => {
-    // Prevent concurrent fetches
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-
-    try {
-      setIsLoadingLeads(true);
+  // ✅ USE REACT QUERY for leads - FIXED: Use consistent query key
+  const {
+    data: leads = [],
+    isLoading: isLoadingLeads,
+    error: leadsError,
+  } = useQuery({
+    queryKey: ["leads"], // ✅ FIXED: Changed from ["leads", "all"] to ["leads"]
+    queryFn: async (): Promise<Lead[]> => {
       const response = await fetch("/api/leads/all", {
         credentials: "include",
       });
@@ -128,14 +104,12 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
         ) {
           assignedToObject = apiLead.assignedTo;
         } else if (typeof apiLead.assignedTo === "string") {
-          const user = currentUsers.find((u) => u.id === apiLead.assignedTo);
-          if (user) {
-            assignedToObject = {
-              id: user.id,
-              firstName: user.firstName,
-              lastName: user.lastName,
-            };
-          }
+          // For now, we'll handle this in the component that has access to users
+          assignedToObject = {
+            id: apiLead.assignedTo,
+            firstName: "",
+            lastName: "",
+          };
         }
 
         const formattedLead = {
@@ -151,85 +125,125 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
         return formattedLead;
       });
 
-      setLeads(formattedLeads);
-    } catch (error) {
-      console.error("Error fetching leads:", error);
+      return formattedLeads;
+    },
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: Reduced from 30 minutes to 2 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    enabled: isAdmin,
+  });
+
+  // ✅ USE REACT QUERY for users
+  const {
+    data: users = [],
+    isLoading: isLoadingUsers,
+    error: usersError,
+  } = useQuery({
+    queryKey: ["users"],
+    queryFn: async (): Promise<User[]> => {
+      const response = await fetch("/api/users", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
+      }
+      const usersData = await response.json();
+      const usersArray = Array.isArray(usersData) ? usersData : usersData.users;
+      return usersArray.filter((u: User) => u.status === "ACTIVE");
+    },
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: Reduced from 30 minutes to 2 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    enabled: isAdmin,
+  });
+
+  // Handle errors
+  useEffect(() => {
+    if (leadsError) {
+      console.error("Error fetching leads:", leadsError);
       toastRef.current({
         title: "Error",
         description: "Failed to fetch leads",
         variant: "destructive",
       });
-    } finally {
-      setIsLoadingLeads(false);
-      fetchingRef.current = false;
     }
-  }, []);
+  }, [leadsError]);
 
-  // Initialize data only once
   useEffect(() => {
-    if (isInitialized) return;
+    if (usersError) {
+      console.error("Error fetching users:", usersError);
+      toastRef.current({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      });
+    }
+  }, [usersError]);
 
-    const initializeData = async () => {
-      if (isAdmin) {
-        setIsLoadingUsers(true);
-        try {
-          const res = await fetch("/api/users", {
-            credentials: "include",
-          });
-          if (!res.ok) throw new Error("Failed to fetch users");
-          const usersData = await res.json();
+  // ✅ Process leads with user data once both are loaded
+  const processedLeads = useMemo(() => {
+    if (!leads.length || !users.length) return leads;
 
-          const usersArray = Array.isArray(usersData)
-            ? usersData
-            : usersData.users;
-          if (!Array.isArray(usersArray)) {
-            throw new Error("User data from API is not in a valid format.");
-          }
-
-          const activeUsers = usersArray.filter(
-            (u: User) => u.status === "ACTIVE"
-          );
-          setUsers(activeUsers);
-          await fetchLeads(activeUsers);
-        } catch (e) {
-          console.error("Error initializing data:", e);
-          toastRef.current({
-            title: "Error loading users",
-            description:
-              e instanceof Error ? e.message : "An unknown error occurred.",
-            variant: "destructive",
-          });
-          setLeads([]);
-        } finally {
-          setIsLoadingUsers(false);
+    return leads.map((lead) => {
+      // ✅ Fix: Use type guard to narrow the type
+      const assignedToId =
+        typeof lead.assignedTo === "string" ? lead.assignedTo : null;
+      if (assignedToId) {
+        const user = users.find((u) => u.id === assignedToId);
+        if (user) {
+          return {
+            ...lead,
+            assignedTo: {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+            },
+          };
         }
-      } else {
-        await fetchLeads([]);
       }
-      setIsInitialized(true);
-    };
+      return lead;
+    });
+  }, [leads, users]);
 
-    initializeData();
-  }, [isAdmin, fetchLeads, isInitialized]);
+  // Search function with memoization
+  const searchLeads = useCallback((leads: Lead[], query: string): Lead[] => {
+    if (!query.trim()) return leads;
+
+    const searchTerm = query.toLowerCase().trim();
+
+    return leads.filter((lead) => {
+      const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
+      const email = lead.email.toLowerCase();
+      const phone = (lead.phone || "").toLowerCase();
+
+      return (
+        fullName.includes(searchTerm) ||
+        email.includes(searchTerm) ||
+        phone.includes(searchTerm)
+      );
+    });
+  }, []);
 
   const handleLeadUpdate = useCallback(
     async (updatedLead: Lead): Promise<boolean> => {
       try {
-        setLeads((prevLeads) =>
-          prevLeads.map((lead) =>
+        // ✅ Update React Query cache - FIXED: Use consistent query key
+        queryClient.setQueryData(["leads"], (oldData: Lead[] | undefined) => {
+          if (!oldData) return oldData;
+          return oldData.map((lead) =>
             lead._id === updatedLead._id ? updatedLead : lead
-          )
-        );
+          );
+        });
         return true;
       } catch (error) {
         console.error("Error optimistically updating lead state:", error);
         return false;
       }
     },
-    []
+    [queryClient]
   );
 
-  // ⚡ OPTIMIZED ASSIGNMENT FUNCTION
+  // ⚡ OPTIMIZED ASSIGNMENT FUNCTION with React Query
   const handleAssignLeads = useCallback(
     async (userId: string) => {
       if (selectedLeads.length === 0) return;
@@ -244,13 +258,10 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
         throw new Error("User not found");
       }
 
-      // Store original state for rollback
-      const originalLeads = [...leads];
-      const originalSelectedLeads = [...selectedLeads];
-
-      // ⚡ INSTANT UI UPDATE - User sees immediate feedback
-      setLeads((prevLeads) =>
-        prevLeads.map((lead) => {
+      // ✅ Optimistic update with React Query - FIXED: Use consistent query key
+      queryClient.setQueryData(["leads"], (oldData: Lead[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map((lead) => {
           if (selectedLeads.some((sl) => sl._id === lead._id)) {
             return {
               ...lead,
@@ -262,15 +273,15 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
             };
           }
           return lead;
-        })
-      );
+        });
+      });
 
       // Clear selection immediately
       setSelectedLeads([]);
 
       try {
         // Send the assignment request
-        const leadsToAssign = originalSelectedLeads.map((lead) => ({
+        const leadsToAssign = selectedLeads.map((lead) => ({
           _id: lead._id,
           status: lead.status,
         }));
@@ -291,20 +302,15 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
         // ✅ SUCCESS - Update success toast
         toastRef.current({
           title: "Success!",
-          description: `Successfully assigned ${originalSelectedLeads.length} lead(s) to ${user.firstName}.`,
+          description: `Successfully assigned ${selectedLeads.length} lead(s) to ${user.firstName}.`,
           variant: "success",
         });
 
-        // 🔄 BACKGROUND REFRESH - Sync with server after delay
-        setTimeout(() => {
-          if (!fetchingRef.current) {
-            fetchLeads(users);
-          }
-        }, 2000);
+        // ✅ Invalidate to get fresh data - FIXED: Use consistent query key
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
       } catch (error) {
-        // ❌ ROLLBACK - Revert optimistic update on error
-        setLeads(originalLeads);
-        setSelectedLeads(originalSelectedLeads);
+        // ❌ ROLLBACK - Revert optimistic update on error - FIXED: Use consistent query key
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
 
         console.error("Failed to assign leads on server", error);
         toastRef.current({
@@ -318,10 +324,10 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
         throw error;
       }
     },
-    [leads, selectedLeads, users, fetchLeads]
+    [selectedLeads, users, queryClient]
   );
 
-  // ⚡ OPTIMIZED UNASSIGNMENT FUNCTION
+  // ⚡ OPTIMIZED UNASSIGNMENT FUNCTION with React Query
   const handleUnassignLeads = useCallback(async () => {
     const leadsToUnassign = selectedLeads.filter((lead) => lead.assignedTo);
     if (leadsToUnassign.length === 0) {
@@ -332,22 +338,20 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
       return;
     }
 
-    // Store original state for rollback
-    const originalLeads = [...leads];
-    const originalSelectedLeads = [...selectedLeads];
-
-    // ⚡ INSTANT UI UPDATE
-    setLeads((prev) =>
-      prev.map((lead) => {
+    // ✅ Optimistic update with React Query - FIXED: Use consistent query key
+    queryClient.setQueryData(["leads"], (oldData: Lead[] | undefined) => {
+      if (!oldData) return oldData;
+      return oldData.map((lead) => {
         if (leadsToUnassign.some((ltu) => ltu._id === lead._id)) {
+          // ✅ Fix: Set assignedTo to undefined instead of destructuring
           return {
             ...lead,
-            assignedTo: null, // Clear assignment
+            assignedTo: undefined,
           };
         }
         return lead;
-      })
-    );
+      });
+    });
 
     // Clear selection immediately
     setSelectedLeads([]);
@@ -381,16 +385,10 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
         variant: "success",
       });
 
-      // 🔄 BACKGROUND REFRESH
-      setTimeout(() => {
-        if (!fetchingRef.current) {
-          fetchLeads(users);
-        }
-      }, 2000);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     } catch (error) {
-      // ❌ ROLLBACK
-      setLeads(originalLeads);
-      setSelectedLeads(originalSelectedLeads);
+      // ❌ ROLLBACK - Revert optimistic update on error - FIXED: Use consistent query key
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
 
       console.error("Failed to unassign leads", error);
       toastRef.current({
@@ -401,11 +399,11 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
       });
       throw error;
     }
-  }, [leads, selectedLeads, users, fetchLeads]);
+  }, [selectedLeads, queryClient]);
 
   // Memoized filtered leads for better performance
   const filteredLeads = useMemo(() => {
-    let filtered = leads;
+    let filtered = processedLeads;
 
     // Apply search filter first
     if (internalSearchQuery.trim()) {
@@ -435,11 +433,11 @@ const LeadsDataProvider: React.FC<LeadsDataProviderProps> = ({
     }
 
     return filtered;
-  }, [leads, filterByUser, internalSearchQuery, searchLeads]);
+  }, [processedLeads, filterByUser, internalSearchQuery, searchLeads]);
 
   return children({
     leads: filteredLeads,
-    allLeads: leads,
+    allLeads: processedLeads,
     users,
     isLoadingLeads,
     isLoadingUsers,

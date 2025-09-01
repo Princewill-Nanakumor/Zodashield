@@ -43,14 +43,14 @@ export const useLeadsPage = (
   const mutationInProgressRef = useRef(false);
 
   // ===== REACT QUERY HOOKS =====
-  // Fetch leads with React Query
+  // Fetch leads with React Query - FIXED: Use consistent query key
   const {
     data: leads = [],
     isLoading: isLoadingLeads,
     isFetching: isRefetchingLeads,
     error: leadsError,
   } = useQuery({
-    queryKey: ["leads", "all"],
+    queryKey: ["leads"], // ✅ FIXED: Changed from ["leads", "all"] to ["leads"]
     queryFn: async (): Promise<Lead[]> => {
       const response = await fetch("/api/leads/all", {
         credentials: "include",
@@ -58,7 +58,7 @@ export const useLeadsPage = (
       if (!response.ok) throw new Error("Failed to fetch leads");
       return response.json();
     },
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: Reduced from 30 minutes to 2 minutes
     refetchOnWindowFocus: false,
     retry: 2,
     refetchOnMount: false,
@@ -79,7 +79,7 @@ export const useLeadsPage = (
       const data = await response.json();
       return Array.isArray(data) ? data : data.users || [];
     },
-    staleTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: Reduced from 15 minutes to 2 minutes
     refetchOnWindowFocus: false,
     retry: 2,
     refetchOnMount: false,
@@ -144,7 +144,7 @@ export const useLeadsPage = (
         description:
           statusesError instanceof Error
             ? statusesError.message
-            : "Failed to load statuses 1",
+            : "Failed to load statuses",
         variant: "destructive",
       });
     }
@@ -175,17 +175,17 @@ export const useLeadsPage = (
       }
       mutationInProgressRef.current = true;
 
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["leads", "all"] });
+      // Cancel any outgoing refetches - FIXED: Use consistent query key
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
 
-      // Snapshot the previous value
-      const previousLeads = queryClient.getQueryData<Lead[]>(["leads", "all"]);
+      // Snapshot the previous value - FIXED: Use consistent query key
+      const previousLeads = queryClient.getQueryData<Lead[]>(["leads"]);
 
       // Find the user for assignment
       const assignedUser = users.find((u) => u.id === userId);
 
-      // ⚡ OPTIMISTIC UPDATE - Instant UI feedback
-      queryClient.setQueryData<Lead[]>(["leads", "all"], (old = []) => {
+      // ⚡ OPTIMISTIC UPDATE - Instant UI feedback - FIXED: Use consistent query key
+      queryClient.setQueryData<Lead[]>(["leads"], (old = []) => {
         return old.map((lead) => {
           if (leadIds.includes(lead._id)) {
             return {
@@ -209,9 +209,9 @@ export const useLeadsPage = (
     onError: (err, variables, context) => {
       mutationInProgressRef.current = false;
 
-      // Rollback on error
+      // Rollback on error - FIXED: Use consistent query key
       if (context?.previousLeads) {
-        queryClient.setQueryData(["leads", "all"], context.previousLeads);
+        queryClient.setQueryData(["leads"], context.previousLeads);
       }
       toast({
         title: "Assignment failed",
@@ -230,10 +230,10 @@ export const useLeadsPage = (
       });
     },
     onSettled: () => {
-      // Background refresh after delay
+      // Background refresh after delay - FIXED: Use consistent query key
       setTimeout(() => {
         if (!mutationInProgressRef.current) {
-          queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
         }
       }, 2000);
     },
@@ -257,14 +257,14 @@ export const useLeadsPage = (
       }
       mutationInProgressRef.current = true;
 
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["leads", "all"] });
+      // Cancel any outgoing refetches - FIXED: Use consistent query key
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
 
-      // Snapshot the previous value
-      const previousLeads = queryClient.getQueryData<Lead[]>(["leads", "all"]);
+      // Snapshot the previous value - FIXED: Use consistent query key
+      const previousLeads = queryClient.getQueryData<Lead[]>(["leads"]);
 
-      // ⚡ OPTIMISTIC UPDATE - Remove assignments instantly
-      queryClient.setQueryData<Lead[]>(["leads", "all"], (old = []) => {
+      // ⚡ OPTIMISTIC UPDATE - Remove assignments instantly - FIXED: Use consistent query key
+      queryClient.setQueryData<Lead[]>(["leads"], (old = []) => {
         return old.map((lead) => {
           if (leadIds.includes(lead._id)) {
             return {
@@ -281,9 +281,9 @@ export const useLeadsPage = (
     onError: (err, variables, context) => {
       mutationInProgressRef.current = false;
 
-      // Rollback on error
+      // Rollback on error - FIXED: Use consistent query key
       if (context?.previousLeads) {
-        queryClient.setQueryData(["leads", "all"], context.previousLeads);
+        queryClient.setQueryData(["leads"], context.previousLeads);
       }
       toast({
         title: "Unassignment failed",
@@ -302,10 +302,10 @@ export const useLeadsPage = (
       });
     },
     onSettled: () => {
-      // Background refresh after delay
+      // Background refresh after delay - FIXED: Use consistent query key
       setTimeout(() => {
         if (!mutationInProgressRef.current) {
-          queryClient.invalidateQueries({ queryKey: ["leads", "all"] });
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
         }
       }, 2000);
     },
