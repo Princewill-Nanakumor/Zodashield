@@ -86,6 +86,49 @@ export async function PATCH(req: NextRequest) {
       query.adminId = new mongoose.Types.ObjectId(sessionUser.adminId);
     }
 
+    // Get current lead status before update
+    const currentLead = (await Lead.findOne(query, { status: 1 }).lean()) as {
+      status: string;
+    } | null;
+
+    if (!currentLead) {
+      return NextResponse.json(
+        { error: "Lead not found or not authorized" },
+        { status: 404 }
+      );
+    }
+
+    const previousStatus = currentLead.status;
+
+    // Get status names for activity log
+    let previousStatusName = previousStatus;
+    let newStatusName = newStatus;
+
+    try {
+      const db = mongoose.connection.db;
+      if (db) {
+        if (mongoose.Types.ObjectId.isValid(previousStatus)) {
+          const prevStatusDoc = await db.collection("status").findOne({
+            _id: new mongoose.Types.ObjectId(previousStatus),
+          });
+          if (prevStatusDoc?.name) {
+            previousStatusName = prevStatusDoc.name;
+          }
+        }
+
+        if (mongoose.Types.ObjectId.isValid(newStatus)) {
+          const newStatusDoc = await db.collection("status").findOne({
+            _id: new mongoose.Types.ObjectId(newStatus),
+          });
+          if (newStatusDoc?.name) {
+            newStatusName = newStatusDoc.name;
+          }
+        }
+      }
+    } catch (statusLookupError) {
+      console.error("Status lookup error:", statusLookupError);
+    }
+
     const updatedLead = (await Lead.findOneAndUpdate(
       query,
       {
@@ -158,19 +201,29 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // Create activity log with both old and new metadata structure for compatibility
     Promise.resolve().then(async () => {
       try {
+        const activityDetails = `Status changed from ${previousStatusName} to ${newStatusName}`;
+
         await Activity.create({
           type: "STATUS_CHANGE",
           userId: new mongoose.Types.ObjectId(sessionUser.id),
-          details: `Status changed to ${newStatus}`,
+          details: activityDetails,
           leadId: updatedLead._id,
           adminId: getCorrectAdminId(session),
           timestamp: new Date(),
           metadata: {
+            // Enhanced metadata with names
+            previousStatus: previousStatus,
+            previousStatusName: previousStatusName,
             newStatusId: newStatus,
-            newStatus: newStatus,
-            status: newStatus,
+            newStatusName: newStatusName,
+
+            // Backward compatible metadata structure for activities route
+            oldStatusId: previousStatus,
+            oldStatus: previousStatusName,
+            newStatus: newStatusName,
           },
         });
       } catch (err) {

@@ -110,15 +110,17 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
           if ("data" in oldData && Array.isArray(oldData.data)) {
             return {
               ...oldData,
-              data: oldData.data.map((l: Lead) =>
-                l._id === lead._id ? { ...l, status: newStatusId } : l
+              data: oldData.data.map(
+                (l: Lead) =>
+                  l._id === lead._id ? { ...l, status: newStatusId } : l // ✅ FIXED
               ),
             };
           } else if ("leads" in oldData && Array.isArray(oldData.leads)) {
             return {
               ...oldData,
-              leads: oldData.leads.map((l: Lead) =>
-                l._id === lead._id ? { ...l, status: previousStatus } : l
+              leads: oldData.leads.map(
+                (l: Lead) =>
+                  l._id === lead._id ? { ...l, status: newStatusId } : l // ✅ FIXED
               ),
             };
           }
@@ -201,6 +203,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
       } catch (error) {
         setCurrentStatus(previousStatus);
 
+        // ✅ FIXED: Use previousStatus for rollback (this was correct)
         queryClient.setQueryData(["leads"], (oldData: LeadsData) => {
           if (!oldData) return oldData;
 
