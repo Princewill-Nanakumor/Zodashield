@@ -91,9 +91,9 @@ export const useUsersData = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["users-data"],
+    queryKey: ["users"], // ✅ FIXED: Use same query key as other components
     queryFn: fetchUsers,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: Reduced from 5 minutes to 2 minutes
     gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: false,
@@ -117,9 +117,9 @@ export const useLeadsStats = (isAdmin: boolean) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["leads-stats", isAdmin],
+    queryKey: ["leads"], // ✅ FIXED: Use same query key as leads page
     queryFn: () => fetchLeads(isAdmin),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // ✅ FIXED: Reduced from 5 minutes to 2 minutes
     gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: false,

@@ -61,10 +61,22 @@ export const useImportManager = () => {
       ) {
         try {
           await deleteImport(id);
-          // Invalidate usage data to refresh counts
-          queryClient.invalidateQueries({ queryKey: ["import-usage-data"] });
-          // ✅ ADD: Invalidate leads queries when deleting imports
-          queryClient.invalidateQueries({ queryKey: ["leads"] });
+          // ✅ COMPREHENSIVE CACHE INVALIDATION when deleting imports
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["import-usage-data"] }),
+            queryClient.invalidateQueries({ queryKey: ["import-history"] }),
+            queryClient.invalidateQueries({ queryKey: ["leads"] }),
+            queryClient.invalidateQueries({ queryKey: ["users"] }),
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
+            // Invalidate any other leads-related queries
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey[0] === "leads",
+            }),
+            // Invalidate any other users-related queries
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey[0] === "users",
+            }),
+          ]);
         } catch (error) {
           console.error("Error deleting import:", error);
         }
@@ -207,14 +219,24 @@ export const useImportManager = () => {
             queryClient.invalidateQueries({ queryKey: ["import-usage-data"] }),
             queryClient.invalidateQueries({ queryKey: ["import-history"] }),
             queryClient.invalidateQueries({ queryKey: ["leads"] }),
+            queryClient.invalidateQueries({ queryKey: ["users"] }),
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }),
             // Invalidate any other leads-related queries
             queryClient.invalidateQueries({
               predicate: (query) => query.queryKey[0] === "leads",
             }),
+            // Invalidate any other users-related queries
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey[0] === "users",
+            }),
           ]);
 
-          // ✅ FORCE REFETCH to update Zustand store
-          await queryClient.refetchQueries({ queryKey: ["leads"] });
+          // ✅ FORCE REFETCH to update all stores and components
+          await Promise.all([
+            queryClient.refetchQueries({ queryKey: ["leads"] }),
+            queryClient.refetchQueries({ queryKey: ["users"] }),
+            queryClient.refetchQueries({ queryKey: ["dashboard-stats"] }),
+          ]);
 
           await waitForImportUpdate(importData.data._id);
           await refreshImportHistory();
