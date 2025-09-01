@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState, useCallback, useRef } from "react";
+import React, { FC, useState, useCallback, useRef, useEffect } from "react";
 import { Lead } from "@/types/leads";
 import { LeadHeader } from "../leads/leadDetailsPanel/LeadHeader";
 import { ContactSection } from "../leads/leadDetailsPanel/ContactSection";
@@ -8,6 +8,7 @@ import { DetailsSection } from "../leads/leadDetailsPanel/DetailsSection";
 import LeadStatus from "../leads/leadDetailsPanel/LeadStatus";
 import CommentsAndActivities from "../leads/leadDetailsPanel/CommentsAndActivities";
 import AdsImageSlider from "../ads/AdsImageSlider";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface LeadDetailsPanelProps {
   lead: Lead | null;
@@ -36,7 +37,57 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     ads: true,
   });
 
-  // Store the latest onLeadUpdated function in a ref
+  const queryClient = useQueryClient();
+  const [currentLead, setCurrentLead] = useState<Lead | null>(lead);
+  const previousStatusRef = useRef<string | undefined>(undefined);
+  const previousLeadRef = useRef<Lead | null>(null);
+
+  useEffect(() => {
+    if (lead) {
+      previousStatusRef.current = lead.status;
+      previousLeadRef.current = lead;
+      setCurrentLead(lead);
+    }
+  }, [lead]);
+
+  useEffect(() => {
+    if (!lead?._id) return;
+
+    const checkAndUpdateLead = () => {
+      const leadsData = queryClient.getQueryData(["leads"]);
+      if (!leadsData) return;
+
+      let updatedLead: Lead | undefined;
+
+      if (Array.isArray(leadsData)) {
+        updatedLead = leadsData.find((l) => l._id === lead._id);
+      } else if (leadsData && typeof leadsData === "object") {
+        if ("data" in leadsData && Array.isArray(leadsData.data)) {
+          updatedLead = leadsData.data.find((l) => l._id === lead._id);
+        } else if ("leads" in leadsData && Array.isArray(leadsData.leads)) {
+          updatedLead = leadsData.leads.find((l) => l._id === lead._id);
+        }
+      }
+
+      if (updatedLead && updatedLead.status !== previousStatusRef.current) {
+        previousStatusRef.current = updatedLead.status;
+        setCurrentLead(updatedLead);
+      }
+    };
+
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.query.queryKey[0] === "leads") {
+        setTimeout(checkAndUpdateLead, 0);
+      }
+    });
+
+    checkAndUpdateLead();
+
+    return () => {
+      unsubscribe();
+    };
+  }, [lead?._id, queryClient]);
+
   const onLeadUpdatedRef = useRef(onLeadUpdated);
   onLeadUpdatedRef.current = onLeadUpdated;
 
@@ -49,16 +100,54 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
 
   const handleLeadUpdated = useCallback(async (updatedLead: Lead) => {
     try {
-      // Call the parent's onLeadUpdated directly
-      return await onLeadUpdatedRef.current(updatedLead);
+      previousStatusRef.current = updatedLead.status;
+      setCurrentLead(updatedLead);
+
+      const result = await onLeadUpdatedRef.current(updatedLead);
+      return result;
     } catch (error) {
       console.error("Error in handleLeadUpdated:", error);
+
+      if (previousLeadRef.current) {
+        setCurrentLead(previousLeadRef.current);
+        previousStatusRef.current = previousLeadRef.current.status;
+      }
+
       return false;
     }
   }, []);
 
-  // Don't render anything if no lead or not open
-  if (!lead?._id || !isOpen) {
+  useEffect(() => {
+    if (lead?._id && isOpen) {
+      const checkCache = () => {
+        const leadsData = queryClient.getQueryData(["leads"]);
+        if (leadsData) {
+          let freshLead: Lead | undefined;
+
+          if (Array.isArray(leadsData)) {
+            freshLead = leadsData.find((l) => l._id === lead._id);
+          } else if (leadsData && typeof leadsData === "object") {
+            if ("data" in leadsData && Array.isArray(leadsData.data)) {
+              freshLead = leadsData.data.find((l) => l._id === lead._id);
+            } else if ("leads" in leadsData && Array.isArray(leadsData.leads)) {
+              freshLead = leadsData.leads.find((l) => l._id === lead._id);
+            }
+          }
+
+          if (freshLead && freshLead.status !== currentLead?.status) {
+            setCurrentLead(freshLead);
+          }
+        }
+      };
+
+      checkCache();
+      const timeoutId = setTimeout(checkCache, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [lead?._id, isOpen, queryClient, currentLead?.status]);
+
+  if (!currentLead?._id || !isOpen) {
     return null;
   }
 
@@ -75,16 +164,16 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     >
       <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
         <LeadHeader
-          lead={lead}
+          lead={currentLead}
           onClose={onClose}
           onNavigate={onNavigate}
           hasPrevious={hasPrevious}
           hasNext={hasNext}
         />
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <LeadStatus lead={lead} onLeadUpdated={handleLeadUpdated} />
+          <LeadStatus lead={currentLead} onLeadUpdated={handleLeadUpdated} />
           <ContactSection
-            lead={lead}
+            lead={currentLead}
             isExpanded={expandedSections.contact}
             onToggle={() => toggleSection("contact")}
           />
@@ -93,7 +182,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
             onToggle={() => toggleSection("ads")}
           />
           <DetailsSection
-            lead={lead}
+            lead={currentLead}
             isExpanded={expandedSections.details}
             onToggle={() => toggleSection("details")}
           />
@@ -101,9 +190,9 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
       </div>
       <div className="flex-1 bg-white dark:bg-gray-800">
         <CommentsAndActivities
-          lead={lead}
+          lead={currentLead}
           onLeadUpdated={handleLeadUpdated}
-          key={lead._id}
+          key={currentLead._id}
         />
       </div>
     </div>

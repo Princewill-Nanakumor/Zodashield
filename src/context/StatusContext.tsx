@@ -1,4 +1,3 @@
-// src/contexts/StatusContext.tsx
 "use client";
 
 import {
@@ -7,8 +6,9 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
-import { Status } from "@/types/leads"; // Import the proper type
+import { Status } from "@/types/leads";
 import { useSession } from "next-auth/react";
 
 interface StatusContextType {
@@ -27,9 +27,9 @@ const StatusContext = createContext<StatusContextType>({
 
 export const useStatuses = () => useContext(StatusContext);
 
-let cachedStatuses: Status[] | null = null;
+const cachedStatusesMap = new Map<string, Status>();
 let cacheTimestamp: number | null = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
 export function StatusProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
@@ -39,28 +39,27 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
 
   const fetchStatuses = useCallback(
     async (force = false) => {
-      // Don't fetch if user is not authenticated
       if (status === "unauthenticated") {
         setStatuses([]);
         setIsLoading(false);
         setError(null);
+        cachedStatusesMap.clear();
+        cacheTimestamp = null;
         return;
       }
 
-      // Don't fetch if still loading session
       if (status === "loading") {
         return;
       }
 
       try {
-        // Check memory cache first
         if (
           !force &&
-          cachedStatuses &&
+          cachedStatusesMap.size > 0 &&
           cacheTimestamp &&
           Date.now() - cacheTimestamp < CACHE_DURATION
         ) {
-          setStatuses(cachedStatuses);
+          setStatuses(Array.from(cachedStatusesMap.values()));
           setIsLoading(false);
           return;
         }
@@ -74,33 +73,26 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          // Handle 401 Unauthorized gracefully
           if (response.status === 401) {
-            setStatuses([]); // Clear statuses
-            setError(null); // Do NOT show error to user
+            setStatuses([]);
+            setError(null);
             setIsLoading(false);
+            cachedStatusesMap.clear();
+            cacheTimestamp = null;
             return;
           }
-          // For other errors, show error
-          console.error(
-            `Failed to fetch statuses. Status: ${response.status} ${response.statusText}. Body: ${errorText}`
-          );
-          throw new Error(
-            `Failed to fetch statuses (HTTP ${response.status} ${response.statusText})`
-          );
+          throw new Error(`Failed to fetch statuses (HTTP ${response.status})`);
         }
 
         const data: Status[] = await response.json();
 
-        // Add NEW status if it doesn't exist - FIX: Use "NEW" as both _id and name
         const hasNewStatus = data.some(
           (status: Status) => status.name === "NEW"
         );
         if (!hasNewStatus) {
           data.unshift({
-            id: "NEW", // Use id as primary field
-            _id: "NEW", // Also include _id for compatibility
+            id: "NEW",
+            _id: "NEW",
             name: "NEW",
             color: "#3B82F6",
             adminId: "system",
@@ -110,15 +102,18 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
-        // Update memory cache
-        cachedStatuses = data;
+        cachedStatusesMap.clear();
+        data.forEach((status) => {
+          cachedStatusesMap.set(status._id || status.id, status);
+        });
         cacheTimestamp = Date.now();
 
         setStatuses(data);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Unknown error"));
-        console.error("Error fetching statuses:", err);
+        cachedStatusesMap.clear();
+        cacheTimestamp = null;
       } finally {
         setIsLoading(false);
       }
@@ -128,20 +123,28 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchStatuses();
-
-    // Cleanup function
     return () => {
-      cachedStatuses = null;
+      cachedStatusesMap.clear();
       cacheTimestamp = null;
     };
   }, [fetchStatuses]);
 
-  const contextValue = {
-    statuses,
-    isLoading,
-    error,
-    refreshStatuses: () => fetchStatuses(true),
-  };
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      cachedStatusesMap.clear();
+      cacheTimestamp = null;
+    }
+  }, [status]);
+
+  const contextValue = useMemo(
+    () => ({
+      statuses,
+      isLoading,
+      error,
+      refreshStatuses: () => fetchStatuses(true),
+    }),
+    [statuses, isLoading, error, fetchStatuses]
+  );
 
   return (
     <StatusContext.Provider value={contextValue}>

@@ -18,7 +18,21 @@ interface LeadStatusProps {
   onLeadUpdated?: (updatedLead: Lead) => Promise<boolean>;
 }
 
-// Helper to add alpha to hex color
+type LeadsData =
+  | Lead[]
+  | {
+      data: Lead[];
+      total?: number;
+      page?: number;
+      [key: string]: unknown;
+    }
+  | {
+      leads: Lead[];
+      [key: string]: unknown;
+    }
+  | null
+  | undefined;
+
 function hexWithAlpha(hex: string, alpha: string) {
   if (!hex) return "#3b82f6" + alpha;
   if (hex.length === 7) return hex + alpha;
@@ -32,15 +46,10 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>(lead.status);
   const queryClient = useQueryClient();
-
-  // Use the StatusContext instead of fetching statuses locally
   const { statuses, isLoading: isLoadingStatuses } = useStatuses();
-
-  // Opacity for dark mode
   const darkAlpha = "B3";
-
-  // Detect dark mode
   const [isDark, setIsDark] = useState(false);
+
   useEffect(() => {
     const match = window.matchMedia("(prefers-color-scheme: dark)");
     setIsDark(match.matches);
@@ -49,32 +58,77 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
     return () => match.removeEventListener("change", handler);
   }, []);
 
-  // Keep currentStatus in sync with lead prop
   useEffect(() => {
-    setCurrentStatus(lead.status);
-  }, [lead.status]);
+    if (lead.status !== currentStatus) {
+      setCurrentStatus(lead.status);
+    }
+  }, [lead.status, currentStatus, lead._id]);
+
+  const findStatusByIdOrName = useCallback(
+    (statusId: string) => {
+      let status = statuses.find((s) => s._id === statusId);
+      if (!status) {
+        status = statuses.find((s) => s.id === statusId);
+      }
+      if (!status) {
+        status = statuses.find((s) => s.name === statusId);
+      }
+      return status;
+    },
+    [statuses]
+  );
+
+  const currentStatusObj = findStatusByIdOrName(currentStatus);
+
+  const getStatusDisplayName = useCallback(
+    (statusId: string) => {
+      const status = findStatusByIdOrName(statusId);
+      if (status) {
+        return status.name;
+      }
+      return statusId || "Unknown";
+    },
+    [findStatusByIdOrName]
+  );
 
   const handleStatusChange = useCallback(
     async (newStatusId: string) => {
-      if (!lead._id) return;
+      if (!lead._id || currentStatus === newStatusId) return;
 
-      // Don't update if status is the same
-      if (currentStatus === newStatusId) return;
-
-      console.log("Status update initiated:", {
-        leadId: lead._id,
-        oldStatus: currentStatus,
-        newStatus: newStatusId,
-      });
-
-      // Optimistically update the UI
       const previousStatus = currentStatus;
       setCurrentStatus(newStatusId);
       setIsUpdating(true);
 
+      queryClient.setQueryData(["leads"], (oldData: LeadsData) => {
+        if (!oldData) return oldData;
+
+        if (Array.isArray(oldData)) {
+          return oldData.map((l: Lead) =>
+            l._id === lead._id ? { ...l, status: newStatusId } : l
+          );
+        } else if (oldData && typeof oldData === "object") {
+          if ("data" in oldData && Array.isArray(oldData.data)) {
+            return {
+              ...oldData,
+              data: oldData.data.map((l: Lead) =>
+                l._id === lead._id ? { ...l, status: newStatusId } : l
+              ),
+            };
+          } else if ("leads" in oldData && Array.isArray(oldData.leads)) {
+            return {
+              ...oldData,
+              leads: oldData.leads.map((l: Lead) =>
+                l._id === lead._id ? { ...l, status: previousStatus } : l
+              ),
+            };
+          }
+        }
+        return oldData;
+      });
+
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(`/api/leads/${lead._id}/status`, {
           method: "PATCH",
@@ -95,28 +149,49 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
         const updatedLead = await response.json();
         setCurrentStatus(updatedLead.status);
 
-        // Notify parent component of the update
-        if (onLeadUpdated) {
-          await onLeadUpdated(updatedLead);
+        if (updatedLead.status !== newStatusId) {
+          queryClient.setQueryData(["leads"], (oldData: LeadsData) => {
+            if (!oldData) return oldData;
+
+            if (Array.isArray(oldData)) {
+              return oldData.map((l: Lead) =>
+                l._id === lead._id ? updatedLead : l
+              );
+            } else if (oldData && typeof oldData === "object") {
+              if ("data" in oldData && Array.isArray(oldData.data)) {
+                return {
+                  ...oldData,
+                  data: oldData.data.map((l: Lead) =>
+                    l._id === lead._id ? updatedLead : l
+                  ),
+                };
+              } else if ("leads" in oldData && Array.isArray(oldData.leads)) {
+                return {
+                  ...oldData,
+                  leads: oldData.leads.map((l: Lead) =>
+                    l._id === lead._id ? updatedLead : l
+                  ),
+                };
+              }
+            }
+            return oldData;
+          });
         }
 
-        // Invalidate queries to refresh the table and statuses
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: ["statuses"],
-            exact: false,
-          }),
-          queryClient.invalidateQueries({
+        if (onLeadUpdated) {
+          onLeadUpdated(updatedLead).catch((error) => {
+            console.error("Error in onLeadUpdated:", error);
+          });
+        }
+
+        queryClient
+          .invalidateQueries({
             queryKey: ["leads"],
             exact: false,
-          }),
-          queryClient.invalidateQueries({
-            queryKey: ["user-leads"],
-            exact: false,
-          }),
-        ]);
-
-        console.log("Status update successful:", updatedLead.status);
+          })
+          .catch((error) => {
+            console.error("Error invalidating queries:", error);
+          });
 
         toast({
           title: "Status updated",
@@ -124,13 +199,37 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
           variant: "success",
         });
       } catch (error) {
-        // Revert the status if the update failed
         setCurrentStatus(previousStatus);
+
+        queryClient.setQueryData(["leads"], (oldData: LeadsData) => {
+          if (!oldData) return oldData;
+
+          if (Array.isArray(oldData)) {
+            return oldData.map((l: Lead) =>
+              l._id === lead._id ? { ...l, status: previousStatus } : l
+            );
+          } else if (oldData && typeof oldData === "object") {
+            if ("data" in oldData && Array.isArray(oldData.data)) {
+              return {
+                ...oldData,
+                data: oldData.data.map((l: Lead) =>
+                  l._id === lead._id ? { ...l, status: previousStatus } : l
+                ),
+              };
+            } else if ("leads" in oldData && Array.isArray(oldData.leads)) {
+              return {
+                ...oldData,
+                leads: oldData.leads.map((l: Lead) =>
+                  l._id === lead._id ? { ...l, status: previousStatus } : l
+                ),
+              };
+            }
+          }
+          return oldData;
+        });
 
         const errorMessage =
           error instanceof Error ? error.message : "Failed to update status";
-
-        console.error("Status update failed:", errorMessage);
 
         toast({
           title: "Error",
@@ -144,16 +243,11 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
     [lead._id, currentStatus, onLeadUpdated, queryClient, toast]
   );
 
-  // Find the current status object by ID (not name)
-  const currentStatusObj = statuses.find((s) => s._id === currentStatus);
   const currentStatusColor = currentStatusObj?.color || "#3b82f6";
-
   const triggerBg = isDark
     ? hexWithAlpha(currentStatusColor, darkAlpha)
     : currentStatusColor;
   const triggerTextColor = "#fff";
-
-  // Calculate max height based on number of statuses
   const maxHeight = statuses.length > 7 ? "280px" : "auto";
 
   return (
@@ -175,7 +269,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
         }
 
         .smooth-scroll-content::-webkit-scrollbar-thumb {
-          background: ${isDark ? "#6b7280" : "#cbd5e1"};
+          background: ${isDark ? "#6b7280" : "#94a3b8"};
           border-radius: 4px;
           transition: background-color 0.2s ease;
         }
@@ -228,9 +322,7 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
                     color: triggerTextColor,
                   }}
                 >
-                  {currentStatusObj?.name ||
-                    statuses.find((s) => s._id === currentStatus)?.name ||
-                    "New"}
+                  {getStatusDisplayName(currentStatus)}
                 </span>
                 {isUpdating && (
                   <Loader2
