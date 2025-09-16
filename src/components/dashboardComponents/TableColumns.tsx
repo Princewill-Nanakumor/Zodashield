@@ -4,8 +4,9 @@
 import { useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
 
@@ -100,13 +101,37 @@ export const useTableColumns = ({
               <input
                 type="checkbox"
                 checked={isSelected}
-                onChange={(e) => handleRowSelection(lead, e.target.checked)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleRowSelection(lead, e.target.checked);
+                }}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
             </div>
           );
         },
         enableSorting: false,
+      },
+      {
+        id: "actions",
+        header: () => <div className="text-center font-medium">Actions</div>,
+        cell: ({ row }) => {
+          const lead = row.original;
+          return (
+            <div className="flex items-center justify-center">
+              <Link
+                href={`/dashboard/all-leads/${lead._id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:border dark:border-gray-700 transition-colors duration-200"
+                title="View Details"
+              >
+                <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </Link>
+            </div>
+          );
+        },
+        enableSorting: false,
+        enableHiding: false,
       },
       {
         id: "name",

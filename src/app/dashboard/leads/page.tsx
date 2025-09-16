@@ -1,4 +1,4 @@
-// src/app/dashboard/user-leads/page.tsx
+// src/app/dashboard/leads/page.tsx
 "use client";
 
 import UserLeadsContent from "@/components/leads/UserLeadsContent";
