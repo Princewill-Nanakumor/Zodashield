@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
 
@@ -75,6 +76,10 @@ export const useTableColumns = ({
   users,
   selectAllRef,
 }: TableColumnsProps) => {
+  // Get current URL params to preserve filters when navigating
+  const searchParams = useSearchParams();
+  const currentParams = searchParams.toString();
+
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
       {
@@ -117,10 +122,15 @@ export const useTableColumns = ({
         header: () => <div className="text-center font-medium">Actions</div>,
         cell: ({ row }) => {
           const lead = row.original;
+          // Preserve current filters in the URL
+          const detailUrl = currentParams
+            ? `/dashboard/all-leads/${lead._id}?${currentParams}`
+            : `/dashboard/all-leads/${lead._id}`;
+
           return (
             <div className="flex items-center justify-center">
               <Link
-                href={`/dashboard/all-leads/${lead._id}`}
+                href={detailUrl}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:border dark:border-gray-700 transition-colors duration-200"
                 title="View Details"
@@ -326,6 +336,7 @@ export const useTableColumns = ({
       handleRowSelection,
       users,
       selectAllRef,
+      currentParams,
     ]
   );
 

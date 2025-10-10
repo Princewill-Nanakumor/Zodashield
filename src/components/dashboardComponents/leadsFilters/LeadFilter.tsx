@@ -9,6 +9,9 @@ import { CountryFilter } from "./CountryFilter";
 import { AddStatusButton } from "./AddStatusButton";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { AddLeadDialog } from "@/components/dashboardComponents/AddLeadDialog";
 
 // Enhanced Filter Skeleton Component
 const FilterSkeleton = () => (
@@ -69,6 +72,7 @@ interface LeadsFilterControlsProps {
   onFilterChange: (value: string) => void;
   users: User[];
   isLoadingUsers: boolean;
+  onAddLead?: () => void;
 }
 
 export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
@@ -88,6 +92,7 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   isLoadingUsers,
 }) => {
   const [isLocalInitializing, setIsLocalInitializing] = useState(true);
+  const [isAddLeadDialogOpen, setIsAddLeadDialogOpen] = useState(false);
 
   // Handle local initialization
   useEffect(() => {
@@ -134,6 +139,16 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
           <div className="flex items-center gap-3">
             <ErrorBoundary fallback={<FilterSkeleton />}>
               <Suspense fallback={<FilterSkeleton />}>
+                {/* Add Lead Button */}
+                <Button
+                  onClick={() => setIsAddLeadDialogOpen(true)}
+                  disabled={isLoading}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Lead
+                </Button>
+
                 {/* Add Status Button */}
                 <AddStatusButton disabled={isLoading} />
 
@@ -162,6 +177,12 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Add Lead Dialog */}
+      <AddLeadDialog
+        isOpen={isAddLeadDialogOpen}
+        onClose={() => setIsAddLeadDialogOpen(false)}
+      />
     </>
   );
 };

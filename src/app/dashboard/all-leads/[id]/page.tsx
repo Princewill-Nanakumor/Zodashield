@@ -2,7 +2,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, use, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
@@ -127,6 +127,7 @@ const LeadDetailsPageContent = ({
 const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -189,10 +190,14 @@ const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }
   }, []);
 
-  // Handle back navigation
+  // Handle back navigation - preserve filters
   const handleBack = useCallback(() => {
-    router.push("/dashboard/all-leads");
-  }, [router]);
+    const params = searchParams.toString();
+    const backUrl = params
+      ? `/dashboard/all-leads?${params}`
+      : "/dashboard/all-leads";
+    router.push(backUrl);
+  }, [router, searchParams]);
 
   // Update page title when lead is loaded
   useEffect(() => {
