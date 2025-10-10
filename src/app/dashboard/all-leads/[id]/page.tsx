@@ -15,6 +15,7 @@ import CommentsAndActivities from "@/components/leads/leadDetailsPanel/CommentsA
 import AdsImageSlider from "@/components/ads/AdsImageSlider";
 import { LeadDetailsSkeleton } from "@/components/dashboardComponents/LeadDetailsSkeleton";
 import { Lead } from "@/types/leads";
+import { useLeadDetails, useUpdateLead } from "@/hooks/useLeadDetails";
 
 // Lead Details Content Component
 const LeadDetailsPageContent = ({
@@ -128,12 +129,17 @@ const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [lead, setLead] = useState<Lead | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Unwrap params using React.use()
   const { id } = use(params);
+
+  // ✅ Use React Query hook for fetching lead
+  const { lead, isLoading, error } = useLeadDetails(
+    status === "authenticated" ? id : null
+  );
+
+  // ✅ Use React Query mutation for updating lead
+  const { updateLeadAsync } = useUpdateLead();
 
   // Authentication check
   useEffect(() => {
@@ -144,51 +150,19 @@ const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }
   }, [status, session, router]);
 
-  // Fetch lead data
-  useEffect(() => {
-    const fetchLead = async () => {
-      try {
-        setIsLoading(true);
-        console.log("Fetching lead with ID:", id);
-
-        const response = await fetch(`/api/leads/${id}`, {
-          credentials: "include",
-        });
-
-        console.log("Response status:", response.status);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("API Error:", errorData);
-          throw new Error(errorData.error || "Failed to fetch lead");
-        }
-
-        const leadData = await response.json();
-        console.log("Lead data received:", leadData);
-        setLead(leadData);
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (id && status === "authenticated") {
-      fetchLead();
-    }
-  }, [id, status]);
-
   // Handle lead updates
-  const handleLeadUpdated = useCallback(async (updatedLead: Lead) => {
-    try {
-      setLead(updatedLead);
-      return true;
-    } catch (error) {
-      console.error("Error updating lead:", error);
-      return false;
-    }
-  }, []);
+  const handleLeadUpdated = useCallback(
+    async (updatedLead: Lead) => {
+      try {
+        await updateLeadAsync(updatedLead);
+        return true;
+      } catch (error) {
+        console.error("Error updating lead:", error);
+        return false;
+      }
+    },
+    [updateLeadAsync]
+  );
 
   // Handle back navigation - preserve filters
   const handleBack = useCallback(() => {

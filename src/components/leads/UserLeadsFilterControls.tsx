@@ -11,10 +11,13 @@ interface UserLeadsFilterControlsProps {
   shouldShowLoading: boolean;
   filterByCountry: string;
   filterByStatus: string;
+  filterBySource: string;
   onCountryFilterChange: (country: string) => void;
   onStatusFilterChange: (status: string) => void;
+  onSourceFilterChange: (source: string) => void;
   availableCountries: string[];
   availableStatuses: string[]; // Keep this for backward compatibility but won't use it
+  availableSources: string[];
   counts: CountsData;
 }
 
@@ -31,13 +34,18 @@ export const UserLeadsFilterControls: React.FC<
   shouldShowLoading,
   filterByCountry,
   filterByStatus,
+  filterBySource,
   onCountryFilterChange,
   onStatusFilterChange,
+  onSourceFilterChange,
   availableCountries,
+  availableSources,
 }) => {
   // Add safety checks and default values
   const safeFilterByCountry = filterByCountry || "all";
   const safeAvailableCountries = availableCountries || [];
+  const safeFilterBySource = filterBySource || "all";
+  const safeAvailableSources = availableSources || [];
 
   if (shouldShowLoading) {
     return (
@@ -56,6 +64,15 @@ export const UserLeadsFilterControls: React.FC<
     ...safeAvailableCountries.map((country) => ({
       value: country,
       label: country,
+    })),
+  ];
+
+  // Create source options
+  const sourceOptions = [
+    { value: "all", label: "All Sources" },
+    ...safeAvailableSources.map((source) => ({
+      value: source,
+      label: source,
     })),
   ];
 
@@ -78,6 +95,16 @@ export const UserLeadsFilterControls: React.FC<
             value={filterByStatus}
             onChange={onStatusFilterChange}
             disabled={shouldShowLoading}
+          />
+
+          {/* Source Filter */}
+          <FilterSelect
+            value={safeFilterBySource}
+            onChange={onSourceFilterChange}
+            options={sourceOptions}
+            placeholder="All Sources"
+            disabled={shouldShowLoading}
+            isLoading={false}
           />
         </div>
       </div>

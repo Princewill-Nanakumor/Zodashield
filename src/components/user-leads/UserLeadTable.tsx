@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowUpDown } from "lucide-react";
+import { Loader2, ArrowUpDown, Eye } from "lucide-react";
 import { Lead } from "@/types/leads";
 import { useStatuses } from "@/hooks/useStatuses"; // Import the new hook
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // Define the actual status format from API
 interface Status {
@@ -27,7 +29,7 @@ interface Status {
 function LoadingRow() {
   return (
     <TableRow>
-      <TableCell colSpan={7} className="h-24 text-center">
+      <TableCell colSpan={8} className="h-24 text-center">
         <div className="flex items-center justify-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading leads...
@@ -41,7 +43,7 @@ function EmptyRow() {
   return (
     <TableRow>
       <TableCell
-        colSpan={7}
+        colSpan={8}
         className="h-24 text-center text-gray-500 dark:text-gray-400"
       >
         No leads found
@@ -125,6 +127,15 @@ function UserLeadRow({
     return "Unknown User";
   };
 
+  // Get current URL params to preserve filters when navigating
+  const searchParams = useSearchParams();
+  const currentParams = searchParams.toString();
+
+  // Preserve current filters in the URL
+  const detailUrl = currentParams
+    ? `/dashboard/leads/${lead._id}?${currentParams}`
+    : `/dashboard/leads/${lead._id}`;
+
   return (
     <TableRow
       data-state={isSelected ? "selected" : undefined}
@@ -138,6 +149,20 @@ function UserLeadRow({
         }
       `}
     >
+      <TableCell
+        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
+      >
+        <div className="flex items-center justify-center">
+          <Link
+            href={detailUrl}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:border dark:border-gray-700 transition-colors duration-200"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          </Link>
+        </div>
+      </TableCell>
       <TableCell
         className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
       >
@@ -237,6 +262,9 @@ export function UserLeadTable({
     <Table>
       <TableHeader className="bg-gray-100 dark:bg-gray-700">
         <TableRow>
+          <TableHead className="text-center text-gray-900 dark:text-white">
+            Actions
+          </TableHead>
           <SortableHeader field="name">Name</SortableHeader>
           <TableHead className="text-gray-900 dark:text-white">Email</TableHead>
           <TableHead className="text-gray-900 dark:text-white">Phone</TableHead>

@@ -9,6 +9,7 @@ interface FilterLogicProps {
   leads: Lead[];
   filterByCountry: string;
   filterByStatus: string;
+  filterBySource: string;
   sortField: SortField;
   sortOrder: SortOrder;
   isDataReady: boolean;
@@ -18,6 +19,7 @@ interface FilterLogicProps {
     sortedLeads: Lead[];
     availableCountries: string[];
     availableStatuses: string[];
+    availableSources: string[];
   }) => React.ReactElement;
 }
 
@@ -44,6 +46,7 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
   leads,
   filterByCountry,
   filterByStatus,
+  filterBySource,
   sortField,
   sortOrder,
   isDataReady,
@@ -66,7 +69,15 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
       .sort();
   }, [leads, isDataReady]);
 
-  // Filter leads by country, status, and search query
+  // Get available sources - filter out undefined values and ensure string type
+  const availableSources = useMemo(() => {
+    if (!isDataReady || leads.length === 0) return [];
+    return [...new Set(leads.map((lead) => lead.source))]
+      .filter((source): source is string => Boolean(source) && source !== "-")
+      .sort();
+  }, [leads, isDataReady]);
+
+  // Filter leads by country, status, source, and search query
   const filteredLeads = useMemo(() => {
     if (!isDataReady) return [];
 
@@ -76,6 +87,9 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
 
       const statusMatch =
         filterByStatus === "all" || lead.status === filterByStatus;
+
+      const sourceMatch =
+        filterBySource === "all" || lead.source === filterBySource;
 
       let searchMatch = true;
       if (searchQuery && searchQuery.trim() !== "") {
@@ -92,9 +106,16 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
         }
       }
 
-      return countryMatch && statusMatch && searchMatch;
+      return countryMatch && statusMatch && sourceMatch && searchMatch;
     });
-  }, [leads, filterByCountry, filterByStatus, searchQuery, isDataReady]);
+  }, [
+    leads,
+    filterByCountry,
+    filterByStatus,
+    filterBySource,
+    searchQuery,
+    isDataReady,
+  ]);
 
   // Sort filtered leads
   const sortedLeads = useMemo(() => {
@@ -144,5 +165,6 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
     sortedLeads,
     availableCountries,
     availableStatuses,
+    availableSources,
   });
 };

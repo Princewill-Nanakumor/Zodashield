@@ -67,6 +67,20 @@ export const useLeadsURLManagement = () => {
     [searchParams, router]
   );
 
+  // Add source filter change handler
+  const handleSourceFilterChange = useCallback(
+    (source: string) => {
+      const params = new URLSearchParams(searchParams);
+      if (source === "all") {
+        params.delete("source");
+      } else {
+        params.set("source", source);
+      }
+      router.push(`?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router]
+  );
+
   const handleNavigation = useCallback(
     (direction: "prev" | "next", selectedLead: Lead, sortedLeads: Lead[]) => {
       if (!selectedLead) return;
@@ -92,7 +106,8 @@ export const useLeadsURLManagement = () => {
     handleLeadClick,
     handlePanelClose,
     handleCountryFilterChange,
-    handleStatusFilterChange, // Add this
+    handleStatusFilterChange,
+    handleSourceFilterChange,
     handleNavigation,
   };
 };

@@ -55,6 +55,7 @@ export default function UserLeadsContent() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filterByCountry, setFilterByCountry] = useState<string>("all");
   const [filterByStatus, setFilterByStatus] = useState<string>("all");
+  const [filterBySource, setFilterBySource] = useState<string>("all");
 
   // Get sort parameters from URL or use defaults
   const [sortField, setSortField] = useState<SortField>(() => {
@@ -70,8 +71,10 @@ export default function UserLeadsContent() {
   useEffect(() => {
     const urlCountry = searchParams.get("country") || "all";
     const urlStatus = searchParams.get("status") || "all";
+    const urlSource = searchParams.get("source") || "all";
     setFilterByCountry(urlCountry);
     setFilterByStatus(urlStatus);
+    setFilterBySource(urlSource);
   }, [searchParams]);
 
   // Custom hooks - called at component level
@@ -81,6 +84,7 @@ export default function UserLeadsContent() {
     handlePanelClose,
     handleCountryFilterChange: handleURLCountryChange,
     handleStatusFilterChange: handleURLStatusChange,
+    handleSourceFilterChange: handleURLSourceChange,
     handleNavigation,
   } = useLeadsURLManagement();
 
@@ -150,6 +154,15 @@ export default function UserLeadsContent() {
     [handleURLStatusChange]
   );
 
+  // Source filter handler
+  const handleSourceFilterChange = useCallback(
+    (source: string) => {
+      setFilterBySource(source);
+      handleURLSourceChange(source);
+    },
+    [handleURLSourceChange]
+  );
+
   // Auth check
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -198,6 +211,7 @@ export default function UserLeadsContent() {
             leads={leads}
             filterByCountry={filterByCountry}
             filterByStatus={filterByStatus}
+            filterBySource={filterBySource}
             sortField={sortField}
             sortOrder={sortOrder}
             isDataReady={isDataReady}
@@ -208,6 +222,7 @@ export default function UserLeadsContent() {
               sortedLeads,
               availableCountries,
               availableStatuses,
+              availableSources,
             }) => {
               return (
                 <UserLeadsMainContent
@@ -217,10 +232,12 @@ export default function UserLeadsContent() {
                   sortedLeads={sortedLeads}
                   availableCountries={availableCountries}
                   availableStatuses={availableStatuses}
+                  availableSources={availableSources}
                   selectedLead={selectedLead}
                   isPanelOpen={isPanelOpen}
                   filterByCountry={filterByCountry}
                   filterByStatus={filterByStatus}
+                  filterBySource={filterBySource}
                   sortField={sortField}
                   sortOrder={sortOrder}
                   shouldShowLoading={shouldShowLoading}
@@ -236,6 +253,7 @@ export default function UserLeadsContent() {
                   totalLeads={leads.length}
                   handleCountryFilterChange={handleCountryFilterChange}
                   handleStatusFilterChange={handleStatusFilterChange}
+                  handleSourceFilterChange={handleSourceFilterChange}
                   handleLeadClick={handleLeadClick}
                   handleSort={handleSort}
                   handlePanelClose={handlePanelClose}
@@ -258,10 +276,12 @@ interface UserLeadsMainContentProps {
   sortedLeads: Lead[];
   availableCountries: string[];
   availableStatuses: string[];
+  availableSources: string[];
   selectedLead: Lead | null;
   isPanelOpen: boolean;
   filterByCountry: string;
   filterByStatus: string;
+  filterBySource: string;
   sortField: SortField;
   sortOrder: SortOrder;
   shouldShowLoading: boolean;
@@ -271,6 +291,7 @@ interface UserLeadsMainContentProps {
   totalLeads: number;
   handleCountryFilterChange: (country: string) => void;
   handleStatusFilterChange: (status: string) => void;
+  handleSourceFilterChange: (source: string) => void;
   handleLeadClick: (lead: Lead) => void;
   handleSort: (field: SortField) => void;
   handlePanelClose: () => void;
@@ -289,10 +310,12 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
   sortedLeads,
   availableCountries,
   availableStatuses,
+  availableSources,
   selectedLead,
   isPanelOpen,
   filterByCountry,
   filterByStatus,
+  filterBySource,
   sortField,
   sortOrder,
   shouldShowLoading,
@@ -302,6 +325,7 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
   totalLeads,
   handleCountryFilterChange,
   handleStatusFilterChange,
+  handleSourceFilterChange,
   handleLeadClick,
   handleSort,
   handlePanelClose,
@@ -371,10 +395,13 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
           shouldShowLoading={shouldShowLoading}
           filterByCountry={filterByCountry}
           filterByStatus={filterByStatus}
+          filterBySource={filterBySource}
           onCountryFilterChange={handleCountryFilterChange}
           onStatusFilterChange={handleStatusFilterChange}
+          onSourceFilterChange={handleSourceFilterChange}
           availableCountries={availableCountries}
           availableStatuses={availableStatuses}
+          availableSources={availableSources}
           counts={counts}
         />
       </div>
