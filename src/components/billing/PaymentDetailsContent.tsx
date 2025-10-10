@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { AlertCircle, DollarSign } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import PaymentStatusCard from "./PaymentStatusCard";
@@ -12,76 +11,21 @@ import {
   formatCurrency,
   formatDate,
 } from "./PaymentUtils";
-
-interface Payment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
+import { Payment } from "@/types/payment.types";
 
 interface PaymentDetailsContentProps {
-  loading: boolean;
-  error: string | null;
   payment: Payment | null;
-  onRetry: () => void;
   onClose: () => void;
   onNewPayment: () => void;
-  onClearPayment: () => void;
 }
 
 export default function PaymentDetailsContent({
-  loading,
-  error,
   payment,
-  onRetry,
   onClose,
   onNewPayment,
-  onClearPayment,
 }: PaymentDetailsContentProps) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center justify-center w-full h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-500 mb-4">{error}</p>
-          <Button onClick={onRetry}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
   if (!payment) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Payment not found
-          </p>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -174,7 +118,6 @@ export default function PaymentDetailsContent({
       <PaymentStatusCard
         payment={payment}
         onNewPayment={onNewPayment}
-        onClearPayment={onClearPayment}
         onCloseModal={onClose}
       />
     </div>

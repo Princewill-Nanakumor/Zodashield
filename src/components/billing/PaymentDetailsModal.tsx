@@ -1,24 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import { X as CloseIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PaymentDetailsContent from "./PaymentDetailsContent";
-
-interface Payment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
+import { usePayment } from "@/hooks/useBillingData";
 
 interface PaymentDetailsModalProps {
   paymentId: string;
@@ -36,39 +22,12 @@ export default function PaymentDetailsModal({
   onNewPayment = () => {},
   onClearPayment = () => {},
 }: PaymentDetailsModalProps) {
-  const [payment, setPayment] = useState<Payment | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPaymentDetails = useCallback(async () => {
-    if (!paymentId) return;
-
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/payments/${paymentId}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch payment details");
-      }
-
-      const data = await response.json();
-      setPayment(data.payment);
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to fetch payment details"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [paymentId]);
-
-  useEffect(() => {
-    if (paymentId && isOpen) {
-      fetchPaymentDetails();
-    }
-  }, [paymentId, isOpen, fetchPaymentDetails]);
+  // Use React Query to fetch payment details
+  const {
+    data: payment,
+    isLoading: loading,
+    error,
+  } = usePayment(isOpen ? paymentId : null);
 
   const handleClose = () => {
     // Clear localStorage
@@ -110,15 +69,34 @@ export default function PaymentDetailsModal({
 
         {/* Content */}
         <div className="p-6 bg-white dark:bg-gray-900 rounded-b-2xl">
-          <PaymentDetailsContent
-            loading={loading}
-            error={error}
-            payment={payment}
-            onRetry={fetchPaymentDetails}
-            onClose={handleClose}
-            onNewPayment={onNewPayment}
-            onClearPayment={onClearPayment}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-8 w-8 rounded-full border-b-2 border-gray-900 dark:border-white animate-spin"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 dark:text-red-400 mb-4">
+                {error instanceof Error
+                  ? error.message
+                  : "Failed to fetch payment details"}
+              </p>
+              <Button onClick={onClose} variant="outline">
+                Close
+              </Button>
+            </div>
+          ) : payment ? (
+            <PaymentDetailsContent
+              payment={payment}
+              onNewPayment={onNewPayment}
+              onClose={handleClose}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600 dark:text-gray-400">
+                No payment details available
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

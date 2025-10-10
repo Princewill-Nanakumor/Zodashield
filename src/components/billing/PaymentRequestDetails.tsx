@@ -14,24 +14,10 @@ import {
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
-
-interface CurrentPayment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
+import { Payment } from "@/types/payment.types";
 
 interface PaymentRequestDetailsProps {
-  currentPayment: CurrentPayment;
+  currentPayment: Payment;
   network: "TRC20" | "ERC20";
   paymentConfirmed: boolean;
   onConfirmPayment: () => void;

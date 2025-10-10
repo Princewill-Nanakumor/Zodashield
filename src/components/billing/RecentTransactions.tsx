@@ -2,14 +2,7 @@
 
 import React from "react";
 import { Wallet } from "lucide-react";
-
-interface Transaction {
-  id: string;
-  amount: number;
-  status: string;
-  date: string;
-  type: string;
-}
+import { Transaction } from "@/types/payment.types";
 
 interface RecentTransactionsProps {
   transactions?: Transaction[];

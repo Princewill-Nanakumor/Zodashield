@@ -12,65 +12,31 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Payment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
+import { Payment } from "@/types/payment.types";
 
 interface PaymentStatusCardProps {
   payment: Payment;
   onNewPayment: () => void;
-  onClearPayment: () => void;
   onCloseModal: () => void;
 }
 
 export default function PaymentStatusCard({
   payment,
   onNewPayment,
-  onClearPayment,
   onCloseModal,
 }: PaymentStatusCardProps) {
   const handleNewPayment = () => {
     // Clear ALL payment-related localStorage items
     const keysToRemove = [
-      "currentPayment",
-      "paymentNetwork",
-      "paymentConfirmed",
-      "paymentAmount",
-      "paymentCurrency",
-      "paymentId",
-      "paymentStatus",
-      "paymentMethod",
-      "paymentCreatedAt",
-      "paymentWalletAddress",
-      "paymentTransactionId",
-      "paymentDescription",
-      "paymentApprovedAt",
-      "paymentApprovedBy",
+      "current_payment",
+      "payment_network",
+      "payment_timestamp",
+      "payment_confirmed",
     ];
 
     keysToRemove.forEach((key) => {
       localStorage.removeItem(key);
     });
-
-    // Also clear any sessionStorage items
-    keysToRemove.forEach((key) => {
-      sessionStorage.removeItem(key);
-    });
-
-    // Call the parent handler to reset state
-    onClearPayment();
 
     // Close the modal
     onCloseModal();

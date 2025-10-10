@@ -2,6 +2,8 @@
 
 "use client";
 
+import { Payment } from "@/types/payment.types";
+
 // Local storage keys
 const STORAGE_KEYS = {
   CURRENT_PAYMENT: "current_payment",
@@ -10,31 +12,16 @@ const STORAGE_KEYS = {
   PAYMENT_CONFIRMED: "payment_confirmed",
 };
 
-interface CurrentPayment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
-
 interface PaymentStorageManagerProps {
-  currentPayment: CurrentPayment | null;
+  currentPayment: Payment | null;
   network: "TRC20" | "ERC20";
-  setCurrentPayment: (payment: CurrentPayment | null) => void;
+  setCurrentPayment: (payment: Payment | null) => void;
   setNetwork: (network: "TRC20" | "ERC20") => void;
   setPaymentConfirmed: (confirmed: boolean) => void;
 }
 
 const getPaymentFromStorage = (): {
-  payment: CurrentPayment | null;
+  payment: Payment | null;
   network: string | null;
   confirmed: boolean;
 } => {
@@ -56,7 +43,7 @@ const getPaymentFromStorage = (): {
       return { payment: null, network: null, confirmed: false };
     }
 
-    const payment = JSON.parse(paymentData) as CurrentPayment;
+    const payment = JSON.parse(paymentData) as Payment;
     return {
       payment,
       network,

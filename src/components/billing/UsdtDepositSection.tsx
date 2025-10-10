@@ -4,21 +4,7 @@ import React from "react";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PaymentRequestDetails from "./PaymentRequestDetails";
-
-interface CurrentPayment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
+import { Payment } from "@/types/payment.types";
 
 interface UsdtDepositSectionProps {
   amount: string;
@@ -26,7 +12,7 @@ interface UsdtDepositSectionProps {
   isSubmitting: boolean;
   error: string | null;
   showInstructions: boolean;
-  currentPayment: CurrentPayment | null;
+  currentPayment: Payment | null;
   paymentConfirmed: boolean;
   onNetworkToggle: () => void;
   onAmountChange: (value: string) => void;

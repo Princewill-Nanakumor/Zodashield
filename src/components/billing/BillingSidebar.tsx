@@ -6,14 +6,7 @@ import React from "react";
 import { CircleDollarSign } from "lucide-react";
 import RecentTransactions from "./RecentTransactions";
 import Support from "./Support";
-
-interface Transaction {
-  id: string;
-  amount: number;
-  status: string;
-  date: string;
-  type: string;
-}
+import { Transaction } from "@/types/payment.types";
 
 interface BillingSidebarProps {
   balance?: number;

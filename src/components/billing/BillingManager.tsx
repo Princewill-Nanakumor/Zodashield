@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BillingSidebar from "./BillingSidebar";
@@ -11,152 +11,97 @@ import CardDepositSection from "./CardDepositSection";
 import PaymentDetailsModal from "./PaymentDetailsModal";
 import BillingHeader from "./BillingHeader";
 import PaymentStorageManager from "./PaymentStorageManager";
-import BillingDataManager from "./BillingDataManager";
-import PaymentCreationManager from "./PaymentCreationManager";
+import { useBillingSummary } from "@/hooks/useBillingData";
+import { useCreatePayment } from "@/hooks/usePaymentMutations";
+import { Payment } from "@/types/payment.types";
 
-interface CurrentPayment {
-  _id: string;
-  amount: number;
-  currency: string;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  method: "CREDIT_CARD" | "PAYPAL" | "BANK_TRANSFER" | "CRYPTO";
-  transactionId: string;
-  description?: string;
-  network?: "TRC20" | "ERC20";
-  walletAddress?: string;
-  createdAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-}
-
-interface Transaction {
-  id: string;
-  amount: number;
-  status: string;
-  date: string;
-  type: string;
-}
-
-interface BillingData {
-  balance: number;
-  totalDeposits: number;
-  pendingAmount: number;
-  recentTransactions: Transaction[];
-}
-
-// Manager interfaces
-interface PaymentStorageManagerType {
-  loadPaymentFromStorage: () => void;
-  savePaymentToStorage: (confirmed?: boolean) => void;
-  clearPaymentFromStorage: () => void;
-}
-
-interface BillingDataManagerType {
-  fetchBillingData: () => Promise<void>;
-}
-
-interface PaymentCreationManagerType {
-  handleCreatePayment: (e: React.FormEvent) => Promise<void>;
-}
+const MIN_DEPOSIT = parseFloat(
+  process.env.NEXT_PUBLIC_MIN_PAYMENT_AMOUNT || "10"
+);
+const MAX_DEPOSIT = parseFloat(
+  process.env.NEXT_PUBLIC_MAX_PAYMENT_AMOUNT || "1000000"
+);
 
 export default function BillingManager() {
   const [amount, setAmount] = useState("");
   const [activeTab, setActiveTab] = useState("usdt");
   const [showInstructions, setShowInstructions] = useState(false);
   const [network, setNetwork] = useState<"TRC20" | "ERC20">("TRC20");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentPaymentId, setCurrentPaymentId] = useState<string>("");
-  const [currentPayment, setCurrentPayment] = useState<CurrentPayment | null>(
-    null
-  );
+  const [currentPayment, setCurrentPayment] = useState<Payment | null>(null);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-  const [isBillingLoading, setIsBillingLoading] = useState(true);
 
-  // State for billing data
-  const [billingData, setBillingData] = useState<BillingData>({
-    balance: 0,
-    totalDeposits: 0,
-    pendingAmount: 0,
-    recentTransactions: [],
-  });
+  // React Query hooks
+  const { billingData, isLoading: isBillingLoading } = useBillingSummary();
+  const createPaymentMutation = useCreatePayment();
 
-  // Use refs to store managers
-  const paymentStorageRef = useRef<PaymentStorageManagerType | null>(null);
-  const billingDataManagerRef = useRef<BillingDataManagerType | null>(null);
-  const paymentCreationManagerRef = useRef<PaymentCreationManagerType | null>(
-    null
+  // Payment storage manager - memoized to prevent recreating on every render
+  const paymentStorageManager = useMemo(
+    () =>
+      PaymentStorageManager({
+        currentPayment,
+        network,
+        setCurrentPayment,
+        setNetwork,
+        setPaymentConfirmed,
+      }),
+    [currentPayment, network]
   );
-
-  // Initialize managers
-  useEffect(() => {
-    paymentStorageRef.current = PaymentStorageManager({
-      currentPayment,
-      network,
-      setCurrentPayment,
-      setNetwork,
-      setPaymentConfirmed,
-    });
-
-    billingDataManagerRef.current = BillingDataManager({
-      setBillingData,
-    });
-
-    paymentCreationManagerRef.current = PaymentCreationManager({
-      amount,
-      network,
-      setError,
-      setIsSubmitting,
-      setCurrentPayment,
-      setPaymentConfirmed,
-      setAmount,
-      billingDataManager: billingDataManagerRef.current!,
-    });
-  }, [
-    currentPayment,
-    network,
-    amount,
-    setCurrentPayment,
-    setNetwork,
-    setPaymentConfirmed,
-    setError,
-    setIsSubmitting,
-    setAmount,
-    setBillingData,
-  ]);
 
   // Load persisted payment on component mount
   useEffect(() => {
-    if (paymentStorageRef.current) {
-      paymentStorageRef.current.loadPaymentFromStorage();
-    }
-  }, [paymentStorageRef]);
+    paymentStorageManager.loadPaymentFromStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save payment to localStorage when it changes
   useEffect(() => {
-    if (currentPayment && paymentStorageRef.current) {
-      paymentStorageRef.current.savePaymentToStorage();
+    if (currentPayment) {
+      paymentStorageManager.savePaymentToStorage(paymentConfirmed);
     }
-  }, [currentPayment, network, paymentConfirmed, paymentStorageRef]);
+  }, [currentPayment, network, paymentConfirmed, paymentStorageManager]);
 
-  // Fetch billing data on component mount
-  useEffect(() => {
-    if (billingDataManagerRef.current) {
-      setIsBillingLoading(true);
-      billingDataManagerRef.current
-        .fetchBillingData()
-        .finally(() => setIsBillingLoading(false));
-    }
-  }, [billingDataManagerRef]);
-
+  // Handle payment creation
   const handleCreatePayment = useCallback(
     async (e: React.FormEvent) => {
-      if (paymentCreationManagerRef.current) {
-        await paymentCreationManagerRef.current.handleCreatePayment(e);
+      e.preventDefault();
+      setError(null);
+
+      const amountNum = parseFloat(amount);
+
+      if (amountNum < MIN_DEPOSIT) {
+        setError(`Minimum deposit amount is ${MIN_DEPOSIT} USDT`);
+        return;
+      }
+
+      if (amountNum > MAX_DEPOSIT) {
+        setError(`Maximum deposit amount is ${MAX_DEPOSIT} USDT`);
+        return;
+      }
+
+      try {
+        const result = await createPaymentMutation.mutateAsync({
+          amount: amountNum,
+          currency: "USD",
+          method: "CRYPTO",
+          network: network,
+          description: `${amount} USDT deposit via ${network}`,
+        });
+
+        if (result.success) {
+          setCurrentPayment(result.payment);
+          setPaymentConfirmed(false);
+          setAmount("");
+        }
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "Failed to create payment"
+        );
       }
     },
-    [paymentCreationManagerRef]
+    [amount, network, createPaymentMutation]
   );
 
   const toggleNetwork = useCallback(() => {
@@ -182,10 +127,8 @@ export default function BillingManager() {
   // Payment action handlers
   const handleConfirmPayment = useCallback(() => {
     setPaymentConfirmed(true);
-    if (paymentStorageRef.current) {
-      paymentStorageRef.current.savePaymentToStorage(true);
-    }
-  }, [paymentStorageRef]);
+    paymentStorageManager.savePaymentToStorage(true);
+  }, [paymentStorageManager]);
 
   const handleShowPaymentDetails = useCallback(() => {
     if (currentPayment) {
@@ -199,17 +142,14 @@ export default function BillingManager() {
     setPaymentConfirmed(false);
     setAmount("");
     setError(null);
-    if (paymentStorageRef.current) {
-      paymentStorageRef.current.clearPaymentFromStorage();
-    }
-  }, [paymentStorageRef]);
+    paymentStorageManager.clearPaymentFromStorage();
+  }, [paymentStorageManager]);
 
   const handleCloseModal = useCallback(() => {
     setShowPaymentModal(false);
     setCurrentPaymentId("");
   }, []);
 
-  // Updated handleTransactionClick to prevent opening modal when there's an unconfirmed payment
   const handleTransactionClick = useCallback(
     (transactionId: string) => {
       // Don't open modal if there's an unconfirmed payment
@@ -223,26 +163,18 @@ export default function BillingManager() {
     [currentPayment, paymentConfirmed]
   );
 
-  // New function to handle clearing payment completely
   const handleClearPayment = useCallback(() => {
-    // Clear all state
     setCurrentPayment(null);
     setPaymentConfirmed(false);
     setAmount("");
     setError(null);
     setShowPaymentModal(false);
     setCurrentPaymentId("");
+    paymentStorageManager.clearPaymentFromStorage();
+  }, [paymentStorageManager]);
 
-    // Clear localStorage completely
-    if (paymentStorageRef.current) {
-      paymentStorageRef.current.clearPaymentFromStorage();
-    }
-  }, [paymentStorageRef]);
-
-  // New function to handle new payment
   const handleNewPayment = useCallback(() => {
     handleClearPayment();
-    // Reset to initial state
     setActiveTab("usdt");
     setNetwork("TRC20");
     setShowInstructions(false);
@@ -258,7 +190,7 @@ export default function BillingManager() {
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2">
             <div className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg dark:border dark:border-white/10 bg-white border border-gray-200">
-              {/* Tab Navigation - Now inside the main content card */}
+              {/* Tab Navigation */}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold dark:text-white text-gray-900">
                   Deposit Funds
@@ -288,12 +220,13 @@ export default function BillingManager() {
                   </Button>
                 </div>
               </div>
+
               {/* USDT Deposit Section */}
               {activeTab === "usdt" ? (
                 <UsdtDepositSection
                   network={network}
                   amount={amount}
-                  isSubmitting={isSubmitting}
+                  isSubmitting={createPaymentMutation.isPending}
                   error={error}
                   currentPayment={currentPayment}
                   paymentConfirmed={paymentConfirmed}
