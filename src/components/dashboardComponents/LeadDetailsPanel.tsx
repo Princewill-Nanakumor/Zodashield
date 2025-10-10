@@ -176,6 +176,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
             lead={currentLead}
             isExpanded={expandedSections.contact}
             onToggle={() => toggleSection("contact")}
+            onLeadUpdated={handleLeadUpdated}
           />
           <AdsImageSlider
             isExpanded={expandedSections.ads}
@@ -185,6 +186,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
             lead={currentLead}
             isExpanded={expandedSections.details}
             onToggle={() => toggleSection("details")}
+            onLeadUpdated={handleLeadUpdated}
           />
         </div>
       </div>

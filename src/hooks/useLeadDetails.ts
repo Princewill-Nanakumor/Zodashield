@@ -1,7 +1,6 @@
 // src/hooks/useLeadDetails.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
-import { useToast } from "@/components/ui/use-toast";
 
 /**
  * Hook to fetch a single lead by ID using React Query
@@ -62,7 +61,6 @@ export const useLeadDetails = (leadId: string | null | undefined) => {
  */
 export const useUpdateLead = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const mutation = useMutation({
     mutationFn: async (updatedLead: Lead): Promise<Lead> => {
@@ -88,6 +86,8 @@ export const useUpdateLead = () => {
       return data;
     },
     onSuccess: (updatedLead) => {
+      console.log("✅ onSuccess - Lead updated:", updatedLead);
+
       // Update the specific lead in cache
       queryClient.setQueryData(["lead", updatedLead._id], updatedLead);
 
@@ -97,20 +97,13 @@ export const useUpdateLead = () => {
       // Optionally invalidate assigned leads
       queryClient.invalidateQueries({ queryKey: ["leads", "assigned"] });
 
-      toast({
-        title: "Success",
-        description: "Lead updated successfully",
-      });
+      // Don't show toast here - let the component handle it
     },
     onError: (error) => {
-      console.error("❌ Error updating lead:", error);
+      console.error("❌ onError - Error updating lead:", error);
 
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update lead",
-        variant: "destructive",
-      });
+      // Don't show toast here - let the component handle it
+      // The error will be caught by the component's try-catch
     },
   });
 
