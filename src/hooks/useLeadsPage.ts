@@ -21,6 +21,7 @@ const STORAGE_KEYS = {
   FILTER_BY_COUNTRY: "leads_filter_by_country",
   FILTER_BY_STATUS: "leads_filter_by_status",
   FILTER_BY_USER: "leads_filter_by_user",
+  FILTER_BY_SOURCE: "leads_filter_by_source",
 } as const;
 
 export const useLeadsPage = (
@@ -330,6 +331,7 @@ export const useLeadsPage = (
   // ===== INITIAL FILTER VALUES =====
   const initialCountry = searchParams.get("country");
   const initialStatus = searchParams.get("status");
+  const initialSource = searchParams.get("source");
 
   // ===== UI STATE =====
   const [uiState, setUiState] = useState({
@@ -344,6 +346,11 @@ export const useLeadsPage = (
     filterByStatus: getInitialFilterValue(
       STORAGE_KEYS.FILTER_BY_STATUS,
       initialStatus,
+      "all"
+    ),
+    filterBySource: getInitialFilterValue(
+      STORAGE_KEYS.FILTER_BY_SOURCE,
+      initialSource,
       "all"
     ),
     searchQuery: searchQuery,
@@ -379,6 +386,15 @@ export const useLeadsPage = (
 
   useEffect(() => {
     if (isInitialized) {
+      localStorage.setItem(
+        STORAGE_KEYS.FILTER_BY_SOURCE,
+        uiState.filterBySource
+      );
+    }
+  }, [uiState.filterBySource, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
       localStorage.setItem(STORAGE_KEYS.FILTER_BY_USER, filterByUser);
     }
   }, [filterByUser, isInitialized]);
@@ -391,6 +407,7 @@ export const useLeadsPage = (
   useEffect(() => {
     const urlCountry = searchParams.get("country");
     const urlStatus = searchParams.get("status");
+    const urlSource = searchParams.get("source");
 
     const targetCountry = urlCountry || "all";
     if (targetCountry !== uiState.filterByCountry) {
@@ -401,7 +418,17 @@ export const useLeadsPage = (
     if (targetStatus !== uiState.filterByStatus) {
       setUiState((prev) => ({ ...prev, filterByStatus: targetStatus }));
     }
-  }, [searchParams, uiState.filterByCountry, uiState.filterByStatus]);
+
+    const targetSource = urlSource || "all";
+    if (targetSource !== uiState.filterBySource) {
+      setUiState((prev) => ({ ...prev, filterBySource: targetSource }));
+    }
+  }, [
+    searchParams,
+    uiState.filterByCountry,
+    uiState.filterByStatus,
+    uiState.filterBySource,
+  ]);
 
   useEffect(() => {
     if (setLayoutLoading) {
@@ -472,6 +499,12 @@ export const useLeadsPage = (
       });
     }
 
+    if (uiState.filterBySource !== "all") {
+      filtered = filtered.filter(
+        (lead) => lead.source === uiState.filterBySource
+      );
+    }
+
     return filtered;
   }, [
     stableLeads,
@@ -479,6 +512,7 @@ export const useLeadsPage = (
     filterByUser,
     uiState.filterByCountry,
     uiState.filterByStatus,
+    uiState.filterBySource,
     statuses,
   ]);
 
@@ -611,6 +645,25 @@ export const useLeadsPage = (
     [pathname, searchParams]
   );
 
+  const handleSourceFilterChange = useCallback(
+    (source: string) => {
+      setUiState((prev) => ({
+        ...prev,
+        filterBySource: source,
+      }));
+
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      params.set("page", "1");
+      if (source === "all") {
+        params.delete("source");
+      } else {
+        params.set("source", source);
+      }
+      window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
+    },
+    [pathname, searchParams]
+  );
+
   const handleFilterChange = useCallback(
     (value: string) => {
       setFilterByUser(value);
@@ -660,6 +713,7 @@ export const useLeadsPage = (
     handleSelectionChange,
     handleCountryFilterChange,
     handleStatusFilterChange,
+    handleSourceFilterChange,
     handleFilterChange,
     hasAssignedLeads,
     isInitializing: !isInitialized,

@@ -12,6 +12,7 @@ interface EmptyStateAdminLeadsTableProps {
   filterByUser?: string;
   filterByCountry?: string;
   filterByStatus?: string;
+  filterBySource?: string;
   hasFilters?: boolean;
   users?: User[];
 }
@@ -22,7 +23,8 @@ export const EmptyStateAdminLeadsTable: React.FC<
   searchQuery = "",
   filterByUser = "all",
   filterByCountry = "all",
-  filterByStatus = "all", // Add this prop with default value
+  filterByStatus = "all",
+  filterBySource = "all",
   hasFilters = false,
   users = [],
 }) => {
@@ -71,6 +73,9 @@ export const EmptyStateAdminLeadsTable: React.FC<
       }
       if (filterByStatus !== "all") {
         filters.push(`leads with status "${filterByStatus}"`);
+      }
+      if (filterBySource !== "all") {
+        filters.push(`leads from source "${filterBySource}"`);
       }
 
       return {

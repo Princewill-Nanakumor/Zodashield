@@ -39,6 +39,7 @@ interface LeadsTableProps {
   filterByUser?: string;
   filterByCountry?: string;
   filterByStatus?: string;
+  filterBySource?: string;
 }
 
 export default function LeadsTable({
@@ -52,6 +53,7 @@ export default function LeadsTable({
   filterByUser = "all",
   filterByCountry = "all",
   filterByStatus = "all",
+  filterBySource = "all",
 }: LeadsTableProps) {
   // Store hooks (NOT for pagination)
   const selectedLead = useSelectedLead();
@@ -212,10 +214,12 @@ export default function LeadsTable({
               filterByUser={filterByUser}
               filterByCountry={filterByCountry}
               filterByStatus={filterByStatus}
+              filterBySource={filterBySource}
               hasFilters={
                 filterByUser !== "all" ||
                 filterByCountry !== "all" ||
-                filterByStatus !== "all"
+                filterByStatus !== "all" ||
+                filterBySource !== "all"
               }
               users={users}
             />

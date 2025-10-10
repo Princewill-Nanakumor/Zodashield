@@ -62,6 +62,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleSelectionChange,
     handleCountryFilterChange,
     handleStatusFilterChange,
+    handleSourceFilterChange,
     handleFilterChange,
     hasAssignedLeads,
     isRefetchingLeads,
@@ -119,12 +120,13 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   // ⚡ Memoized table key to prevent unnecessary re-renders
   const tableKey = useMemo(
     () =>
-      `leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}-${uiState.filterByStatus}`,
+      `leads-table-${leads.length}-${filterByUser}-${uiState.filterByCountry}-${uiState.filterByStatus}-${uiState.filterBySource}`,
     [
       leads.length,
       filterByUser,
       uiState.filterByCountry,
       uiState.filterByStatus,
+      uiState.filterBySource,
     ]
   );
 
@@ -207,6 +209,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             onCountryFilterChange={handleCountryFilterChange}
             filterByStatus={uiState.filterByStatus}
             onStatusFilterChange={handleStatusFilterChange}
+            filterBySource={uiState.filterBySource}
+            onSourceFilterChange={handleSourceFilterChange}
             isLoading={isLoading}
             filterByUser={filterByUser}
             onFilterChange={handleFilterChange}
@@ -238,6 +242,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                     filterByUser={filterByUser}
                     filterByCountry={uiState.filterByCountry}
                     filterByStatus={uiState.filterByStatus}
+                    filterBySource={uiState.filterBySource}
                     users={users}
                   />
                 </div>
@@ -255,6 +260,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                     filterByUser={filterByUser}
                     filterByCountry={uiState.filterByCountry}
                     filterByStatus={uiState.filterByStatus}
+                    filterBySource={uiState.filterBySource}
                   />
                 </div>
               )}

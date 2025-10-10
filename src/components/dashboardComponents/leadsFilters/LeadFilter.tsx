@@ -6,6 +6,7 @@ import { BulkActions } from "@/components/dashboardComponents/BulkActions";
 import { UserFilter } from "./UserFilter";
 import { StatusFilter } from "./StatusFilter";
 import { CountryFilter } from "./CountryFilter";
+import { SourceFilter } from "./SourceFilter";
 import { AddStatusButton } from "./AddStatusButton";
 import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
@@ -67,6 +68,8 @@ interface LeadsFilterControlsProps {
   onCountryFilterChange: (country: string) => void;
   filterByStatus: string;
   onStatusFilterChange: (status: string) => void;
+  filterBySource: string;
+  onSourceFilterChange: (source: string) => void;
   isLoading: boolean;
   filterByUser: string;
   onFilterChange: (value: string) => void;
@@ -86,6 +89,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   onCountryFilterChange,
   filterByStatus,
   onStatusFilterChange,
+  filterBySource,
+  onSourceFilterChange,
   isLoading,
   filterByUser,
   onFilterChange,
@@ -163,6 +168,13 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
                 <StatusFilter
                   value={filterByStatus}
                   onChange={onStatusFilterChange}
+                  disabled={isLoading}
+                />
+
+                {/* Source Filter with React Query */}
+                <SourceFilter
+                  value={filterBySource}
+                  onChange={onSourceFilterChange}
                   disabled={isLoading}
                 />
 

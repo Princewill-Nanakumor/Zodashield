@@ -132,7 +132,7 @@ export interface Lead {
   phone?: string;
   country?: string;
   value?: number;
-  source: LeadSource;
+  source: string; // Allow any string value for source (Manual Entry, Import, etc.)
   status: string;
   statusName?: string;
   statusColor?: string;
@@ -188,15 +188,15 @@ export const formatDate = (dateString: string): string => {
 };
 
 // Helper function to get source label
-export const getSourceLabel = (source: LeadSource): string => {
-  const labels = {
+export const getSourceLabel = (source: string): string => {
+  const labels: Record<string, string> = {
     WEBSITE: "Website",
     REFERRAL: "Referral",
     SOCIAL: "Social Media",
     EMAIL: "Email Campaign",
     OTHER: "Other",
   };
-  return labels[source];
+  return labels[source] || source; // Return the source as-is if not in the predefined list
 };
 
 // Helper function to get status badge variant

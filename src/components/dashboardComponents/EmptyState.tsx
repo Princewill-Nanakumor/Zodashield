@@ -7,13 +7,15 @@ interface EmptyStateProps {
   filterByUser: string;
   filterByCountry: string;
   filterByStatus: string;
+  filterBySource: string;
   users: User[];
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
   filterByUser,
   filterByCountry,
-  filterByStatus, // Add this to destructuring
+  filterByStatus,
+  filterBySource,
   users,
 }) => {
   const getFilterDescription = () => {
@@ -38,6 +40,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({
 
     if (filterByStatus !== "all") {
       filters.push(`leads with status "${filterByStatus}"`);
+    }
+
+    if (filterBySource !== "all") {
+      filters.push(`leads from source "${filterBySource}"`);
     }
 
     if (filters.length === 0) {

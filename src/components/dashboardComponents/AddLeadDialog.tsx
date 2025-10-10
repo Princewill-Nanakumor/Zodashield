@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Loader2, Plus } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { useStatuses } from "@/context/StatusContext";
 
 interface AddLeadFormData {
   firstName: string;
@@ -38,21 +40,15 @@ interface AddLeadDialogProps {
   onClose: () => void;
 }
 
-const DEFAULT_STATUSES = [
-  { value: "NEW", label: "New" },
-  { value: "CONTACTED", label: "Contacted" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "QUALIFIED", label: "Qualified" },
-  { value: "LOST", label: "Lost" },
-  { value: "WON", label: "Won" },
-];
-
 export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
   isOpen,
   onClose,
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch statuses from context
+  const { statuses, isLoading: isLoadingStatuses } = useStatuses();
 
   const {
     register,
@@ -69,11 +65,18 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
       phone: "",
       country: "",
       source: "Manual Entry",
-      status: "NEW",
+      status: statuses[0]?._id || statuses[0]?.id || "NEW",
     },
   });
 
   const selectedStatus = watch("status");
+
+  // Update default status when statuses load
+  React.useEffect(() => {
+    if (statuses.length > 0 && !selectedStatus) {
+      setValue("status", statuses[0]?._id || statuses[0]?.id || "NEW");
+    }
+  }, [statuses, selectedStatus, setValue]);
 
   // Create lead mutation
   const createLeadMutation = useMutation({
@@ -103,8 +106,16 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
         variant: "success",
       });
 
-      // Reset form and close dialog
-      reset();
+      // Reset form with default status
+      reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        country: "",
+        source: "Manual Entry",
+        status: statuses[0]?._id || statuses[0]?.id || "NEW",
+      });
       onClose();
     },
     onError: (error: Error) => {
@@ -122,7 +133,15 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
 
   const handleClose = () => {
     if (!createLeadMutation.isPending) {
-      reset();
+      reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        country: "",
+        source: "Manual Entry",
+        status: statuses[0]?._id || statuses[0]?.id || "NEW",
+      });
       onClose();
     }
   };
@@ -252,19 +271,50 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
             <Select
               value={selectedStatus}
               onValueChange={(value) => setValue("status", value)}
-              disabled={createLeadMutation.isPending}
+              disabled={createLeadMutation.isPending || isLoadingStatuses}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select status" />
+                <SelectValue
+                  placeholder={
+                    isLoadingStatuses ? "Loading statuses..." : "Select status"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {DEFAULT_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
+                {isLoadingStatuses ? (
+                  <SelectItem value="loading" disabled>
+                    Loading statuses...
                   </SelectItem>
-                ))}
+                ) : statuses.length > 0 ? (
+                  statuses.map((status) => (
+                    <SelectItem
+                      key={status._id || status.id}
+                      value={status._id || status.id || ""}
+                      style={{
+                        backgroundColor: status.color
+                          ? `${status.color}20`
+                          : undefined,
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: status.color }}
+                        />
+                        <span>{status.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="NEW">New</SelectItem>
+                )}
               </SelectContent>
             </Select>
+            {isLoadingStatuses && (
+              <p className="text-xs text-gray-500">
+                Loading available statuses...
+              </p>
+            )}
           </div>
 
           <DialogFooter className="gap-2">
