@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { Status } from "@/types/leads";
+import { useStatuses } from "@/context/StatusContext";
 
 interface StatusModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const StatusModal = ({
 }: StatusModalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { refreshStatuses } = useStatuses();
   const [formData, setFormData] = useState({
     name: "",
     color: "#000000",
@@ -39,18 +41,9 @@ const StatusModal = ({
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check if modal should be open on page load
-  useEffect(() => {
-    const shouldOpenModal = localStorage.getItem("statusModalOpen");
-    if (shouldOpenModal === "true" && !isOpen) {
-      // Trigger the modal to open by dispatching a custom event
-      const event = new CustomEvent("openStatusModal");
-      window.dispatchEvent(event);
-    }
-  }, [isOpen]);
-
   const fetchStatuses = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await fetch("/api/statuses");
       if (!response.ok) {
         throw new Error("Failed to fetch statuses");
@@ -59,7 +52,7 @@ const StatusModal = ({
       setStatuses(data);
     } catch (error: unknown) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to load statuses 2";
+        error instanceof Error ? error.message : "Failed to load statuses";
       toast({
         title: "Error",
         description: errorMessage,
@@ -71,9 +64,12 @@ const StatusModal = ({
     }
   }, [toast]);
 
+  // Fetch statuses when modal opens
   useEffect(() => {
-    fetchStatuses();
-  }, [fetchStatuses]);
+    if (isOpen) {
+      fetchStatuses();
+    }
+  }, [isOpen, fetchStatuses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,27 +92,24 @@ const StatusModal = ({
         );
       }
 
-      // Parse the response but don't store it since we're invalidating cache
-      await response.json();
+      // Parse the response
+      const newStatus = await response.json();
 
-      toast({
-        title: "Success",
-        description: `Status ${isEditing ? "updated" : "created"} successfully`,
-        variant: "success",
-      });
-
-      // Invalidate the statuses cache so StatusContext gets updated
+      // Invalidate React Query caches
       await queryClient.invalidateQueries({
         queryKey: ["statuses"],
         exact: false,
       });
 
-      // Also invalidate the leads cache to refresh the table
       await queryClient.invalidateQueries({
         queryKey: ["leads"],
         exact: false,
       });
 
+      // Refresh StatusContext cache (this is the key fix!)
+      await refreshStatuses();
+
+      // Update local state
       if (isEditing && editingId) {
         setStatuses((prev) =>
           prev.map((status) =>
@@ -124,19 +117,18 @@ const StatusModal = ({
           )
         );
       } else {
-        await fetchStatuses();
+        // Add the new status to local state
+        setStatuses((prev) => [...prev, newStatus]);
       }
+
+      toast({
+        title: "Success!",
+        description: `Status ${isEditing ? "updated" : "created"} successfully`,
+        variant: "success",
+      });
 
       resetForm();
       onStatusCreated?.();
-
-      // Set flag to keep modal open after refresh
-      localStorage.setItem("statusModalOpen", "true");
-
-      // Add delay before page refresh so user can see the success message
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error
@@ -176,33 +168,28 @@ const StatusModal = ({
           throw new Error("Failed to delete status");
         }
 
-        toast({
-          title: "Success",
-          description: "Status deleted successfully",
-          variant: "success",
-        });
-
-        // Invalidate the statuses cache
+        // Invalidate React Query caches
         await queryClient.invalidateQueries({
           queryKey: ["statuses"],
           exact: false,
         });
 
-        // Also invalidate the leads cache
         await queryClient.invalidateQueries({
           queryKey: ["leads"],
           exact: false,
         });
 
+        // Refresh StatusContext cache
+        await refreshStatuses();
+
+        // Update local state
         setStatuses((prev) => prev.filter((status) => status._id !== statusId));
 
-        // Set flag to keep modal open after refresh
-        localStorage.setItem("statusModalOpen", "true");
-
-        // Add delay before page refresh so user can see the success message
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        toast({
+          title: "Success!",
+          description: "Status deleted successfully",
+          variant: "success",
+        });
       } catch (err: unknown) {
         console.error("Error deleting status:", err);
         toast({
@@ -221,9 +208,8 @@ const StatusModal = ({
     setEditingId(null);
   };
 
-  // Clear the localStorage flag when modal is closed
   const handleClose = () => {
-    localStorage.removeItem("statusModalOpen");
+    resetForm();
     onClose();
   };
 

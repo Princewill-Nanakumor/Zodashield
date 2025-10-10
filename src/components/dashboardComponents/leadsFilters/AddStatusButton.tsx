@@ -1,7 +1,7 @@
 // src/components/dashboardComponents/filters/AddStatusButton.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import StatusModal from "@/components/dashboardComponents/StatusModal";
 
 interface AddStatusButtonProps {
@@ -10,30 +10,6 @@ interface AddStatusButtonProps {
 
 export const AddStatusButton = ({ disabled }: AddStatusButtonProps) => {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-
-  // Listen for custom event to open modal after page refresh
-  useEffect(() => {
-    const handleOpenStatusModal = () => {
-      setIsStatusModalOpen(true);
-    };
-
-    window.addEventListener("openStatusModal", handleOpenStatusModal);
-
-    // Check if modal should be open on initial load
-    const shouldOpenModal = localStorage.getItem("statusModalOpen");
-    if (shouldOpenModal === "true") {
-      setIsStatusModalOpen(true);
-    }
-
-    return () => {
-      window.removeEventListener("openStatusModal", handleOpenStatusModal);
-    };
-  }, []);
-
-  const handleStatusModalClose = () => {
-    setIsStatusModalOpen(false);
-    localStorage.removeItem("statusModalOpen");
-  };
 
   return (
     <>
@@ -60,7 +36,7 @@ export const AddStatusButton = ({ disabled }: AddStatusButtonProps) => {
 
       <StatusModal
         isOpen={isStatusModalOpen}
-        onClose={handleStatusModalClose}
+        onClose={() => setIsStatusModalOpen(false)}
       />
     </>
   );
