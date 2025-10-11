@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { FilterSelect } from "./FilterSelect";
 
 interface StatusFilterProps {
@@ -18,16 +18,23 @@ export const StatusFilter = ({
   disabled,
   isLoading = false,
 }: StatusFilterProps) => {
-  const queryClient = useQueryClient();
-
-  // ✅ OPTIMIZATION: Get data from existing cache instead of fetching
-  const statuses = useMemo(() => {
-    return (
-      queryClient.getQueryData<
-        Array<{ id: string; name: string; color?: string }>
-      >(["statuses"]) || []
-    );
-  }, [queryClient]);
+  // ✅ FIX: Use useQuery to subscribe to cache updates
+  const { data: statuses = [] } = useQuery<
+    Array<{ id: string; name: string; color?: string }>
+  >({
+    queryKey: ["statuses"],
+    queryFn: async () => {
+      const response = await fetch("/api/statuses", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch statuses");
+      return response.json();
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
   const options = useMemo(() => {
     const statusNames = statuses.map((status) => status.name);

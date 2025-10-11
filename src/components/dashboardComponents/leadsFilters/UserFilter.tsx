@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { User } from "@/types/user.types";
 import { FilterSelect } from "./FilterSelect";
 
@@ -19,12 +19,21 @@ export const UserFilter = ({
   disabled,
   isLoading = false,
 }: UserFilterProps) => {
-  const queryClient = useQueryClient();
-
-  // ✅ OPTIMIZATION: Get data from existing cache instead of fetching
-  const users = useMemo(() => {
-    return queryClient.getQueryData<User[]>(["users"]) || [];
-  }, [queryClient]);
+  // ✅ FIX: Use useQuery to subscribe to cache updates
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch users");
+      return response.json();
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
   const options = useMemo(() => {
     const dropdownUsers = users.filter((user) => user.status === "ACTIVE");

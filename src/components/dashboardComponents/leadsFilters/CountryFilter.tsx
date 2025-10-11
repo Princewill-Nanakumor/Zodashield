@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
 import { FilterSelect } from "./FilterSelect";
 
@@ -19,12 +19,21 @@ export const CountryFilter = ({
   disabled,
   isLoading = false,
 }: CountryFilterProps) => {
-  const queryClient = useQueryClient();
-
-  // ✅ OPTIMIZATION: Get data from existing cache instead of fetching
-  const leads = useMemo(() => {
-    return queryClient.getQueryData<Lead[]>(["leads"]) || [];
-  }, [queryClient]);
+  // ✅ FIX: Use useQuery to subscribe to cache updates
+  const { data: leads = [] } = useQuery<Lead[]>({
+    queryKey: ["leads"],
+    queryFn: async () => {
+      const response = await fetch("/api/leads/all", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch leads");
+      return response.json();
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
   const countries = useMemo(() => {
     return [...new Set(leads.map((lead: Lead) => lead.country))].filter(
