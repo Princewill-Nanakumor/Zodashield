@@ -46,8 +46,6 @@ export const useUserLeadsPage = (
   } = useQuery({
     queryKey: ["leads", "assigned", session?.user?.id], // Better cache key
     queryFn: async (): Promise<Lead[]> => {
-      console.log("🚀 Fetching assigned leads for agent:", session?.user?.id);
-
       const response = await fetch("/api/leads/assigned", {
         credentials: "include",
         headers: {
@@ -55,38 +53,19 @@ export const useUserLeadsPage = (
         },
       });
 
-      console.log("📡 Response status:", response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ API Error:", response.status, errorText);
+        console.error("API Error:", response.status, errorText);
         throw new Error(`Failed to fetch assigned leads: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("📊 Raw API response:", data);
-      console.log(
-        "📊 Data type:",
-        typeof data,
-        "Is array:",
-        Array.isArray(data)
-      );
-
-      // The new API returns the array directly, not wrapped in { leads: [] }
-      const leadsArray = Array.isArray(data) ? data : [];
-      console.log("✅ Processed leads count:", leadsArray.length);
-
-      if (leadsArray.length > 0) {
-        console.log("🎯 Sample lead:", leadsArray[0]);
-      }
-
-      return leadsArray;
+      return Array.isArray(data) ? data : [];
     },
     staleTime: 30 * 60 * 1000, // 30 minutes
     refetchOnWindowFocus: false,
-    retry: (failureCount, error) => {
-      console.log(`🔄 Retry attempt ${failureCount}, error:`, error);
-      return failureCount < 2; // Retry up to 2 times
+    retry: (failureCount) => {
+      return failureCount < 2;
     },
     refetchOnMount: true, // 🔧 Enable to ensure fresh data
     enabled: !!session?.user && session.user.role === "AGENT", // 🔧 Better condition
@@ -95,33 +74,8 @@ export const useUserLeadsPage = (
 
   // ✅ FIX: Wrap safeLeads in useMemo to prevent dependency issues
   const safeLeads = useMemo(() => {
-    const result = Array.isArray(leads) ? leads : [];
-    console.log("🔍 Safe leads processed:", result.length);
-    return result;
+    return Array.isArray(leads) ? leads : [];
   }, [leads]);
-
-  // 🐛 DEBUG: Add comprehensive logging
-  useEffect(() => {
-    console.log("🔍 DEBUG INFO:");
-    console.log("- Session user:", session?.user);
-    console.log("- Session role:", session?.user?.role);
-    console.log("- Raw leads from query:", leads);
-    console.log("- Safe leads:", safeLeads);
-    console.log("- Is loading:", isLoadingLeads);
-    console.log("- Is refetching:", isRefetchingLeads);
-    console.log("- Error:", leadsError);
-    console.log(
-      "- Query enabled:",
-      !!session?.user && session?.user?.role === "AGENT"
-    );
-  }, [
-    session,
-    leads,
-    safeLeads,
-    isLoadingLeads,
-    isRefetchingLeads,
-    leadsError,
-  ]);
 
   // ===== ERROR HANDLING =====
   useEffect(() => {

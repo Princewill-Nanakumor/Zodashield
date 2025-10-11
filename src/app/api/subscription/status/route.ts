@@ -95,15 +95,6 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    console.log("API - Found user:", {
-      email: user.email,
-      trialEndsAt: user.trialEndsAt,
-      subscriptionStatus: user.subscriptionStatus,
-      isOnTrial: user.isOnTrial,
-      subscriptionEndDate: user.subscriptionEndDate,
-      subscriptionStartDate: user.subscriptionStartDate,
-    });
-
     // Calculate trial status
     const now = new Date();
     const trialEndDate = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
@@ -132,11 +123,9 @@ export async function GET() {
       currentPlan: user.currentPlan,
       subscriptionStatus,
       balance,
-      subscriptionEndDate: user.subscriptionEndDate, // Added this field
-      subscriptionStartDate: user.subscriptionStartDate, // Added this field
+      subscriptionEndDate: user.subscriptionEndDate,
+      subscriptionStartDate: user.subscriptionStartDate,
     };
-
-    console.log("API - Returning:", response);
 
     return NextResponse.json(response);
   } catch (error) {

@@ -89,21 +89,28 @@ export const usePerformanceMonitoring = () => {
     []
   );
 
-  // Helper function to format console output
+  // Helper function to format console output (disabled in production)
   const logMetric = useCallback(
     (metric: WebVitalMetric) => {
-      const rating = getMetricRating(metric.name, metric.value);
-      const emoji =
-        rating === "good" ? "🟢" : rating === "needs-improvement" ? "🟡" : "🔴";
+      // Only log in development
+      if (process.env.NODE_ENV === "development") {
+        const rating = getMetricRating(metric.name, metric.value);
+        const emoji =
+          rating === "good"
+            ? "🟢"
+            : rating === "needs-improvement"
+              ? "🟡"
+              : "🔴";
 
-      if (metric.name === "CLS") {
-        console.log(
-          `${emoji} ${metric.name}: ${metric.value.toFixed(3)} (${rating})`
-        );
-      } else {
-        console.log(
-          `${emoji} ${metric.name}: ${Math.round(metric.value)}ms (${rating})`
-        );
+        if (metric.name === "CLS") {
+          console.log(
+            `${emoji} ${metric.name}: ${metric.value.toFixed(3)} (${rating})`
+          );
+        } else {
+          console.log(
+            `${emoji} ${metric.name}: ${Math.round(metric.value)}ms (${rating})`
+          );
+        }
       }
     },
     [getMetricRating]
@@ -198,8 +205,6 @@ export const usePerformanceMonitoring = () => {
           logMetric(metric);
           sendToAnalytics(metric);
         });
-
-        console.log("🎯 Web Vitals monitoring initialized");
       } catch (error) {
         console.error("Failed to load web-vitals library:", error);
       }
@@ -213,11 +218,11 @@ export const usePerformanceMonitoring = () => {
     };
   }, [logMetric, sendToAnalytics]);
 
-  // Return performance summary function for debugging
+  // Return performance summary function for debugging (only in development)
   return useCallback((): void => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || process.env.NODE_ENV !== "development")
+      return;
 
-    // Get current performance metrics
     const navigation = performance.getEntriesByType(
       "navigation"
     )[0] as PerformanceNavigationTiming;

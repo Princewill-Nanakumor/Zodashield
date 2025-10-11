@@ -12,11 +12,11 @@ interface WebVitalData {
   userAgent: string;
 }
 
-interface EnrichedWebVitalData extends WebVitalData {
-  serverTimestamp: string;
-  ip?: string;
-  referer?: string;
-}
+// interface EnrichedWebVitalData extends WebVitalData {
+//   serverTimestamp: string;
+//   ip?: string;
+//   referer?: string;
+// }
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,32 +30,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const enrichedData: EnrichedWebVitalData = {
-      ...webVitalData,
-      serverTimestamp: new Date().toISOString(),
-      ip: request.headers.get("x-forwarded-for") || "unknown",
-      referer: request.headers.get("referer") || undefined,
-    };
-
-    // Log web vital with performance context
-    const emoji =
-      webVitalData.rating === "good"
-        ? "🟢"
-        : webVitalData.rating === "needs-improvement"
-          ? "🟡"
-          : "🔴";
-
-    console.log(`${emoji} Web Vital - ${webVitalData.name}:`, {
-      value:
-        webVitalData.name === "CLS"
-          ? webVitalData.value.toFixed(3)
-          : `${Math.round(webVitalData.value)}ms`,
-      rating: webVitalData.rating,
-      url: webVitalData.url,
-      timestamp: enrichedData.serverTimestamp,
-    });
-
     // In production, save to database
+    // const enrichedData: EnrichedWebVitalData = {
+    //   ...webVitalData,
+    //   serverTimestamp: new Date().toISOString(),
+    //   ip: request.headers.get("x-forwarded-for") || "unknown",
+    //   referer: request.headers.get("referer") || undefined,
+    // };
     // await db.collection('web_vitals').insertOne(enrichedData);
 
     return NextResponse.json({ success: true });

@@ -95,12 +95,6 @@ export async function GET(request: Request) {
           updatedAt: new Date(lead.updatedAt).toISOString(),
         })
       );
-      console.log("�� Returning leads:", {
-        count: transformedLeads.length,
-        firstLead: transformedLeads[0],
-        query: query,
-        sessionUser: session.user.id,
-      });
 
       return NextResponse.json({
         leads: transformedLeads,

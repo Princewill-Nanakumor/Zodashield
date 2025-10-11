@@ -62,7 +62,6 @@ const apiCallWithSessionRefresh = async (
 
     // Handle 304 Not Modified
     if (response.status === 304) {
-      console.log("✅ Data unchanged, using cached version");
       return response;
     }
 
@@ -74,8 +73,6 @@ const apiCallWithSessionRefresh = async (
 
     // If unauthorized, try to refresh session
     if (response.status === 401) {
-      console.log("Session expired, attempting refresh...");
-
       const refreshController = new AbortController();
       const refreshTimeoutId = setTimeout(
         () => refreshController.abort(),
@@ -155,11 +152,6 @@ const useWindowFocusRefetch = (inactiveThreshold = 30 * 60 * 1000) => {
         const timeInactive = now - lastActiveTime.current;
 
         if (timeInactive > inactiveThreshold) {
-          console.log(
-            "🔄 App was inactive for",
-            Math.round(timeInactive / 60000),
-            "minutes, refetching data..."
-          );
           queryClient.invalidateQueries();
         }
       } else {
@@ -172,11 +164,6 @@ const useWindowFocusRefetch = (inactiveThreshold = 30 * 60 * 1000) => {
       const timeInactive = now - lastActiveTime.current;
 
       if (timeInactive > inactiveThreshold) {
-        console.log(
-          "🔄 Window was inactive for",
-          Math.round(timeInactive / 60000),
-          "minutes, refetching data..."
-        );
         queryClient.invalidateQueries();
       }
     };
@@ -216,7 +203,6 @@ export const useLeads = () => {
     > => {
       setLoadingStatuses(true);
       try {
-        console.log("🔄 Fetching statuses from /api/statuses...");
         const response = await apiCallWithSessionRefresh("/api/statuses", {
           cache: "no-store",
         });
@@ -230,10 +216,6 @@ export const useLeads = () => {
 
         const data = await response.json();
         const statusesArray = data.statuses || data || [];
-        console.log("✅ Statuses fetched successfully:", {
-          count: statusesArray.length,
-          sample: statusesArray.slice(0, 2),
-        });
         setStatuses(statusesArray);
         return statusesArray;
       } catch (error) {
@@ -280,7 +262,6 @@ export const useLeads = () => {
     queryFn: async (): Promise<User[]> => {
       setLoadingUsers(true);
       try {
-        console.log("🔄 Fetching users from /api/users...");
         const response = await apiCallWithSessionRefresh("/api/users", {
           cache: "no-store",
         });
@@ -302,10 +283,6 @@ export const useLeads = () => {
         const activeUsers = usersArray.filter(
           (u: User) => u.status === "ACTIVE"
         );
-        console.log("✅ Users fetched successfully:", {
-          count: activeUsers.length,
-          sample: activeUsers.slice(0, 2),
-        });
         setUsers(activeUsers);
         return activeUsers;
       } catch (error) {
@@ -358,7 +335,6 @@ export const useLeads = () => {
     queryFn: async (): Promise<Lead[]> => {
       setLoadingLeads(true);
       try {
-        console.log("🔄 Fetching leads from /api/leads/all...");
         const response = await apiCallWithSessionRefresh("/api/leads/all", {
           cache: "no-store",
         });
@@ -372,10 +348,6 @@ export const useLeads = () => {
         }
 
         const data: ApiLead[] = await response.json();
-        console.log("✅ Raw API leads data:", {
-          count: data.length,
-          sample: data.slice(0, 2),
-        });
 
         // Format leads without depending on users
         const formattedLeads = data.map((apiLead) => {
@@ -404,11 +376,6 @@ export const useLeads = () => {
             status: apiLead.status || "NEW",
             assignedTo: assignedToObject,
           } as Lead;
-        });
-
-        console.log("✅ Formatted leads:", {
-          count: formattedLeads.length,
-          sample: formattedLeads.slice(0, 2),
         });
 
         setLeads(formattedLeads);
