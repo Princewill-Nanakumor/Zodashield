@@ -469,6 +469,7 @@ export const useLeadsPage = (
     }
 
     if (uiState.filterByStatus !== "all") {
+      // ✅ FIX: Build comprehensive mapping for status filtering
       const statusIdToName = statuses.reduce(
         (acc, status) => {
           if (status.id && status.name) {
@@ -483,20 +484,48 @@ export const useLeadsPage = (
         (acc, status) => {
           if (status.id && status.name) {
             acc[status.name] = status.id;
+            acc[status.name.toUpperCase()] = status.id;
+            acc[status.name.toLowerCase()] = status.id;
           }
           return acc;
         },
         {} as Record<string, string>
       );
 
-      filtered = filtered.filter((lead) => {
-        const directMatch = lead.status === uiState.filterByStatus;
-        const mappedMatch =
-          statusIdToName[lead.status] === uiState.filterByStatus;
-        const reverseMatch =
-          statusNameToId[uiState.filterByStatus] === lead.status;
-        return directMatch || mappedMatch || reverseMatch;
+      // 🔍 DEBUG: Log status filtering
+      console.log("🔍 Status Filter Debug:", {
+        filterValue: uiState.filterByStatus,
+        statusIdToName,
+        statusNameToId,
+        sampleLeadStatuses: filtered
+          .slice(0, 3)
+          .map((l) => ({ email: l.email, status: l.status })),
       });
+
+      filtered = filtered.filter((lead) => {
+        // Direct match (exact comparison)
+        if (lead.status === uiState.filterByStatus) return true;
+
+        // Case-insensitive match for status names
+        if (lead.status?.toUpperCase() === uiState.filterByStatus.toUpperCase())
+          return true;
+
+        // Match if lead.status is an ID and maps to the filter name
+        if (statusIdToName[lead.status] === uiState.filterByStatus) return true;
+
+        // Match if filter is a name and maps to lead.status ID
+        if (statusNameToId[uiState.filterByStatus] === lead.status) return true;
+
+        // Also check case-insensitive mapping
+        const filterUpper = uiState.filterByStatus.toUpperCase();
+        const filterLower = uiState.filterByStatus.toLowerCase();
+        if (statusNameToId[filterUpper] === lead.status) return true;
+        if (statusNameToId[filterLower] === lead.status) return true;
+
+        return false;
+      });
+
+      console.log("🔍 After status filter:", filtered.length, "leads match");
     }
 
     if (uiState.filterBySource !== "all") {

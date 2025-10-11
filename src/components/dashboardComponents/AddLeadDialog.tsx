@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { useStatuses } from "@/context/StatusContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AddLeadFormData {
   firstName: string;
@@ -46,6 +47,8 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   // Fetch statuses from context
   const { statuses, isLoading: isLoadingStatuses } = useStatuses();
@@ -77,6 +80,47 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
       setValue("status", statuses[0]?._id || statuses[0]?.id || "NEW");
     }
   }, [statuses, selectedStatus, setValue]);
+
+  // Check for duplicate email on blur
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes("@")) {
+      setEmailError(null);
+      return false;
+    }
+
+    setIsCheckingEmail(true);
+    setEmailError(null);
+
+    try {
+      const response = await fetch(
+        `/api/leads/check-email?email=${encodeURIComponent(email)}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to check email");
+      }
+
+      const data = await response.json();
+
+      if (data.exists) {
+        setEmailError(
+          `This email already exists for ${data.lead.name}. Please use a different email.`
+        );
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error checking email:", error);
+      // Don't block submission if check fails
+      return false;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
 
   // Create lead mutation
   const createLeadMutation = useMutation({
@@ -127,12 +171,24 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
     },
   });
 
-  const onSubmit = (data: AddLeadFormData) => {
+  const onSubmit = async (data: AddLeadFormData) => {
+    // Final email validation before submission
+    const emailExists = await checkEmailExists(data.email);
+
+    if (emailExists) {
+      toast({
+        title: "Duplicate Email",
+        description: "A lead with this email already exists.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createLeadMutation.mutate(data);
   };
 
   const handleClose = () => {
-    if (!createLeadMutation.isPending) {
+    if (!createLeadMutation.isPending && !isCheckingEmail) {
       reset({
         firstName: "",
         lastName: "",
@@ -142,6 +198,7 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
         source: "Manual Entry",
         status: statuses[0]?._id || statuses[0]?.id || "NEW",
       });
+      setEmailError(null);
       onClose();
     }
   };
@@ -196,22 +253,42 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
             <Label htmlFor="email">
               Email <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="john.doe@example.com"
-              {...register("email", {
-                required: "Email is required",
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: "Invalid email address",
-                },
-              })}
-              disabled={createLeadMutation.isPending}
-              className={errors.email ? "border-red-500" : ""}
-            />
+            <div className="relative">
+              <Input
+                id="email"
+                type="email"
+                placeholder="john.doe@example.com"
+                {...register("email", {
+                  required: "Email is required",
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: "Invalid email address",
+                  },
+                })}
+                onBlur={(e) => checkEmailExists(e.target.value)}
+                disabled={createLeadMutation.isPending || isCheckingEmail}
+                className={
+                  errors.email || emailError
+                    ? "border-red-500 pr-10"
+                    : isCheckingEmail
+                      ? "pr-10"
+                      : ""
+                }
+              />
+              {isCheckingEmail && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              )}
+            </div>
             {errors.email && (
               <p className="text-sm text-red-500">{errors.email.message}</p>
+            )}
+            {emailError && !errors.email && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{emailError}</AlertDescription>
+              </Alert>
             )}
           </div>
 
@@ -328,13 +405,20 @@ export const AddLeadDialog: React.FC<AddLeadDialogProps> = ({
             </Button>
             <Button
               type="submit"
-              disabled={createLeadMutation.isPending}
+              disabled={
+                createLeadMutation.isPending || isCheckingEmail || !!emailError
+              }
               className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
             >
               {createLeadMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
+                </>
+              ) : isCheckingEmail ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Validating...
                 </>
               ) : (
                 <>
