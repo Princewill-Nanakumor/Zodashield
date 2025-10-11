@@ -170,9 +170,13 @@ export const ContactSection: FC<ContactSectionProps> = ({
 
       if (result) {
         setIsEditing(false);
-        toast({
-          description: "Contact information updated successfully",
-        });
+
+        // Force a small delay to ensure state updates propagate
+        setTimeout(() => {
+          toast({
+            description: "Contact information updated successfully",
+          });
+        }, 100);
       } else {
         throw new Error("Update failed - returned false");
       }

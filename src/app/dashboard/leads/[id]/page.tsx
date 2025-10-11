@@ -4,7 +4,6 @@
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, use, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeadHeader } from "@/components/leads/leadDetailsPanel/LeadHeader";
@@ -27,7 +26,6 @@ const LeadDetailsPageContent = ({
   onLeadUpdated: (updatedLead: Lead) => Promise<boolean>;
   onBack: () => void;
 }) => {
-  const queryClient = useQueryClient();
   const [currentLead, setCurrentLead] = useState<Lead>(lead);
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -52,23 +50,22 @@ const LeadDetailsPageContent = ({
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       try {
+        console.log("🔄 LeadDetailsPageContent - handleLeadUpdated called");
+
+        // Immediately update local state
         setCurrentLead(updatedLead);
 
-        await onLeadUpdated(updatedLead);
-
-        await queryClient.invalidateQueries({ queryKey: ["leads"] });
-
-        await queryClient.invalidateQueries({
-          queryKey: ["lead", updatedLead._id],
-        });
+        // Call the parent update handler (which uses React Query mutation)
+        const result = await onLeadUpdated(updatedLead);
+        console.log("✅ Parent onLeadUpdated result:", result);
 
         return true;
       } catch (error) {
-        console.error("Error in handleLeadUpdated:", error);
+        console.error("❌ Error in handleLeadUpdated:", error);
         return false;
       }
     },
-    [onLeadUpdated, queryClient]
+    [onLeadUpdated]
   );
 
   const handleNavigate = () => {};
@@ -140,7 +137,7 @@ const LeadDetailsPage: React.FC<LeadDetailsPageProps> = ({ params }) => {
   const { id } = use(params);
 
   // ✅ Use React Query hook for fetching lead
-  const { lead, isLoading, error } = useLeadDetails(
+  const { lead, isLoading, error, refetch } = useLeadDetails(
     status === "authenticated" ? id : null
   );
 
@@ -159,14 +156,23 @@ const LeadDetailsPage: React.FC<LeadDetailsPageProps> = ({ params }) => {
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       try {
-        await updateLeadAsync(updatedLead);
+        console.log("🔄 Agent page - handleLeadUpdated called");
+
+        // Call the mutation
+        const result = await updateLeadAsync(updatedLead);
+        console.log("✅ Agent page - Mutation result:", result);
+
+        // Force refetch to get fresh data
+        await refetch();
+        console.log("✅ Agent page - Refetch completed");
+
         return true;
       } catch (error) {
-        console.error("Error updating lead:", error);
+        console.error("❌ Agent page - Error updating lead:", error);
         return false;
       }
     },
-    [updateLeadAsync]
+    [updateLeadAsync, refetch]
   );
 
   // Handle back navigation - preserve filters

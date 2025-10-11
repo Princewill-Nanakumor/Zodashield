@@ -19,6 +19,8 @@ import { useLeadsPage } from "@/hooks/useLeadsPage";
 import { SubscriptionGuard } from "./SubscriptionGuard";
 import { RefetchIndicator } from "@/components/ui/RefetchIndicator";
 import { useToggleContext } from "@/context/ToggleContext";
+import { Lead } from "@/types/leads";
+import { useUpdateLead } from "@/hooks/useLeadDetails";
 
 const USER_ROLES = {
   ADMIN: "ADMIN",
@@ -42,6 +44,9 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
 
   // Get toggle state from context
   const { showHeader, showControls } = useToggleContext();
+
+  // ✅ Get updateLead mutation from useLeadDetails hook
+  const { updateLeadAsync } = useUpdateLead();
 
   const {
     leads,
@@ -83,9 +88,26 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const shouldShowControls = showControls || hasSelectedLeads;
 
   // ⚡ Memoized handlers to prevent unnecessary re-renders
-  const handleLeadUpdate = useCallback(async () => {
-    return true;
-  }, []);
+  const handleLeadUpdate = useCallback(
+    async (updatedLead: Lead) => {
+      try {
+        console.log(
+          "🔄 LeadsPageContent - handleLeadUpdate called",
+          updatedLead._id
+        );
+
+        // ✅ Call the updateLead mutation from useUpdateLead hook
+        await updateLeadAsync(updatedLead);
+
+        console.log("✅ LeadsPageContent - Lead updated successfully");
+        return true;
+      } catch (error) {
+        console.error("❌ LeadsPageContent - Error updating lead:", error);
+        return false;
+      }
+    },
+    [updateLeadAsync]
+  );
 
   const handleDialogClose = useCallback(() => {
     setUiState((prev) => ({

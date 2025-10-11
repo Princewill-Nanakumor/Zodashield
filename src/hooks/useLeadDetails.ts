@@ -65,6 +65,55 @@ export const useUpdateLead = () => {
   const mutation = useMutation({
     mutationFn: async (updatedLead: Lead): Promise<Lead> => {
       console.log("🔄 Updating lead:", updatedLead._id);
+      console.log("📦 Original lead data:", updatedLead);
+
+      // Clean the data - only send fields that can be updated
+      // Convert assignedTo to string ID if it's an object
+      let assignedToId: string | undefined = undefined;
+
+      if (updatedLead.assignedTo) {
+        if (typeof updatedLead.assignedTo === "string") {
+          assignedToId = updatedLead.assignedTo;
+          console.log("📎 assignedTo is string:", assignedToId);
+        } else if (typeof updatedLead.assignedTo === "object") {
+          // Try to extract ID from object
+          if ("id" in updatedLead.assignedTo && updatedLead.assignedTo.id) {
+            assignedToId = String(updatedLead.assignedTo.id);
+            console.log("📎 assignedTo.id extracted:", assignedToId);
+          } else if (
+            "_id" in updatedLead.assignedTo &&
+            updatedLead.assignedTo._id
+          ) {
+            assignedToId = String(updatedLead.assignedTo._id);
+            console.log("📎 assignedTo._id extracted:", assignedToId);
+          } else {
+            console.warn(
+              "⚠️ assignedTo is object but has no id or _id:",
+              updatedLead.assignedTo
+            );
+          }
+        }
+      } else {
+        console.log("📎 assignedTo is null/undefined");
+      }
+
+      const cleanedData: Record<string, unknown> = {
+        firstName: updatedLead.firstName,
+        lastName: updatedLead.lastName,
+        email: updatedLead.email,
+        phone: updatedLead.phone,
+        country: updatedLead.country,
+        source: updatedLead.source,
+        status: updatedLead.status,
+        comments: updatedLead.comments,
+      };
+
+      // Only include assignedTo if we have a valid ID
+      if (assignedToId !== undefined && assignedToId !== null) {
+        cleanedData.assignedTo = assignedToId;
+      }
+
+      console.log("🧹 Cleaned payload:", JSON.stringify(cleanedData, null, 2));
 
       const response = await fetch(`/api/leads/${updatedLead._id}`, {
         method: "PUT",
@@ -72,12 +121,26 @@ export const useUpdateLead = () => {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(updatedLead),
+        body: JSON.stringify(cleanedData),
       });
 
+      console.log("📡 Response status:", response.status);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update lead");
+        const errorText = await response.text();
+        console.error("❌ Error response:", errorText);
+
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+
+        console.error("❌ Parsed error:", errorData);
+        throw new Error(
+          errorData.error || `Failed to update lead (${response.status})`
+        );
       }
 
       const data = await response.json();
@@ -87,15 +150,61 @@ export const useUpdateLead = () => {
     },
     onSuccess: (updatedLead) => {
       console.log("✅ onSuccess - Lead updated:", updatedLead);
+      console.log("✅ Updating caches with new data...");
 
-      // Update the specific lead in cache
+      // Immediately update the specific lead in cache (both possible key formats)
       queryClient.setQueryData(["lead", updatedLead._id], updatedLead);
+      if (updatedLead.id && updatedLead.id !== updatedLead._id) {
+        queryClient.setQueryData(["lead", updatedLead.id], updatedLead);
+      }
+      console.log("✅ Updated individual lead cache");
 
-      // Invalidate and refetch all leads lists
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      // Update the lead in the all leads list cache
+      queryClient.setQueryData(["leads"], (oldData: Lead[] | undefined) => {
+        if (!oldData) {
+          console.log("⚠️ No data in ['leads'] cache");
+          return oldData;
+        }
+        const updated = oldData.map((lead) =>
+          lead._id === updatedLead._id ? updatedLead : lead
+        );
+        console.log("✅ Updated ['leads'] cache");
+        return updated;
+      });
 
-      // Optionally invalidate assigned leads
-      queryClient.invalidateQueries({ queryKey: ["leads", "assigned"] });
+      // Update the lead in the all leads list cache (alternative key format)
+      queryClient.setQueryData(
+        ["leads", "all"],
+        (oldData: Lead[] | undefined) => {
+          if (!oldData) {
+            console.log("⚠️ No data in ['leads', 'all'] cache");
+            return oldData;
+          }
+          const updated = oldData.map((lead) =>
+            lead._id === updatedLead._id ? updatedLead : lead
+          );
+          console.log("✅ Updated ['leads', 'all'] cache");
+          return updated;
+        }
+      );
+
+      // Update assigned leads cache
+      queryClient.setQueryData(
+        ["leads", "assigned"],
+        (oldData: Lead[] | undefined) => {
+          if (!oldData) {
+            console.log("⚠️ No data in ['leads', 'assigned'] cache");
+            return oldData;
+          }
+          const updated = oldData.map((lead) =>
+            lead._id === updatedLead._id ? updatedLead : lead
+          );
+          console.log("✅ Updated ['leads', 'assigned'] cache");
+          return updated;
+        }
+      );
+
+      console.log("✅ All caches updated successfully");
 
       // Don't show toast here - let the component handle it
     },

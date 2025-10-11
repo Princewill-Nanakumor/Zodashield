@@ -195,13 +195,16 @@ const updateLead = async (
     }
   }
 
-  console.log("Sending update payload to /api/leads:", apiPayload);
+  console.log("Sending update payload to /api/leads/[id]:", apiPayload);
 
-  // Use the correct /api/leads endpoint (PUT method with id in body)
-  const res = await fetch("/api/leads", {
+  // ✅ FIX: Use /api/leads/[id] endpoint with the new fixed logic
+  // Remove 'id' from payload since it's in the URL
+  const { id, ...updateData } = apiPayload;
+
+  const res = await fetch(`/api/leads/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(apiPayload),
+    body: JSON.stringify(updateData),
   });
 
   if (!res.ok) {

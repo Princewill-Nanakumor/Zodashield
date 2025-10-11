@@ -39,6 +39,7 @@ const LeadDetailsPageContent = ({
 
   // Update current lead when prop changes
   useEffect(() => {
+    console.log("🔄 Admin page - Lead prop changed, updating local state");
     setCurrentLead(lead);
   }, [lead]);
 
@@ -52,19 +53,28 @@ const LeadDetailsPageContent = ({
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       try {
+        console.log(
+          "🔄 Admin page - LeadDetailsPageContent handleLeadUpdated called"
+        );
+
+        // Immediately update local state for responsive UI
         setCurrentLead(updatedLead);
+        console.log("✅ Admin page - Local state updated");
 
-        await onLeadUpdated(updatedLead);
+        // Call the parent update handler (which uses React Query mutation)
+        const result = await onLeadUpdated(updatedLead);
+        console.log("✅ Admin page - Parent onLeadUpdated result:", result);
 
+        // Invalidate related queries to ensure fresh data
         await queryClient.invalidateQueries({ queryKey: ["leads"] });
-
         await queryClient.invalidateQueries({
           queryKey: ["lead", updatedLead._id],
         });
+        console.log("✅ Admin page - Queries invalidated");
 
         return true;
       } catch (error) {
-        console.error("Error in handleLeadUpdated:", error);
+        console.error("❌ Admin page - Error in handleLeadUpdated:", error);
         return false;
       }
     },
@@ -136,7 +146,7 @@ const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
 
   // ✅ Use React Query hook for fetching lead
-  const { lead, isLoading, error } = useLeadDetails(
+  const { lead, isLoading, error, refetch } = useLeadDetails(
     status === "authenticated" ? id : null
   );
 
@@ -156,14 +166,23 @@ const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       try {
-        await updateLeadAsync(updatedLead);
+        console.log("🔄 Admin page - handleLeadUpdated called");
+
+        // Call the mutation
+        const result = await updateLeadAsync(updatedLead);
+        console.log("✅ Admin page - Mutation result:", result);
+
+        // ✅ FIX: Force refetch to get fresh data from server
+        await refetch();
+        console.log("✅ Admin page - Refetch completed");
+
         return true;
       } catch (error) {
-        console.error("Error updating lead:", error);
+        console.error("❌ Admin page - Error updating lead:", error);
         return false;
       }
     },
-    [updateLeadAsync]
+    [updateLeadAsync, refetch]
   );
 
   // Handle back navigation - preserve filters
