@@ -104,15 +104,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
   }, [lead]);
 
   const handleSave = useCallback(async () => {
-    console.log("💾 ContactSection handleSave called");
-
-    if (!lead) {
-      console.error("❌ No lead available");
-      return;
-    }
-
-    if (!onLeadUpdated) {
-      console.error("❌ No onLeadUpdated callback provided");
+    if (!lead || !onLeadUpdated) {
       return;
     }
 
@@ -143,7 +135,6 @@ export const ContactSection: FC<ContactSectionProps> = ({
       return;
     }
 
-    console.log("✅ Validation passed, preparing to save...");
     setIsSaving(true);
 
     try {
@@ -156,32 +147,20 @@ export const ContactSection: FC<ContactSectionProps> = ({
         country: editedData.country.trim(),
       };
 
-      console.log("📤 Calling onLeadUpdated with:", {
-        id: updatedLead._id,
-        firstName: updatedLead.firstName,
-        lastName: updatedLead.lastName,
-        email: updatedLead.email,
-        phone: updatedLead.phone,
-        country: updatedLead.country,
-      });
-
       const result = await onLeadUpdated(updatedLead);
-      console.log("✅ onLeadUpdated returned:", result);
 
       if (result) {
         setIsEditing(false);
-
-        // Force a small delay to ensure state updates propagate
         setTimeout(() => {
           toast({
             description: "Contact information updated successfully",
           });
         }, 100);
       } else {
-        throw new Error("Update failed - returned false");
+        throw new Error("Update failed");
       }
     } catch (error) {
-      console.error("❌ Error updating contact info:", error);
+      console.error("Error updating contact info:", error);
       toast({
         variant: "destructive",
         description:
@@ -191,7 +170,6 @@ export const ContactSection: FC<ContactSectionProps> = ({
       });
     } finally {
       setIsSaving(false);
-      console.log("🏁 handleSave completed");
     }
   }, [lead, editedData, onLeadUpdated, toast]);
 

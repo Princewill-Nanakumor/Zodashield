@@ -126,31 +126,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log("🔄 PUT /api/leads/[id] - Starting update");
-
     const session = await getServerSession(authOptions);
     if (!session) {
-      console.log("❌ No session found");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("✅ Session user:", session.user.id, session.user.role);
-
     const updateData = await request.json();
-    console.log("📦 Update data received:", updateData);
-
     await connectMongoDB();
     const { id } = await params;
-    console.log("🎯 Lead ID:", id);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.log("❌ Invalid ObjectId format");
       return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
     }
 
     const db = mongoose.connection.db;
     if (!db) {
-      console.log("❌ Database connection not available");
       throw new Error("Database connection not available");
     }
 
@@ -160,20 +150,14 @@ export async function PUT(
     };
 
     if (session.user.role === "ADMIN") {
-      // Admin can only update leads they created
       query.adminId = new ObjectId(session.user.id);
     } else if (session.user.role === "AGENT" && session.user.adminId) {
-      // Agent can only update leads from their admin
       query.adminId = new ObjectId(session.user.adminId);
     }
 
-    console.log("🔍 Query:", query);
-
     const currentLead = await db.collection("leads").findOne(query);
-    console.log("📊 Current lead found:", !!currentLead);
 
     if (!currentLead) {
-      console.log("❌ Lead not found with query");
       return NextResponse.json(
         { error: "Lead not found or not authorized" },
         { status: 404 }
@@ -209,66 +193,33 @@ export async function PUT(
 
     // Handle assignedTo field
     if (updateData.assignedTo !== undefined) {
-      console.log(
-        "📎 Processing assignedTo:",
-        updateData.assignedTo,
-        typeof updateData.assignedTo
-      );
-
       if (updateData.assignedTo) {
-        // Validate it's a valid ObjectId string
         if (!mongoose.Types.ObjectId.isValid(updateData.assignedTo)) {
-          console.error(
-            "❌ Invalid assignedTo ObjectId:",
-            updateData.assignedTo
-          );
           return NextResponse.json(
             { error: "Invalid assignedTo user ID" },
             { status: 400 }
           );
         }
         updatePayload.assignedTo = new ObjectId(updateData.assignedTo);
-        console.log("✅ assignedTo converted to ObjectId");
       } else {
         updatePayload.assignedTo = null;
-        console.log("✅ assignedTo set to null");
       }
     }
 
-    console.log("📝 Update payload:", JSON.stringify(updatePayload, null, 2));
-
-    // First, perform the update
+    // Perform the update
     const updateResult = await db
       .collection("leads")
       .updateOne(query, { $set: updatePayload });
 
-    console.log("📊 Update result:", {
-      matchedCount: updateResult.matchedCount,
-      modifiedCount: updateResult.modifiedCount,
-      acknowledged: updateResult.acknowledged,
-    });
-
     if (updateResult.matchedCount === 0) {
-      console.log("❌ No lead matched the query");
       return NextResponse.json(
         { error: "Lead not found or not authorized" },
         { status: 404 }
       );
     }
 
-    // ⚠️ CRITICAL: Check if document was actually modified
+    // Check if document was actually modified
     if (updateResult.modifiedCount === 0) {
-      console.error("❌ CRITICAL: Lead matched but NOT modified in database!");
-      console.error(
-        "📝 Attempted payload:",
-        JSON.stringify(updatePayload, null, 2)
-      );
-      console.error(
-        "📄 Current document:",
-        JSON.stringify(currentLead, null, 2)
-      );
-
-      // Compare to see what changed
       const changes: string[] = [];
       Object.keys(updatePayload).forEach((key) => {
         if (key !== "updatedAt" && currentLead[key] !== updatePayload[key]) {
@@ -278,106 +229,30 @@ export async function PUT(
         }
       });
 
-      console.error(
-        "🔍 Detected changes:",
-        changes.length > 0 ? changes : "None (data is identical)"
-      );
-
       // If there were supposed to be changes but nothing was modified, that's an error
       if (changes.length > 0) {
+        console.error("Lead update failed - changes not saved:", changes);
         return NextResponse.json(
           {
             error: "Database update failed - no changes were saved",
             details:
-              "The update operation completed but no fields were modified in the database. This may indicate a database constraint or validation error.",
+              "The update operation completed but no fields were modified in the database.",
             attemptedChanges: changes,
           },
           { status: 500 }
         );
       }
-
-      console.warn("⚠️ No actual changes detected - data is identical");
-    } else {
-      console.log(
-        `✅ Document successfully modified! Changed ${updateResult.modifiedCount} document(s)`
-      );
     }
 
-    // Then fetch the updated document to verify changes
+    // Fetch the updated document
     const updatedLead = await db.collection("leads").findOne(query);
 
     if (!updatedLead || !updatedLead._id) {
-      console.log("❌ Could not retrieve updated lead");
       return NextResponse.json(
         { error: "Failed to retrieve updated lead" },
         { status: 500 }
       );
     }
-
-    console.log("✅ Updated lead document retrieved:", {
-      id: updatedLead._id.toString(),
-      firstName: updatedLead.firstName,
-      email: updatedLead.email,
-      phone: updatedLead.phone,
-      country: updatedLead.country,
-      source: updatedLead.source,
-    });
-
-    // ✅ VERIFY: Check that the changes were actually saved
-    const verificationErrors: string[] = [];
-    if (
-      updatePayload.firstName &&
-      updatedLead.firstName !== updatePayload.firstName
-    ) {
-      verificationErrors.push(
-        `firstName not saved: expected "${updatePayload.firstName}", got "${updatedLead.firstName}"`
-      );
-    }
-    if (
-      updatePayload.lastName &&
-      updatedLead.lastName !== updatePayload.lastName
-    ) {
-      verificationErrors.push(
-        `lastName not saved: expected "${updatePayload.lastName}", got "${updatedLead.lastName}"`
-      );
-    }
-    if (updatePayload.email && updatedLead.email !== updatePayload.email) {
-      verificationErrors.push(
-        `email not saved: expected "${updatePayload.email}", got "${updatedLead.email}"`
-      );
-    }
-    if (updatePayload.phone && updatedLead.phone !== updatePayload.phone) {
-      verificationErrors.push(
-        `phone not saved: expected "${updatePayload.phone}", got "${updatedLead.phone}"`
-      );
-    }
-    if (
-      updatePayload.country &&
-      updatedLead.country !== updatePayload.country
-    ) {
-      verificationErrors.push(
-        `country not saved: expected "${updatePayload.country}", got "${updatedLead.country}"`
-      );
-    }
-
-    if (verificationErrors.length > 0) {
-      console.error(
-        "❌ VERIFICATION FAILED: Changes not reflected in database!"
-      );
-      console.error(verificationErrors);
-      return NextResponse.json(
-        {
-          error: "Update verification failed",
-          details: "Changes were not properly saved to the database",
-          verificationErrors,
-        },
-        { status: 500 }
-      );
-    }
-
-    console.log(
-      "✅ VERIFICATION PASSED: All changes successfully saved to database"
-    );
 
     // Populate assignedTo with user details for the response
     const assignedToUser = await getAssignedToUser(
@@ -408,16 +283,9 @@ export async function PUT(
       comments: updatedLead.comments || "",
     };
 
-    console.log("✅ Transformed lead to return:", transformedLead);
-    console.log("✅ Returning transformed lead");
     return NextResponse.json(transformedLead);
   } catch (error) {
-    console.error("❌ CATCH BLOCK - Error updating lead:", error);
-    console.error("❌ Error details:", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined,
-      fullError: error,
-    });
+    console.error("Error updating lead:", error);
     return NextResponse.json(
       {
         error: "Failed to update lead",

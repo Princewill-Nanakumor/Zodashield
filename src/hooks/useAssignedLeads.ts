@@ -195,10 +195,7 @@ const updateLead = async (
     }
   }
 
-  console.log("Sending update payload to /api/leads/[id]:", apiPayload);
-
-  // ✅ FIX: Use /api/leads/[id] endpoint with the new fixed logic
-  // Remove 'id' from payload since it's in the URL
+  // Use /api/leads/[id] endpoint - remove 'id' from payload since it's in the URL
   const { id, ...updateData } = apiPayload;
 
   const res = await fetch(`/api/leads/${id}`, {
@@ -208,9 +205,7 @@ const updateLead = async (
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    console.error("API Error Response:", errorText);
-    throw new Error(`Failed to update lead: ${res.status} ${errorText}`);
+    throw new Error(`Failed to update lead: ${res.status}`);
   }
 
   return res.json();

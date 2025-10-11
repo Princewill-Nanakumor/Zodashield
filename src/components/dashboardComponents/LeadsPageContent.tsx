@@ -91,18 +91,10 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const handleLeadUpdate = useCallback(
     async (updatedLead: Lead) => {
       try {
-        console.log(
-          "🔄 LeadsPageContent - handleLeadUpdate called",
-          updatedLead._id
-        );
-
-        // ✅ Call the updateLead mutation from useUpdateLead hook
         await updateLeadAsync(updatedLead);
-
-        console.log("✅ LeadsPageContent - Lead updated successfully");
         return true;
       } catch (error) {
-        console.error("❌ LeadsPageContent - Error updating lead:", error);
+        console.error("Error updating lead:", error);
         return false;
       }
     },

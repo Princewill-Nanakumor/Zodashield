@@ -50,18 +50,15 @@ const LeadDetailsPageContent = ({
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       try {
-        console.log("🔄 LeadDetailsPageContent - handleLeadUpdated called");
-
         // Immediately update local state
         setCurrentLead(updatedLead);
 
         // Call the parent update handler (which uses React Query mutation)
-        const result = await onLeadUpdated(updatedLead);
-        console.log("✅ Parent onLeadUpdated result:", result);
+        await onLeadUpdated(updatedLead);
 
         return true;
       } catch (error) {
-        console.error("❌ Error in handleLeadUpdated:", error);
+        console.error("Error in handleLeadUpdated:", error);
         return false;
       }
     },
@@ -156,19 +153,15 @@ const LeadDetailsPage: React.FC<LeadDetailsPageProps> = ({ params }) => {
   const handleLeadUpdated = useCallback(
     async (updatedLead: Lead) => {
       try {
-        console.log("🔄 Agent page - handleLeadUpdated called");
-
         // Call the mutation
-        const result = await updateLeadAsync(updatedLead);
-        console.log("✅ Agent page - Mutation result:", result);
+        await updateLeadAsync(updatedLead);
 
         // Force refetch to get fresh data
         await refetch();
-        console.log("✅ Agent page - Refetch completed");
 
         return true;
       } catch (error) {
-        console.error("❌ Agent page - Error updating lead:", error);
+        console.error("Error updating lead:", error);
         return false;
       }
     },
@@ -189,8 +182,6 @@ const LeadDetailsPage: React.FC<LeadDetailsPageProps> = ({ params }) => {
       document.title = `${fullName} - Lead Details`;
     }
   }, [lead]);
-
-  console.log("Component state:", { status, isLoading, error, lead: !!lead });
 
   // Loading state - using skeleton
   if (status === "loading" || isLoading) {

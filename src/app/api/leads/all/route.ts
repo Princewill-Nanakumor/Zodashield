@@ -108,7 +108,6 @@ async function getAssignedToUser(
 }
 
 export async function GET() {
-  console.log("�� GET /api/leads/all called");
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

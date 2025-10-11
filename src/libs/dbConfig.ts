@@ -53,19 +53,14 @@ function isConnectionUsable(): boolean {
   );
 }
 
-// NEW: Function to ensure models are registered
+// Function to ensure models are registered
 function ensureModelsRegistered() {
   // Import and register all models here
   // This ensures they're available before any queries
   try {
-    // Import User model (this triggers registration)
     import("@/models/User");
-    // Import Activity model (this triggers registration)
     import("@/models/Activity");
-    // Import any other models you need
     import("@/models/Lead");
-
-    console.log("Models registered successfully");
   } catch (error) {
     console.error("Error registering models:", error);
   }

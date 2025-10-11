@@ -49,13 +49,6 @@ export async function GET(request: Request) {
     const leadObjectId = new mongoose.Types.ObjectId(id);
     const adminId = getCorrectAdminId(session);
 
-    console.log("=== COMMENTS GET REQUEST ===");
-    console.log("Lead ID:", id);
-    console.log("User ID:", session.user.id);
-    console.log("User Role:", session.user.role);
-    console.log("Admin ID:", adminId.toString());
-    console.log("Session adminId:", session.user.adminId);
-
     // Build query that handles both old comments (without adminId) and new comments (with adminId)
     const query: {
       leadId: mongoose.Types.ObjectId;
@@ -64,20 +57,12 @@ export async function GET(request: Request) {
       >;
     } = {
       leadId: leadObjectId,
-      $or: [
-        { adminId: adminId }, // New comments with adminId
-        { adminId: { $exists: false } }, // Old comments without adminId
-      ],
+      $or: [{ adminId: adminId }, { adminId: { $exists: false } }],
     };
-
-    console.log("Query:", JSON.stringify(query, null, 2));
 
     const comments = await Comment.find(query)
       .sort({ createdAt: -1 })
       .lean<IComment[]>();
-
-    console.log("Found comments count:", comments.length);
-    console.log("Comments:", JSON.stringify(comments, null, 2));
 
     return NextResponse.json(comments);
   } catch (error) {

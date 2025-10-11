@@ -51,15 +51,7 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
   }, [lead]);
 
   const handleSave = useCallback(async () => {
-    console.log("💾 DetailsSection handleSave called");
-
-    if (!lead) {
-      console.error("❌ No lead available");
-      return;
-    }
-
-    if (!onLeadUpdated) {
-      console.error("❌ No onLeadUpdated callback provided");
+    if (!lead || !onLeadUpdated) {
       return;
     }
 
@@ -71,7 +63,6 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
       return;
     }
 
-    console.log("✅ Validation passed, preparing to save source...");
     setIsSaving(true);
 
     try {
@@ -80,10 +71,7 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
         source: editedSource.trim(),
       };
 
-      console.log("📤 Calling onLeadUpdated with source:", editedSource.trim());
-
       const result = await onLeadUpdated(updatedLead);
-      console.log("✅ onLeadUpdated returned:", result);
 
       if (result) {
         setIsEditing(false);
@@ -91,10 +79,10 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
           description: "Source updated successfully",
         });
       } else {
-        throw new Error("Update failed - returned false");
+        throw new Error("Update failed");
       }
     } catch (error) {
-      console.error("❌ Error updating source:", error);
+      console.error("Error updating source:", error);
       toast({
         variant: "destructive",
         description:
@@ -102,7 +90,6 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
       });
     } finally {
       setIsSaving(false);
-      console.log("🏁 handleSave completed");
     }
   }, [lead, editedSource, onLeadUpdated, toast]);
 
