@@ -95,21 +95,7 @@ const StatusModal = ({
       // Parse the response
       const newStatus = await response.json();
 
-      // Invalidate React Query caches
-      await queryClient.invalidateQueries({
-        queryKey: ["statuses"],
-        exact: false,
-      });
-
-      await queryClient.invalidateQueries({
-        queryKey: ["leads"],
-        exact: false,
-      });
-
-      // Refresh StatusContext cache (this is the key fix!)
-      await refreshStatuses();
-
-      // Update local state
+      // ✅ OPTIMIZATION: Update local state immediately for instant UI feedback
       if (isEditing && editingId) {
         setStatuses((prev) =>
           prev.map((status) =>
@@ -117,10 +103,11 @@ const StatusModal = ({
           )
         );
       } else {
-        // Add the new status to local state
+        // Add the new status to local state immediately
         setStatuses((prev) => [...prev, newStatus]);
       }
 
+      // Show success toast immediately
       toast({
         title: "Success!",
         description: `Status ${isEditing ? "updated" : "created"} successfully`,
@@ -129,6 +116,22 @@ const StatusModal = ({
 
       resetForm();
       onStatusCreated?.();
+
+      // ✅ OPTIMIZATION: Run cache invalidations in parallel in the background
+      // This doesn't block the UI or the button
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["statuses"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["leads"],
+          exact: false,
+        }),
+        refreshStatuses(),
+      ]).catch((error) => {
+        console.error("Error refreshing caches:", error);
+      });
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error
@@ -168,27 +171,28 @@ const StatusModal = ({
           throw new Error("Failed to delete status");
         }
 
-        // Invalidate React Query caches
-        await queryClient.invalidateQueries({
-          queryKey: ["statuses"],
-          exact: false,
-        });
-
-        await queryClient.invalidateQueries({
-          queryKey: ["leads"],
-          exact: false,
-        });
-
-        // Refresh StatusContext cache
-        await refreshStatuses();
-
-        // Update local state
+        // ✅ OPTIMIZATION: Update local state immediately
         setStatuses((prev) => prev.filter((status) => status._id !== statusId));
 
         toast({
           title: "Success!",
           description: "Status deleted successfully",
           variant: "success",
+        });
+
+        // ✅ OPTIMIZATION: Run cache invalidations in parallel in the background
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["statuses"],
+            exact: false,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["leads"],
+            exact: false,
+          }),
+          refreshStatuses(),
+        ]).catch((error) => {
+          console.error("Error refreshing caches:", error);
         });
       } catch (err: unknown) {
         console.error("Error deleting status:", err);

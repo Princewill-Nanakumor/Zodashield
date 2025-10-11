@@ -31,10 +31,12 @@ export const FilterSelect = ({
   const displayValue = currentOption?.label || placeholder;
   const isActiveFilter = value !== "all";
 
-  // Show individual loading skeleton with same style
+  // ✅ Show individual loading skeleton with same style
   if (isLoading) {
     return (
-      <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+      <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse">
+        <div className="sr-only">Loading...</div>
+      </div>
     );
   }
 

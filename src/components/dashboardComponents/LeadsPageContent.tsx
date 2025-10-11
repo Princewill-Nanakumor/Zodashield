@@ -28,13 +28,11 @@ const USER_ROLES = {
 
 interface LeadsPageContentProps {
   searchQuery?: string;
-  isLoading?: boolean;
   setLayoutLoading?: (loading: boolean) => void;
 }
 
 const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   searchQuery = "",
-  isLoading = false,
   setLayoutLoading,
 }) => {
   const { data: session, status } = useSession();
@@ -52,6 +50,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     leads,
     users,
     isLoadingUsers,
+    isLoadingStatuses,
     isAssigning,
     isUnassigning,
     selectedLeads,
@@ -225,11 +224,11 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             onStatusFilterChange={handleStatusFilterChange}
             filterBySource={uiState.filterBySource}
             onSourceFilterChange={handleSourceFilterChange}
-            isLoading={isLoading}
+            isLoading={shouldShowLoading}
             filterByUser={filterByUser}
             onFilterChange={handleFilterChange}
             users={users}
-            isLoadingUsers={isLoadingUsers}
+            isLoadingStatuses={isLoadingStatuses}
           />
         </div>
 
@@ -266,7 +265,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                     key={tableKey}
                     leads={filteredLeads}
                     onLeadUpdated={handleLeadUpdate}
-                    isLoading={isLoading}
+                    isLoading={shouldShowLoading}
                     selectedLeads={selectedLeads}
                     users={users}
                     onSelectionChange={handleSelectionChange}

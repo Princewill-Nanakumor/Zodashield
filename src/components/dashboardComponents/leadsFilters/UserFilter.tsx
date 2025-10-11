@@ -1,7 +1,8 @@
 // src/components/dashboardComponents/filters/UserFilter.tsx
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { User } from "@/types/user.types";
 import { FilterSelect } from "./FilterSelect";
 
@@ -9,43 +10,34 @@ interface UserFilterProps {
   value: string;
   onChange: (value: string) => void;
   disabled: boolean;
+  isLoading?: boolean;
 }
 
-export const UserFilter = ({ value, onChange, disabled }: UserFilterProps) => {
-  // React Query to get users
-  const {
-    data: users = [],
-    isLoading,
-    isInitialLoading,
-    isFetching,
-  } = useQuery<User[]>({
-    queryKey: ["users"],
-    queryFn: async (): Promise<User[]> => {
-      const response = await fetch("/api/users", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch users");
-      return response.json();
-    },
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    refetchOnWindowFocus: false,
-    retry: 2,
-    refetchOnMount: false, // Won't refetch when you come back to page
-  });
+export const UserFilter = ({
+  value,
+  onChange,
+  disabled,
+  isLoading = false,
+}: UserFilterProps) => {
+  const queryClient = useQueryClient();
 
-  const dropdownUsers = users.filter((user) => user.status === "ACTIVE");
+  // ✅ OPTIMIZATION: Get data from existing cache instead of fetching
+  const users = useMemo(() => {
+    return queryClient.getQueryData<User[]>(["users"]) || [];
+  }, [queryClient]);
 
-  const options = [
-    { value: "all", label: "All Leads" },
-    { value: "unassigned", label: "Unassigned Leads" },
-    ...dropdownUsers.map((user) => ({
-      value: user.id,
-      label: `${user.firstName} ${user.lastName}`,
-    })),
-  ];
+  const options = useMemo(() => {
+    const dropdownUsers = users.filter((user) => user.status === "ACTIVE");
 
-  // Use isInitialLoading to show skeleton on first load
-  const showLoading = isLoading || isInitialLoading || isFetching;
+    return [
+      { value: "all", label: "All Leads" },
+      { value: "unassigned", label: "Unassigned Leads" },
+      ...dropdownUsers.map((user) => ({
+        value: user.id,
+        label: `${user.firstName} ${user.lastName}`,
+      })),
+    ];
+  }, [users]);
 
   return (
     <FilterSelect
@@ -54,7 +46,7 @@ export const UserFilter = ({ value, onChange, disabled }: UserFilterProps) => {
       options={options}
       placeholder="All Leads"
       disabled={disabled}
-      isLoading={showLoading}
+      isLoading={isLoading}
     />
   );
 };

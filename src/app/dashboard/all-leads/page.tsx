@@ -13,7 +13,7 @@ const AllLeadsPage: React.FC = () => {
   const router = useRouter();
 
   // Get search context from layout
-  const { searchQuery, isLoading, setLayoutLoading } = useSearchContext();
+  const { searchQuery, setLayoutLoading } = useSearchContext();
 
   // Handle navigation in useEffect instead of during render
   useEffect(() => {
@@ -47,7 +47,6 @@ const AllLeadsPage: React.FC = () => {
   return (
     <LeadsPageContent
       searchQuery={searchQuery}
-      isLoading={isLoading}
       setLayoutLoading={setLayoutLoading}
     />
   );
