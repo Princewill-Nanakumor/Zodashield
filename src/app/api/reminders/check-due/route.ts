@@ -29,7 +29,7 @@ export async function GET() {
 
     console.log("Checking reminders:", { currentDateStr, currentTimeStr });
 
-    // Find reminders that are due
+    // Find reminders that are due - keep showing until user takes action
     const dueReminders = await Reminder.find({
       assignedTo: session.user.id,
       status: { $in: ["PENDING", "SNOOZED"] },
@@ -39,7 +39,6 @@ export async function GET() {
           status: "PENDING",
           reminderDate: { $lte: new Date(currentDateStr + "T23:59:59") },
           reminderTime: { $lte: currentTimeStr },
-          notificationSent: false,
         },
         {
           // Snoozed reminders
@@ -54,11 +53,15 @@ export async function GET() {
 
     console.log("Found due reminders:", dueReminders.length);
 
-    // Mark as notification sent
-    const reminderIds = dueReminders.map((r) => r._id);
-    if (reminderIds.length > 0) {
+    // Mark as notification sent ONLY for first-time notifications
+    // This prevents browser notifications from showing multiple times
+    // but keeps the reminder in the in-app notification list until dismissed
+    const unsentReminders = dueReminders.filter((r) => !r.notificationSent);
+    const unsentReminderIds = unsentReminders.map((r) => r._id);
+
+    if (unsentReminderIds.length > 0) {
       await Reminder.updateMany(
-        { _id: { $in: reminderIds } },
+        { _id: { $in: unsentReminderIds } },
         {
           $set: {
             notificationSent: true,

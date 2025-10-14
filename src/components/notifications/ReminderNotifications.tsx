@@ -48,20 +48,25 @@ export default function ReminderNotifications() {
   // Show notifications when new due reminders arrive
   useEffect(() => {
     if (dueReminders.length > 0) {
+      console.log("Processing due reminders:", dueReminders);
+
       // Check if any reminder has sound enabled
-      const hasSoundEnabled = dueReminders.some((r) => r.soundEnabled);
+      const soundEnabledReminders = dueReminders.filter((r) => r.soundEnabled);
+      console.log("Sound enabled reminders:", soundEnabledReminders.length);
+
+      // Start alarm if any reminder has sound enabled and not already playing
+      if (soundEnabledReminders.length > 0 && !soundPlayingRef.current) {
+        console.log("Starting alarm sound!");
+        alarmSound.start();
+        soundPlayingRef.current = true;
+      } else {
+        console.log("Not starting sound:", {
+          hasSound: soundEnabledReminders.length > 0,
+          alreadyPlaying: soundPlayingRef.current,
+        });
+      }
 
       dueReminders.forEach((reminder) => {
-        // Start alarm sound if enabled (only once for all reminders)
-        if (
-          reminder.soundEnabled &&
-          !soundPlayingRef.current &&
-          hasSoundEnabled
-        ) {
-          alarmSound.start();
-          soundPlayingRef.current = true;
-        }
-
         // Show browser notification
         if (permissionGranted && "Notification" in window) {
           const leadName =

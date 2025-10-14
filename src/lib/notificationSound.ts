@@ -18,12 +18,12 @@ class AlarmSoundManager {
     this.isPlaying = true;
     this.playAlarmCycle();
 
-    // Repeat every 2 seconds
+    // Repeat every 1 second for faster beeping
     this.intervalId = setInterval(() => {
       if (this.isPlaying) {
         this.playAlarmCycle();
       }
-    }, 2000);
+    }, 1000);
   }
 
   /**
@@ -42,7 +42,7 @@ class AlarmSoundManager {
   }
 
   /**
-   * Play one cycle of the alarm sound
+   * Play one cycle of the alarm sound (beep pattern)
    */
   private playAlarmCycle() {
     try {
@@ -58,38 +58,54 @@ class AlarmSoundManager {
       const audioContext = new AudioContextClass();
       this.audioContext = audioContext;
 
-      // Create alarm tone (similar to iOS alarm)
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // Set frequency for alarm-like sound
-      oscillator.frequency.value = 880; // A5 note - pleasant wake-up tone
-      oscillator.type = "sine";
-
-      // Volume envelope - crescendo effect like iPhone alarm
       const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(0.15, now + 0.1);
-      gainNode.gain.linearRampToValueAtTime(0.4, now + 0.5);
-      gainNode.gain.linearRampToValueAtTime(0.15, now + 1.0);
-      gainNode.gain.linearRampToValueAtTime(0, now + 1.5);
 
-      // Play the tone
-      oscillator.start(now);
-      oscillator.stop(now + 1.5);
+      // Create three short beeps in quick succession
+      this.createBeep(audioContext, now, 0, 900); // First beep at 900Hz
+      this.createBeep(audioContext, now, 0.15, 900); // Second beep
+      this.createBeep(audioContext, now, 0.3, 900); // Third beep
 
       // Cleanup this cycle after it finishes
       setTimeout(() => {
         if (audioContext.state !== "closed") {
           audioContext.close().catch(() => {});
         }
-      }, 1600);
+      }, 600);
     } catch (error) {
       console.error("Error playing alarm cycle:", error);
     }
+  }
+
+  /**
+   * Create a single beep sound
+   */
+  private createBeep(
+    audioContext: AudioContext,
+    startTime: number,
+    offset: number,
+    frequency: number
+  ) {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Use square wave for classic beep sound
+    oscillator.type = "square";
+    oscillator.frequency.value = frequency;
+
+    // Sharp attack and release for beep effect
+    const beepStart = startTime + offset;
+    const beepDuration = 0.1; // 100ms beep
+
+    gainNode.gain.setValueAtTime(0, beepStart);
+    gainNode.gain.linearRampToValueAtTime(0.3, beepStart + 0.01); // Quick attack
+    gainNode.gain.linearRampToValueAtTime(0.3, beepStart + beepDuration - 0.01);
+    gainNode.gain.linearRampToValueAtTime(0, beepStart + beepDuration); // Quick release
+
+    oscillator.start(beepStart);
+    oscillator.stop(beepStart + beepDuration);
   }
 
   /**

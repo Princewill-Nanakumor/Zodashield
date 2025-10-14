@@ -43,7 +43,13 @@ export async function PUT(
     } else if (body.status === "DISMISSED") {
       reminder.status = "DISMISSED";
     } else {
-      // Regular update
+      // Regular update - check if time/date changed
+      const timeOrDateChanged =
+        (body.reminderDate &&
+          new Date(body.reminderDate).getTime() !==
+            reminder.reminderDate.getTime()) ||
+        (body.reminderTime && body.reminderTime !== reminder.reminderTime);
+
       if (body.title) reminder.title = body.title;
       if (body.description !== undefined)
         reminder.description = body.description;
@@ -53,7 +59,14 @@ export async function PUT(
       if (body.type) reminder.type = body.type;
       if (body.soundEnabled !== undefined)
         reminder.soundEnabled = body.soundEnabled;
-      reminder.notificationSent = false; // Reset notification if time changed
+
+      // Reset notification and status if time/date changed
+      if (timeOrDateChanged) {
+        reminder.notificationSent = false;
+        reminder.status = "PENDING";
+        reminder.snoozedUntil = undefined;
+        reminder.completedAt = undefined;
+      }
     }
 
     await reminder.save();
