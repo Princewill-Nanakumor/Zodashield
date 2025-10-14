@@ -1,20 +1,21 @@
 // src/components/notifications/ReminderNotifications.tsx
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, X, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Reminder } from "@/types/leads";
 import { useRouter } from "next/navigation";
-import { playNotificationSound } from "@/lib/notificationSound";
+import { alarmSound, stopNotificationSound } from "@/lib/notificationSound";
 
 export default function ReminderNotifications() {
   const { status } = useSession();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Reminder[]>([]);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const soundPlayingRef = useRef<boolean>(false);
 
   // Request browser notification permission
   useEffect(() => {
@@ -29,26 +30,36 @@ export default function ReminderNotifications() {
     }
   }, [status]);
 
-  // Poll for due reminders
+  // Poll for due reminders - check more frequently for better timing
   const { data: dueReminders = [] } = useQuery({
     queryKey: ["dueReminders"],
     queryFn: async (): Promise<Reminder[]> => {
       const response = await fetch("/api/reminders/check-due");
       if (!response.ok) return [];
-      return response.json();
+      const data = await response.json();
+      console.log("Due reminders check:", data);
+      return data;
     },
     enabled: status === "authenticated",
-    refetchInterval: 60 * 1000, // Check every minute
-    staleTime: 30 * 1000,
+    refetchInterval: 10 * 1000, // Check every 10 seconds for better timing
+    staleTime: 5 * 1000,
   });
 
   // Show notifications when new due reminders arrive
   useEffect(() => {
     if (dueReminders.length > 0) {
+      // Check if any reminder has sound enabled
+      const hasSoundEnabled = dueReminders.some((r) => r.soundEnabled);
+
       dueReminders.forEach((reminder) => {
-        // Play sound if enabled for this reminder
-        if (reminder.soundEnabled) {
-          playNotificationSound();
+        // Start alarm sound if enabled (only once for all reminders)
+        if (
+          reminder.soundEnabled &&
+          !soundPlayingRef.current &&
+          hasSoundEnabled
+        ) {
+          alarmSound.start();
+          soundPlayingRef.current = true;
         }
 
         // Show browser notification
@@ -64,7 +75,7 @@ export default function ReminderNotifications() {
             badge: "/favicon.ico",
             tag: reminder._id,
             requireInteraction: true,
-            silent: !reminder.soundEnabled, // Mute browser notification sound if disabled
+            silent: true, // We control sound manually
           });
 
           notification.onclick = () => {
@@ -88,12 +99,34 @@ export default function ReminderNotifications() {
     }
   }, [dueReminders, permissionGranted, router]);
 
+  // Stop sound when all notifications are dismissed
+  useEffect(() => {
+    if (notifications.length === 0 && soundPlayingRef.current) {
+      stopNotificationSound();
+      soundPlayingRef.current = false;
+    }
+  }, [notifications]);
+
   const dismissNotification = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((n) => n._id !== id));
+    setNotifications((prev) => {
+      const updated = prev.filter((n) => n._id !== id);
+      // Stop sound when last notification is dismissed
+      if (updated.length === 0 && soundPlayingRef.current) {
+        stopNotificationSound();
+        soundPlayingRef.current = false;
+      }
+      return updated;
+    });
   }, []);
 
   const handleNotificationClick = useCallback(
     (reminder: Reminder) => {
+      // Stop sound when user interacts
+      if (soundPlayingRef.current) {
+        stopNotificationSound();
+        soundPlayingRef.current = false;
+      }
+
       if (typeof reminder.leadId === "object") {
         router.push(`/dashboard/all-leads/${reminder.leadId._id}`);
       }
@@ -135,7 +168,14 @@ export default function ReminderNotifications() {
                   </div>
                 </div>
                 <button
-                  onClick={() => dismissNotification(reminder._id)}
+                  onClick={() => {
+                    // Stop sound when dismissing
+                    if (soundPlayingRef.current) {
+                      stopNotificationSound();
+                      soundPlayingRef.current = false;
+                    }
+                    dismissNotification(reminder._id);
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-4 h-4" />

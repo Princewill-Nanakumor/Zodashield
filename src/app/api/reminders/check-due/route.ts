@@ -16,8 +16,18 @@ export async function GET() {
     await connectMongoDB();
 
     const now = new Date();
-    const currentDate = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    const currentTime = now.toTimeString().slice(0, 5); // HH:mm
+
+    // Create date strings for comparison
+    const currentYear = now.getFullYear();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const currentDay = String(now.getDate()).padStart(2, "0");
+    const currentDateStr = `${currentYear}-${currentMonth}-${currentDay}`;
+
+    const currentHour = String(now.getHours()).padStart(2, "0");
+    const currentMinute = String(now.getMinutes()).padStart(2, "0");
+    const currentTimeStr = `${currentHour}:${currentMinute}`;
+
+    console.log("Checking reminders:", { currentDateStr, currentTimeStr });
 
     // Find reminders that are due
     const dueReminders = await Reminder.find({
@@ -25,10 +35,10 @@ export async function GET() {
       status: { $in: ["PENDING", "SNOOZED"] },
       $or: [
         {
-          // Regular pending reminders
+          // Regular pending reminders - check if date is today or past, and time has passed
           status: "PENDING",
-          reminderDate: { $lte: new Date(currentDate) },
-          reminderTime: { $lte: currentTime },
+          reminderDate: { $lte: new Date(currentDateStr + "T23:59:59") },
+          reminderTime: { $lte: currentTimeStr },
           notificationSent: false,
         },
         {
@@ -41,6 +51,8 @@ export async function GET() {
       .populate("leadId", "firstName lastName email")
       .populate("assignedTo", "firstName lastName")
       .limit(10);
+
+    console.log("Found due reminders:", dueReminders.length);
 
     // Mark as notification sent
     const reminderIds = dueReminders.map((r) => r._id);

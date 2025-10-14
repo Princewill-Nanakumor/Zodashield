@@ -7,7 +7,7 @@ export interface IReminder extends Document {
   description?: string;
   reminderDate: Date;
   reminderTime: string; // Format: "HH:mm"
-  type: "CALL" | "EMAIL" | "TASK" | "MEETING" | "FOLLOW_UP";
+  type: "CALL" | "EMAIL" | "TASK" | "MEETING";
   status: "PENDING" | "COMPLETED" | "SNOOZED" | "DISMISSED";
   leadId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
@@ -43,7 +43,7 @@ const reminderSchema = new Schema<IReminder>(
     },
     type: {
       type: String,
-      enum: ["CALL", "EMAIL", "TASK", "MEETING", "FOLLOW_UP"],
+      enum: ["CALL", "EMAIL", "TASK", "MEETING"],
       default: "TASK",
     },
     status: {

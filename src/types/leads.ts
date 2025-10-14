@@ -166,7 +166,7 @@ export interface Reminder {
   description?: string;
   reminderDate: string | Date;
   reminderTime: string;
-  type: "CALL" | "EMAIL" | "TASK" | "MEETING" | "FOLLOW_UP";
+  type: "CALL" | "EMAIL" | "TASK" | "MEETING";
   status: "PENDING" | "COMPLETED" | "SNOOZED" | "DISMISSED";
   leadId:
     | string

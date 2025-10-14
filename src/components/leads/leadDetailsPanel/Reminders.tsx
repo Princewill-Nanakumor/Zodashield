@@ -16,13 +16,13 @@ import {
   Mail,
   CheckSquare,
   Users,
-  MessageSquare,
   Edit,
   Save,
   X as XIcon,
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { stopNotificationSound } from "@/lib/notificationSound";
 import { Button } from "@/components/ui/button";
 import { format, isValid } from "date-fns";
 import { Reminder } from "@/types/leads";
@@ -78,29 +78,44 @@ const Reminders: FC<RemindersProps> = ({
     description: string;
     reminderDate: string;
     reminderTime: string;
-    type: "CALL" | "EMAIL" | "TASK" | "MEETING" | "FOLLOW_UP";
+    type: "CALL" | "EMAIL" | "TASK" | "MEETING" | "";
     soundEnabled: boolean;
   }>({
     title: "",
     description: "",
     reminderDate: "",
     reminderTime: "",
-    type: "TASK",
+    type: "",
     soundEnabled: true,
   });
 
   const handleSubmit = () => {
-    if (!formData.title || !formData.reminderDate || !formData.reminderTime) {
+    if (
+      !formData.title ||
+      !formData.reminderDate ||
+      !formData.reminderTime ||
+      !formData.type
+    ) {
       return;
     }
 
+    // Prepare data with validated type
+    const reminderData = {
+      title: formData.title,
+      description: formData.description,
+      reminderDate: formData.reminderDate,
+      reminderTime: formData.reminderTime,
+      type: formData.type as "CALL" | "EMAIL" | "TASK" | "MEETING",
+      soundEnabled: formData.soundEnabled,
+    };
+
     if (editingId) {
       // Update existing reminder
-      onUpdateReminder(editingId, formData);
+      onUpdateReminder(editingId, reminderData);
       setEditingId(null);
     } else {
       // Create new reminder
-      onAddReminder(formData);
+      onAddReminder(reminderData);
     }
 
     setFormData({
@@ -108,7 +123,7 @@ const Reminders: FC<RemindersProps> = ({
       description: "",
       reminderDate: "",
       reminderTime: "",
-      type: "TASK",
+      type: "",
       soundEnabled: true,
     });
     setShowForm(false);
@@ -139,16 +154,22 @@ const Reminders: FC<RemindersProps> = ({
       description: "",
       reminderDate: "",
       reminderTime: "",
-      type: "TASK",
+      type: "",
       soundEnabled: true,
     });
   };
 
-  const handleToggleSound = (
+  const handleToggleSound = async (
     reminderId: string,
     currentSoundEnabled: boolean
   ) => {
-    onUpdateReminder(reminderId, { soundEnabled: !currentSoundEnabled });
+    // If muting (turning sound off), stop any currently playing alarm
+    if (currentSoundEnabled) {
+      stopNotificationSound();
+    }
+
+    // Update the reminder in database and trigger immediate refetch
+    await onUpdateReminder(reminderId, { soundEnabled: !currentSoundEnabled });
   };
 
   const formatDate = (dateString: string | Date) => {
@@ -172,8 +193,6 @@ const Reminders: FC<RemindersProps> = ({
         return <CheckSquare className={iconClass} />;
       case "MEETING":
         return <Users className={iconClass} />;
-      case "FOLLOW_UP":
-        return <MessageSquare className={iconClass} />;
       default:
         return <Bell className={iconClass} />;
     }
@@ -189,8 +208,6 @@ const Reminders: FC<RemindersProps> = ({
         return "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30";
       case "MEETING":
         return "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30";
-      case "FOLLOW_UP":
-        return "text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/30";
       default:
         return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30";
     }
@@ -308,24 +325,18 @@ const Reminders: FC<RemindersProps> = ({
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      type: value as
-                        | "CALL"
-                        | "EMAIL"
-                        | "TASK"
-                        | "MEETING"
-                        | "FOLLOW_UP",
+                      type: value as "CALL" | "EMAIL" | "TASK" | "MEETING",
                     })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="TASK">Task</SelectItem>
                     <SelectItem value="CALL">Call</SelectItem>
                     <SelectItem value="EMAIL">Email</SelectItem>
                     <SelectItem value="MEETING">Meeting</SelectItem>
-                    <SelectItem value="FOLLOW_UP">Follow-up</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -370,7 +381,8 @@ const Reminders: FC<RemindersProps> = ({
                     isSaving ||
                     !formData.title ||
                     !formData.reminderDate ||
-                    !formData.reminderTime
+                    !formData.reminderTime ||
+                    !formData.type
                   }
                   className="flex-1 bg-indigo-500 hover:bg-indigo-600"
                 >
@@ -458,7 +470,7 @@ const Reminders: FC<RemindersProps> = ({
                   {pendingReminders.map((reminder) => (
                     <div
                       key={reminder._id}
-                      className="p-4 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 hover:shadow-md transition-shadow"
+                      className="p-4 rounded-lg bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1">

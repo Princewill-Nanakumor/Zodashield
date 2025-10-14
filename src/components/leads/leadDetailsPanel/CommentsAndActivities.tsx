@@ -343,20 +343,45 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
       if (!response.ok) throw new Error("Failed to update reminder");
       return response.json();
     },
+    onMutate: async ({ reminderId, updates }) => {
+      // Optimistically update the cache immediately
+      await queryClient.cancelQueries({ queryKey: ["reminders", lead._id] });
+
+      const previousReminders = queryClient.getQueryData<Reminder[]>([
+        "reminders",
+        lead._id,
+      ]);
+
+      queryClient.setQueryData<Reminder[]>(["reminders", lead._id], (old) => {
+        if (!old) return old;
+        return old.map((reminder) =>
+          reminder._id === reminderId ? { ...reminder, ...updates } : reminder
+        );
+      });
+
+      return { previousReminders };
+    },
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousReminders) {
+        queryClient.setQueryData(
+          ["reminders", lead._id],
+          context.previousReminders
+        );
+      }
+      console.error("Error updating reminder:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update reminder",
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reminders", lead._id] });
       toast({
         title: "Success",
         description: "Reminder updated successfully",
         variant: "success",
-      });
-    },
-    onError: (error) => {
-      console.error("Error updating reminder:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update reminder",
-        variant: "destructive",
       });
     },
   });
