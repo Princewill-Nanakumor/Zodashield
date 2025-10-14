@@ -2,10 +2,16 @@
 "use client";
 
 import React, { FC, useState, useCallback } from "react";
-import { Lead } from "@/types/leads";
-import { Notebook, Activity as ActivityIcon, Loader2 } from "lucide-react";
+import { Lead, Reminder } from "@/types/leads";
+import {
+  Notebook,
+  Activity as ActivityIcon,
+  Loader2,
+  Bell,
+} from "lucide-react";
 import Comments from "./Comments";
 import Activities from "./Activities";
+import Reminders from "./Reminders";
 import { useToast } from "@/components/ui/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -57,9 +63,9 @@ function transformComment(apiComment: ApiComment): Comment {
 const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"comments" | "activity">(
-    "comments"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "comments" | "activity" | "reminders"
+  >("comments");
   const [commentContent, setCommentContent] = useState("");
 
   // React Query for fetching comments
@@ -266,6 +272,168 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
     [editCommentMutation]
   );
 
+  // React Query for fetching reminders
+  const { data: reminders = [], isLoading: isLoadingReminders } = useQuery({
+    queryKey: ["reminders", lead._id],
+    queryFn: async (): Promise<Reminder[]> => {
+      const response = await fetch(`/api/leads/${lead._id}/reminders`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reminders: ${response.status}`);
+      }
+      return response.json();
+    },
+    enabled: !!lead._id,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000, // Check every minute for updates
+  });
+
+  // Add reminder mutation
+  const addReminderMutation = useMutation({
+    mutationFn: async (reminderData: {
+      title: string;
+      description?: string;
+      reminderDate: string;
+      reminderTime: string;
+      type: string;
+      soundEnabled: boolean;
+    }) => {
+      const response = await fetch(`/api/leads/${lead._id}/reminders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reminderData),
+      });
+      if (!response.ok) throw new Error("Failed to create reminder");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reminders", lead._id] });
+      toast({
+        title: "Success",
+        description: "Reminder created successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("Error creating reminder:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update reminder mutation
+  const updateReminderMutation = useMutation({
+    mutationFn: async ({
+      reminderId,
+      updates,
+    }: {
+      reminderId: string;
+      updates: Partial<Reminder>;
+    }) => {
+      const response = await fetch(
+        `/api/leads/${lead._id}/reminders/${reminderId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to update reminder");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reminders", lead._id] });
+      toast({
+        title: "Success",
+        description: "Reminder updated successfully",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating reminder:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete reminder mutation
+  const deleteReminderMutation = useMutation({
+    mutationFn: async (reminderId: string) => {
+      const response = await fetch(
+        `/api/leads/${lead._id}/reminders/${reminderId}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) throw new Error("Failed to delete reminder");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reminders", lead._id] });
+      toast({
+        title: "Success",
+        description: "Reminder deleted",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("Error deleting reminder:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete reminder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handler functions for reminders
+  const handleAddReminder = useCallback(
+    (reminderData: {
+      title: string;
+      description?: string;
+      reminderDate: string;
+      reminderTime: string;
+      type: string;
+      soundEnabled: boolean;
+    }) => {
+      addReminderMutation.mutate(reminderData);
+    },
+    [addReminderMutation]
+  );
+
+  const handleCompleteReminder = useCallback(
+    (reminderId: string) => {
+      updateReminderMutation.mutate({
+        reminderId,
+        updates: { status: "COMPLETED" },
+      });
+    },
+    [updateReminderMutation]
+  );
+
+  const handleSnoozeReminder = useCallback(
+    (reminderId: string, minutes: number) => {
+      const snoozedUntil = new Date(Date.now() + minutes * 60 * 1000);
+      updateReminderMutation.mutate({
+        reminderId,
+        updates: {
+          status: "SNOOZED",
+          snoozedUntil: snoozedUntil.toISOString(),
+        },
+      });
+    },
+    [updateReminderMutation]
+  );
+
+  const handleDeleteReminder = useCallback(
+    (reminderId: string) => {
+      deleteReminderMutation.mutate(reminderId);
+    },
+    [deleteReminderMutation]
+  );
+
   // Handle errors
   React.useEffect(() => {
     if (commentsError) {
@@ -304,6 +472,28 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
             <ActivityIcon className="w-5 h-5" />
             Activity
           </button>
+          <button
+            onClick={() => setActiveTab("reminders")}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+              activeTab === "reminders"
+                ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700/50"
+            }`}
+          >
+            <Bell className="w-5 h-5" />
+            Reminders
+            {reminders.filter(
+              (r) => r.status === "PENDING" || r.status === "SNOOZED"
+            ).length > 0 && (
+              <span className="px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">
+                {
+                  reminders.filter(
+                    (r) => r.status === "PENDING" || r.status === "SNOOZED"
+                  ).length
+                }
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -332,6 +522,21 @@ const CommentsAndActivities: FC<CommentsAndActivitiesProps> = ({ lead }) => {
               <div className="flex-1 min-h-0 flex flex-col">
                 <Activities leadId={lead._id} />
               </div>
+            )}
+            {activeTab === "reminders" && (
+              <Reminders
+                reminders={reminders}
+                isLoading={isLoadingReminders}
+                leadId={lead._id}
+                onAddReminder={handleAddReminder}
+                onUpdateReminder={(id, updates) =>
+                  updateReminderMutation.mutate({ reminderId: id, updates })
+                }
+                onDeleteReminder={handleDeleteReminder}
+                onCompleteReminder={handleCompleteReminder}
+                onSnoozeReminder={handleSnoozeReminder}
+                isSaving={addReminderMutation.isPending}
+              />
             )}
           </>
         )}

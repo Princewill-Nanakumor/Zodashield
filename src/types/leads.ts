@@ -160,6 +160,41 @@ export interface Comment {
   };
 }
 
+export interface Reminder {
+  _id: string;
+  title: string;
+  description?: string;
+  reminderDate: string | Date;
+  reminderTime: string;
+  type: "CALL" | "EMAIL" | "TASK" | "MEETING" | "FOLLOW_UP";
+  status: "PENDING" | "COMPLETED" | "SNOOZED" | "DISMISSED";
+  leadId:
+    | string
+    | {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+  createdBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  assignedTo: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  adminId: string;
+  snoozedUntil?: string | Date;
+  completedAt?: string | Date;
+  notificationSent: boolean;
+  soundEnabled: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
 // Component Props Interfaces
 export interface LeadDetailsPanelProps {
   lead: Lead | null;

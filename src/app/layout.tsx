@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
 import { Providers } from "@/app/providers";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import PerformanceMonitor from "@/components/dashboardComponents/PerformanceMonitor";
+import ReminderNotifications from "@/components/notifications/ReminderNotifications";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -170,6 +171,7 @@ export default function RootLayout({
                 <StatusProvider>
                   {children}
                   <ConnectionStatus />
+                  <ReminderNotifications />
                 </StatusProvider>
               </ClientProviders>
             </PerformanceMonitor>
