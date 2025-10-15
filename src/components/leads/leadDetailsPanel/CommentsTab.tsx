@@ -5,6 +5,7 @@ import { FC, useState, useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Comments from "./Comments";
+import { Loader2 } from "lucide-react";
 
 interface ApiComment {
   _id: string;
@@ -56,7 +57,11 @@ export const CommentsTab: FC<CommentsTabProps> = ({ leadId }) => {
   const [commentContent, setCommentContent] = useState("");
 
   // React Query for fetching comments
-  const { data: comments = [], error: commentsError } = useQuery({
+  const {
+    data: comments = [],
+    isLoading: isLoadingComments,
+    error: commentsError,
+  } = useQuery({
     queryKey: ["comments", leadId],
     queryFn: async (): Promise<Comment[]> => {
       console.log("=== FETCHING COMMENTS WITH REACT QUERY ===");
@@ -263,6 +268,15 @@ export const CommentsTab: FC<CommentsTabProps> = ({ leadId }) => {
       description: "Failed to fetch comments",
       variant: "destructive",
     });
+  }
+
+  // Loading spinner to avoid empty state flash
+  if (isLoadingComments) {
+    return (
+      <div className="flex items-center justify-center h-full p-6">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500 dark:text-blue-400" />
+      </div>
+    );
   }
 
   return (

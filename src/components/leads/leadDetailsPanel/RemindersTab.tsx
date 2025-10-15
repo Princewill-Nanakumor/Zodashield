@@ -28,6 +28,7 @@ export const RemindersTab: FC<RemindersTabProps> = ({ leadId }) => {
     enabled: !!leadId,
     staleTime: 0, // Don't cache - always treat as stale for immediate updates
     refetchInterval: 60 * 1000, // Check every minute for updates
+    refetchOnWindowFocus: false,
   });
 
   // Add reminder mutation
@@ -95,19 +96,11 @@ export const RemindersTab: FC<RemindersTabProps> = ({ leadId }) => {
         leadId,
       ]);
 
-      console.log("Optimistic update:", {
-        reminderId,
-        updates,
-        previousReminders,
-      });
-
       queryClient.setQueryData<Reminder[]>(["reminders", leadId], (old) => {
         if (!old) return old;
-        const updated = old.map((reminder) =>
+        return old.map((reminder) =>
           reminder._id === reminderId ? { ...reminder, ...updates } : reminder
         );
-        console.log("Updated reminders:", updated);
-        return updated;
       });
 
       return { previousReminders };
@@ -132,8 +125,6 @@ export const RemindersTab: FC<RemindersTabProps> = ({ leadId }) => {
       }
     },
     onSuccess: async (data, variables) => {
-      console.log("Update success:", data);
-
       // Force immediate refetch from server to ensure data is fresh
       await queryClient.refetchQueries({
         queryKey: ["reminders", leadId],
