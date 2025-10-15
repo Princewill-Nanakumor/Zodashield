@@ -22,7 +22,15 @@ export type ActivityType =
   | "STATUS_CHANGE"
   | "ASSIGNMENT"
   | "COMMENT"
-  | "LEAD_CREATED";
+  | "LEAD_CREATED"
+  | "REMINDER_CREATED"
+  | "REMINDER_UPDATED"
+  | "REMINDER_DELETED"
+  | "REMINDER_COMPLETED"
+  | "REMINDER_SNOOZED"
+  | "REMINDER_DISMISSED"
+  | "REMINDER_MUTED"
+  | "REMINDER_UNMUTED";
 
 export interface Activity {
   _id: string;
@@ -88,6 +96,18 @@ export interface Activity {
       oldValue: string | null;
       newValue: string | null;
     }>;
+
+    // Reminder-specific metadata
+    reminderId?: string;
+    reminderTitle?: string;
+    reminderType?: string;
+    reminderDate?: string;
+    reminderTime?: string;
+    reminderStatus?: string;
+    oldReminderStatus?: string;
+    snoozedUntil?: string;
+    completedAt?: string;
+    soundEnabled?: boolean;
   };
 }
 

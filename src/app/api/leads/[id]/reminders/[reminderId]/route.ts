@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import Reminder from "@/models/Reminder";
+import Activity, { type ActivityType, type IActivity } from "@/models/Activity";
+import mongoose from "mongoose";
 
 // PUT - Update reminder (complete, snooze, edit)
 export async function PUT(
@@ -17,7 +19,7 @@ export async function PUT(
     }
 
     await connectMongoDB();
-    const { reminderId } = await params;
+    const { reminderId, id } = await params;
     const body = await request.json();
 
     const reminder = await Reminder.findOne({
@@ -31,6 +33,12 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    // Get adminId for activity logging
+    const adminId =
+      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
+    const oldStatus = reminder.status;
+    const oldTitle = reminder.title;
 
     // Handle different update types
     if (body.status === "COMPLETED") {
@@ -75,6 +83,73 @@ export async function PUT(
       .populate("assignedTo", "firstName lastName")
       .populate("createdBy", "firstName lastName");
 
+    // Create activity log based on the type of update
+    try {
+      let activityType: ActivityType;
+      let activityDetails: string;
+      const metadata: Partial<IActivity["metadata"]> = {
+        reminderId: reminder._id.toString(),
+        reminderTitle: reminder.title,
+        reminderType: reminder.type,
+        reminderStatus: reminder.status,
+        oldReminderStatus: oldStatus,
+      };
+
+      if (body.status === "COMPLETED") {
+        activityType = "REMINDER_COMPLETED";
+        activityDetails = `Marked reminder as completed: ${reminder.title}`;
+        metadata.completedAt = reminder.completedAt?.toISOString();
+      } else if (body.status === "SNOOZED" && body.snoozedUntil) {
+        activityType = "REMINDER_SNOOZED";
+        activityDetails = `Snoozed reminder until ${new Date(body.snoozedUntil).toLocaleString()}: ${reminder.title}`;
+        metadata.snoozedUntil = reminder.snoozedUntil?.toISOString();
+      } else if (body.status === "DISMISSED") {
+        activityType = "REMINDER_DISMISSED";
+        activityDetails = `Dismissed reminder: ${reminder.title}`;
+      } else if (body.soundEnabled !== undefined) {
+        // Handle mute/unmute
+        activityType = body.soundEnabled
+          ? "REMINDER_UNMUTED"
+          : "REMINDER_MUTED";
+        activityDetails = `${body.soundEnabled ? "Unmuted" : "Muted"} reminder: ${reminder.title}`;
+        metadata.soundEnabled = body.soundEnabled;
+      } else {
+        // Regular update
+        activityType = "REMINDER_UPDATED";
+        activityDetails = `Updated reminder: ${reminder.title}`;
+
+        // Check if time/date changed
+        const timeOrDateChanged =
+          (body.reminderDate &&
+            new Date(body.reminderDate).getTime() !==
+              reminder.reminderDate.getTime()) ||
+          (body.reminderTime && body.reminderTime !== reminder.reminderTime);
+
+        if (timeOrDateChanged) {
+          metadata.reminderDate = reminder.reminderDate.toISOString();
+          metadata.reminderTime = reminder.reminderTime;
+          activityDetails += ` (date/time changed)`;
+        }
+
+        if (body.title && body.title !== oldTitle) {
+          activityDetails += ` (title changed)`;
+        }
+      }
+
+      await Activity.create({
+        type: activityType,
+        userId: new mongoose.Types.ObjectId(session.user.id),
+        details: activityDetails,
+        leadId: new mongoose.Types.ObjectId(id),
+        adminId: new mongoose.Types.ObjectId(adminId),
+        timestamp: new Date(),
+        metadata,
+      });
+    } catch (activityError) {
+      console.error("Error logging reminder update activity:", activityError);
+      // Don't fail the request if activity logging fails
+    }
+
     return NextResponse.json(updatedReminder);
   } catch (error) {
     console.error("Error updating reminder:", error);
@@ -97,9 +172,10 @@ export async function DELETE(
     }
 
     await connectMongoDB();
-    const { reminderId } = await params;
+    const { reminderId, id } = await params;
 
-    const reminder = await Reminder.findOneAndDelete({
+    // Get the reminder before deleting it for activity logging
+    const reminder = await Reminder.findOne({
       _id: reminderId,
       assignedTo: session.user.id,
     });
@@ -109,6 +185,39 @@ export async function DELETE(
         { error: "Reminder not found" },
         { status: 404 }
       );
+    }
+
+    // Get adminId for activity logging
+    const adminId =
+      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
+
+    // Delete the reminder
+    await Reminder.findOneAndDelete({
+      _id: reminderId,
+      assignedTo: session.user.id,
+    });
+
+    // Create activity log for reminder deletion
+    try {
+      await Activity.create({
+        type: "REMINDER_DELETED",
+        userId: new mongoose.Types.ObjectId(session.user.id),
+        details: `Deleted reminder: ${reminder.title}`,
+        leadId: new mongoose.Types.ObjectId(id),
+        adminId: new mongoose.Types.ObjectId(adminId),
+        timestamp: new Date(),
+        metadata: {
+          reminderId: reminder._id.toString(),
+          reminderTitle: reminder.title,
+          reminderType: reminder.type,
+          reminderStatus: reminder.status,
+          reminderDate: reminder.reminderDate.toISOString(),
+          reminderTime: reminder.reminderTime,
+        },
+      });
+    } catch (activityError) {
+      console.error("Error logging reminder deletion activity:", activityError);
+      // Don't fail the request if activity logging fails
     }
 
     return NextResponse.json({ message: "Reminder deleted successfully" });

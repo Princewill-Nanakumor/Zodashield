@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 import { connectMongoDB } from "@/libs/dbConfig";
 import Reminder from "@/models/Reminder";
+import Activity from "@/models/Activity";
 import mongoose from "mongoose";
 
 // GET - Fetch all reminders for a lead (user-specific)
@@ -52,7 +53,21 @@ export async function POST(
     }
 
     await connectMongoDB();
-    const { id } = await params;
+    // Some Next versions may not pass params reliably; derive from URL as fallback
+    let id: string | undefined;
+    try {
+      const awaited = await params;
+      id = awaited?.id;
+    } catch {}
+    if (!id) {
+      const url = new URL(request.url);
+      const parts = url.pathname.split("/");
+      // /api/leads/:id/reminders → id is at index length - 2
+      id = parts[parts.length - 2];
+    }
+    if (!id) {
+      return NextResponse.json({ error: "Invalid lead id" }, { status: 400 });
+    }
     const body = await request.json();
 
     const {
@@ -94,6 +109,30 @@ export async function POST(
     const populatedReminder = await Reminder.findById(reminder._id)
       .populate("assignedTo", "firstName lastName")
       .populate("createdBy", "firstName lastName");
+
+    // Create activity log for reminder creation
+    try {
+      await Activity.create({
+        type: "REMINDER_CREATED",
+        userId: new mongoose.Types.ObjectId(session.user.id),
+        details: `Created reminder: ${title}`,
+        leadId: new mongoose.Types.ObjectId(id),
+        adminId: new mongoose.Types.ObjectId(adminId),
+        timestamp: new Date(),
+        metadata: {
+          reminderId: reminder._id.toString(),
+          reminderTitle: title,
+          reminderType: type || "TASK",
+          reminderDate: reminderDate,
+          reminderTime: reminderTime,
+          reminderStatus: "PENDING",
+          soundEnabled: soundEnabled !== undefined ? soundEnabled : true,
+        },
+      });
+    } catch (activityError) {
+      console.error("Error logging reminder creation activity:", activityError);
+      // Don't fail the request if activity logging fails
+    }
 
     return NextResponse.json(populatedReminder, { status: 201 });
   } catch (error) {

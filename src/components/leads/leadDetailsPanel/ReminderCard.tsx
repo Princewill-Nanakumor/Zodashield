@@ -2,6 +2,7 @@
 "use client";
 
 import { FC } from "react";
+import { useSession } from "next-auth/react";
 import {
   Clock,
   Calendar as CalendarIcon,
@@ -45,6 +46,8 @@ export const ReminderCard: FC<ReminderCardProps> = ({
   onSnooze,
   onDelete,
 }) => {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const formatDate = (dateString: string | Date) => {
     try {
       const date = new Date(dateString);
@@ -189,13 +192,15 @@ export const ReminderCard: FC<ReminderCardProps> = ({
                 <Clock className="w-4 h-4 mr-2" />
                 Snooze 1 day
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onDelete(reminder._id)}
-                className="text-red-600"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem
+                  onClick={() => onDelete(reminder._id)}
+                  className="text-red-600"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

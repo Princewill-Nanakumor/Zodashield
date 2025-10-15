@@ -2,6 +2,7 @@
 "use client";
 
 import { FC } from "react";
+import { useSession } from "next-auth/react";
 import { Loader2, Bell, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, isValid } from "date-fns";
@@ -27,6 +28,9 @@ export const RemindersList: FC<RemindersListProps> = ({
   onSnoozeReminder,
   onDeleteReminder,
 }) => {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
   const formatDate = (dateString: string | Date) => {
     try {
       const date = new Date(dateString);
@@ -149,14 +153,16 @@ export const RemindersList: FC<RemindersListProps> = ({
                     </div>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onDeleteReminder(reminder._id)}
-                  className="text-gray-400 hover:text-red-500"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onDeleteReminder(reminder._id)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}

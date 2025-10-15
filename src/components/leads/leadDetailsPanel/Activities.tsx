@@ -9,6 +9,13 @@ import {
   MessageSquare,
   ArrowRight,
   Activity as ActivityIcon,
+  Clock,
+  CheckCircle,
+  XCircle,
+  VolumeX,
+  Volume2,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -132,6 +139,54 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
             className={`${iconSizeClass} text-purple-600 dark:text-purple-400`}
           />
         );
+      case "REMINDER_CREATED":
+        return (
+          <Clock
+            className={`${iconSizeClass} text-blue-500 dark:text-blue-400`}
+          />
+        );
+      case "REMINDER_UPDATED":
+        return (
+          <Edit
+            className={`${iconSizeClass} text-blue-500 dark:text-blue-400`}
+          />
+        );
+      case "REMINDER_DELETED":
+        return (
+          <Trash2
+            className={`${iconSizeClass} text-red-500 dark:text-red-400`}
+          />
+        );
+      case "REMINDER_COMPLETED":
+        return (
+          <CheckCircle
+            className={`${iconSizeClass} text-green-500 dark:text-green-400`}
+          />
+        );
+      case "REMINDER_SNOOZED":
+        return (
+          <Clock
+            className={`${iconSizeClass} text-yellow-500 dark:text-yellow-400`}
+          />
+        );
+      case "REMINDER_DISMISSED":
+        return (
+          <XCircle
+            className={`${iconSizeClass} text-gray-500 dark:text-gray-400`}
+          />
+        );
+      case "REMINDER_MUTED":
+        return (
+          <VolumeX
+            className={`${iconSizeClass} text-gray-500 dark:text-gray-400`}
+          />
+        );
+      case "REMINDER_UNMUTED":
+        return (
+          <Volume2
+            className={`${iconSizeClass} text-blue-500 dark:text-blue-400`}
+          />
+        );
       default:
         return (
           <ActivityIcon
@@ -159,6 +214,22 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
         return "bg-red-100 dark:bg-red-900/30";
       case "IMPORT":
         return "bg-purple-100 dark:bg-purple-900/30";
+      case "REMINDER_CREATED":
+        return "bg-blue-100 dark:bg-blue-900/30";
+      case "REMINDER_UPDATED":
+        return "bg-blue-100 dark:bg-blue-900/30";
+      case "REMINDER_DELETED":
+        return "bg-red-100 dark:bg-red-900/30";
+      case "REMINDER_COMPLETED":
+        return "bg-green-100 dark:bg-green-900/30";
+      case "REMINDER_SNOOZED":
+        return "bg-yellow-100 dark:bg-yellow-900/30";
+      case "REMINDER_DISMISSED":
+        return "bg-gray-100 dark:bg-gray-900/30";
+      case "REMINDER_MUTED":
+        return "bg-gray-100 dark:bg-gray-900/30";
+      case "REMINDER_UNMUTED":
+        return "bg-blue-100 dark:bg-blue-900/30";
       default:
         return "bg-gray-100 dark:bg-gray-800";
     }
@@ -429,6 +500,84 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
                       </div>
                     </div>
                   )}
+
+                  {/* Display reminder-specific metadata */}
+                  {activity.type.startsWith("REMINDER_") &&
+                    activity.metadata && (
+                      <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border-l-4 border-blue-300 dark:border-blue-500 shadow-sm">
+                          <span className="font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide text-xs mr-1">
+                            Reminder Details:
+                          </span>
+                          <div className="mt-1 space-y-1">
+                            {activity.metadata.reminderTitle && (
+                              <div className="text-xs">
+                                <span className="font-medium">Title:</span>{" "}
+                                <span className="text-gray-700 dark:text-gray-200">
+                                  {activity.metadata.reminderTitle}
+                                </span>
+                              </div>
+                            )}
+                            {activity.metadata.reminderType && (
+                              <div className="text-xs">
+                                <span className="font-medium">Type:</span>{" "}
+                                <span className="text-gray-700 dark:text-gray-200">
+                                  {activity.metadata.reminderType}
+                                </span>
+                              </div>
+                            )}
+                            {activity.metadata.reminderDate &&
+                              activity.metadata.reminderTime && (
+                                <div className="text-xs">
+                                  <span className="font-medium">Due:</span>{" "}
+                                  <span className="text-gray-700 dark:text-gray-200">
+                                    {new Date(
+                                      activity.metadata.reminderDate
+                                    ).toLocaleDateString()}{" "}
+                                    at {activity.metadata.reminderTime}
+                                  </span>
+                                </div>
+                              )}
+                            {activity.metadata.snoozedUntil && (
+                              <div className="text-xs">
+                                <span className="font-medium">
+                                  Snoozed Until:
+                                </span>{" "}
+                                <span className="text-yellow-600 dark:text-yellow-400">
+                                  {new Date(
+                                    activity.metadata.snoozedUntil
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            {activity.metadata.completedAt && (
+                              <div className="text-xs">
+                                <span className="font-medium">
+                                  Completed At:
+                                </span>{" "}
+                                <span className="text-green-600 dark:text-green-400">
+                                  {new Date(
+                                    activity.metadata.completedAt
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            {activity.metadata.soundEnabled !== undefined && (
+                              <div className="text-xs">
+                                <span className="font-medium">Sound:</span>{" "}
+                                <span
+                                  className={`${activity.metadata.soundEnabled ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}
+                                >
+                                  {activity.metadata.soundEnabled
+                                    ? "Enabled"
+                                    : "Muted"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                   {/* Display additional metadata for other activity types */}
                   {activity.metadata?.changes &&

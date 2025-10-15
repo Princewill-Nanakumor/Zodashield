@@ -50,6 +50,17 @@ interface ActivityMetadata {
   }>;
   // Allow for additional properties with index signature
   [key: string]: unknown;
+  // Reminder-specific metadata
+  reminderId?: string;
+  reminderTitle?: string;
+  reminderType?: string;
+  reminderDate?: string;
+  reminderTime?: string;
+  reminderStatus?: string;
+  oldReminderStatus?: string;
+  snoozedUntil?: string;
+  completedAt?: string;
+  soundEnabled?: boolean;
 }
 
 interface CreateActivityParams {
@@ -236,5 +247,194 @@ export class ActivityService {
       },
       { $sort: { _id: -1 } },
     ]);
+  }
+
+  // Reminder activity logging methods
+  static async logReminderCreated(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string,
+    reminderType: string,
+    reminderDate: string,
+    reminderTime: string,
+    soundEnabled: boolean = true
+  ) {
+    return this.createActivity({
+      type: "REMINDER_CREATED",
+      userId,
+      adminId,
+      leadId,
+      details: `Created reminder: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        reminderType,
+        reminderDate,
+        reminderTime,
+        reminderStatus: "PENDING",
+        soundEnabled,
+      },
+    });
+  }
+
+  static async logReminderUpdated(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string,
+    reminderType: string,
+    changes: string[]
+  ) {
+    return this.createActivity({
+      type: "REMINDER_UPDATED",
+      userId,
+      adminId,
+      leadId,
+      details: `Updated reminder: ${reminderTitle}${changes.length > 0 ? ` (${changes.join(", ")})` : ""}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        reminderType,
+        reminderStatus: "PENDING",
+      },
+    });
+  }
+
+  static async logReminderCompleted(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string,
+    completedAt: Date
+  ) {
+    return this.createActivity({
+      type: "REMINDER_COMPLETED",
+      userId,
+      adminId,
+      leadId,
+      details: `Marked reminder as completed: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        reminderStatus: "COMPLETED",
+        completedAt: completedAt.toISOString(),
+      },
+    });
+  }
+
+  static async logReminderSnoozed(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string,
+    snoozedUntil: Date
+  ) {
+    return this.createActivity({
+      type: "REMINDER_SNOOZED",
+      userId,
+      adminId,
+      leadId,
+      details: `Snoozed reminder until ${snoozedUntil.toLocaleString()}: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        reminderStatus: "SNOOZED",
+        snoozedUntil: snoozedUntil.toISOString(),
+      },
+    });
+  }
+
+  static async logReminderDismissed(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string
+  ) {
+    return this.createActivity({
+      type: "REMINDER_DISMISSED",
+      userId,
+      adminId,
+      leadId,
+      details: `Dismissed reminder: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        reminderStatus: "DISMISSED",
+      },
+    });
+  }
+
+  static async logReminderDeleted(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string,
+    reminderType: string,
+    reminderDate: string,
+    reminderTime: string
+  ) {
+    return this.createActivity({
+      type: "REMINDER_DELETED",
+      userId,
+      adminId,
+      leadId,
+      details: `Deleted reminder: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        reminderType,
+        reminderDate,
+        reminderTime,
+      },
+    });
+  }
+
+  static async logReminderMuted(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string
+  ) {
+    return this.createActivity({
+      type: "REMINDER_MUTED",
+      userId,
+      adminId,
+      leadId,
+      details: `Muted reminder: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        soundEnabled: false,
+      },
+    });
+  }
+
+  static async logReminderUnmuted(
+    userId: string,
+    adminId: string,
+    leadId: string,
+    reminderId: string,
+    reminderTitle: string
+  ) {
+    return this.createActivity({
+      type: "REMINDER_UNMUTED",
+      userId,
+      adminId,
+      leadId,
+      details: `Unmuted reminder: ${reminderTitle}`,
+      metadata: {
+        reminderId,
+        reminderTitle,
+        soundEnabled: true,
+      },
+    });
   }
 }

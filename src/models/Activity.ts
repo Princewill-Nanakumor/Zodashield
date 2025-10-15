@@ -21,7 +21,16 @@ export type ActivityType =
   | "SUBSCRIPTION_CANCELLED"
   | "PROFILE_UPDATED"
   | "PASSWORD_CHANGED"
-  | "PERMISSION_CHANGED";
+  | "PERMISSION_CHANGED"
+  // Add reminder-specific activity types
+  | "REMINDER_CREATED"
+  | "REMINDER_UPDATED"
+  | "REMINDER_DELETED"
+  | "REMINDER_COMPLETED"
+  | "REMINDER_SNOOZED"
+  | "REMINDER_DISMISSED"
+  | "REMINDER_MUTED"
+  | "REMINDER_UNMUTED";
 
 export interface IActivity {
   type: ActivityType;
@@ -75,6 +84,17 @@ export interface IActivity {
       permission: string;
       granted: boolean;
     }>;
+    // Reminder-specific metadata
+    reminderId?: string;
+    reminderTitle?: string;
+    reminderType?: string;
+    reminderDate?: string;
+    reminderTime?: string;
+    reminderStatus?: string;
+    oldReminderStatus?: string;
+    snoozedUntil?: string;
+    completedAt?: string;
+    soundEnabled?: boolean;
   };
 }
 
@@ -105,6 +125,14 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
         "PROFILE_UPDATED",
         "PASSWORD_CHANGED",
         "PERMISSION_CHANGED",
+        "REMINDER_CREATED",
+        "REMINDER_UPDATED",
+        "REMINDER_DELETED",
+        "REMINDER_COMPLETED",
+        "REMINDER_SNOOZED",
+        "REMINDER_DISMISSED",
+        "REMINDER_MUTED",
+        "REMINDER_UNMUTED",
       ],
     },
     userId: {
