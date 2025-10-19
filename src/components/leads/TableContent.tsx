@@ -198,9 +198,7 @@ export function TableContent({
             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: statusColor }}
           />
-          <span className="dark:text-gray-300 text-xs truncate">
-            {statusName}
-          </span>
+          <span className="text-xs truncate">{statusName}</span>
         </Badge>
       </div>
     );

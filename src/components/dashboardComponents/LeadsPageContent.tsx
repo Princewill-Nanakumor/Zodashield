@@ -49,6 +49,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
   const {
     leads,
     users,
+    statuses,
     isLoadingUsers,
     isLoadingStatuses,
     isAssigning,
@@ -268,6 +269,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                     isLoading={shouldShowLoading}
                     selectedLeads={selectedLeads}
                     users={users}
+                    statuses={statuses}
                     onSelectionChange={handleSelectionChange}
                     searchQuery={uiState.searchQuery}
                     filterByUser={filterByUser}

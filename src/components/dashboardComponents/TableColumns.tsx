@@ -19,40 +19,31 @@ type SortField =
   | "createdAt"
   | "assignedTo";
 
-// Memoized status styles to prevent recreation
-const STATUS_STYLES = {
-  NEW: {
-    backgroundColor: "#EEF2FF",
-    color: "#3B82F6",
-    dotColor: "#3B82F6",
-    label: "New",
-  },
-  CALLBACK: {
-    backgroundColor: "#ECFDF5",
-    color: "#059669",
-    dotColor: "#059669",
-    label: "Callback",
-  },
-  NO_INTEREST: {
-    backgroundColor: "#FEF2F2",
-    color: "#DC2626",
-    dotColor: "#DC2626",
-    label: "No interest",
-  },
-  IN_PROGRESS: {
-    backgroundColor: "#FDF5EE",
-    color: "#EA580C",
-    dotColor: "#EA580C",
-    label: "In Progress",
-  },
-} as const;
+// Default status style for fallback
+const DEFAULT_STATUS_STYLE = {
+  backgroundColor: "#EEF2FF",
+  color: "#3B82F6",
+  dotColor: "#3B82F6",
+  label: "New",
+};
 
-const getStatusStyle = (status: string) => {
-  const upperStatus = status?.toUpperCase();
-  return (
-    STATUS_STYLES[upperStatus as keyof typeof STATUS_STYLES] ||
-    STATUS_STYLES.NEW
-  );
+const getStatusStyle = (
+  status: string,
+  statuses: Array<{ id: string; name: string; color?: string }> = []
+) => {
+  const statusObj = statuses.find((s) => s.id === status);
+
+  if (statusObj && statusObj.color) {
+    return {
+      backgroundColor: `${statusObj.color}15`,
+      color: statusObj.color,
+      dotColor: statusObj.color,
+      label: statusObj.name,
+    };
+  }
+
+  // Fallback to default style
+  return DEFAULT_STATUS_STYLE;
 };
 
 interface TableColumnsProps {
@@ -64,6 +55,7 @@ interface TableColumnsProps {
   handleRowSelection: (lead: Lead, checked: boolean) => void;
   users: User[];
   selectAllRef: React.RefObject<HTMLInputElement | null>;
+  statuses?: Array<{ id: string; name: string; color?: string }>;
 }
 
 export const useTableColumns = ({
@@ -75,6 +67,7 @@ export const useTableColumns = ({
   handleRowSelection,
   users,
   selectAllRef,
+  statuses = [],
 }: TableColumnsProps) => {
   // Get current URL params to preserve filters when navigating
   const searchParams = useSearchParams();
@@ -227,7 +220,7 @@ export const useTableColumns = ({
         ),
         cell: ({ row }) => {
           const lead = row.original;
-          const statusStyle = getStatusStyle(lead.status);
+          const statusStyle = getStatusStyle(lead.status, statuses);
 
           return (
             <Badge
@@ -336,6 +329,7 @@ export const useTableColumns = ({
       handleRowSelection,
       users,
       selectAllRef,
+      statuses,
       currentParams,
     ]
   );

@@ -33,6 +33,7 @@ interface LeadsTableProps {
   onLeadUpdated: (lead: Lead) => Promise<boolean>;
   isLoading?: boolean;
   users: User[];
+  statuses?: Array<{ id: string; name: string; color?: string }>;
   selectedLeads?: Lead[];
   onSelectionChange?: (leads: Lead[]) => void;
   searchQuery?: string;
@@ -47,6 +48,7 @@ export default function LeadsTable({
   onLeadUpdated,
   isLoading = false,
   users = [],
+  statuses = [],
   selectedLeads = [],
   onSelectionChange,
   searchQuery = "",
@@ -173,6 +175,7 @@ export default function LeadsTable({
     handleRowSelection,
     users,
     selectAllRef,
+    statuses,
   });
 
   const { table } = useTableConfiguration({
