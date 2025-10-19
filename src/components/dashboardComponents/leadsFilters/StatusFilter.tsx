@@ -37,18 +37,13 @@ export const StatusFilter = ({
   });
 
   const options = useMemo(() => {
-    const statusNames = statuses.map((status) => status.name);
-    const allStatuses = statusNames.includes("NEW")
-      ? statusNames
-      : ["NEW", ...statusNames];
-
     return [
       { value: "all", label: "All Statuses" },
-      ...allStatuses.map((statusName: string) => ({
-        value: statusName,
+      ...statuses.map((status) => ({
+        value: status.id,
         label:
-          statusName.charAt(0).toUpperCase() +
-          statusName.slice(1).toLowerCase(),
+          status.name.charAt(0).toUpperCase() +
+          status.name.slice(1).toLowerCase(),
       })),
     ];
   }, [statuses]);
