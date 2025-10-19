@@ -432,7 +432,7 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
       </div>
 
       {/* Lead Details Panel */}
-      {isPanelOpen && selectedLead && isDataReady && (
+      {isPanelOpen && selectedLead && isDataReady && selectedLead && (
         <LeadDetailsPanel
           lead={selectedLead}
           isOpen={isPanelOpen}

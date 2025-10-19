@@ -144,7 +144,20 @@ export const RemindersList: FC<RemindersListProps> = ({
                     <h5 className="font-medium text-gray-700 dark:text-gray-300 line-through">
                       {reminder.title}
                     </h5>
-                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {reminder.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-through">
+                        {reminder.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+                        {reminder.type}
+                      </span>
+                      <span>
+                        Created by {reminder.createdBy.firstName}{" "}
+                        {reminder.createdBy.lastName}
+                      </span>
+                      <span>•</span>
                       <span>
                         Completed on{" "}
                         {reminder.completedAt &&

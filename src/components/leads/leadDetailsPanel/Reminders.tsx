@@ -41,6 +41,14 @@ const Reminders: FC<RemindersProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
+  // Helper function to get current date and time in the correct format
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const date = now.toISOString().split("T")[0]; // YYYY-MM-DD format
+    const time = now.toTimeString().slice(0, 5); // HH:MM format
+    return { date, time };
+  };
+
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
@@ -48,13 +56,16 @@ const Reminders: FC<RemindersProps> = ({
     reminderTime: string;
     type: "CALL" | "EMAIL" | "TASK" | "MEETING" | "";
     soundEnabled: boolean;
-  }>({
-    title: "",
-    description: "",
-    reminderDate: "",
-    reminderTime: "",
-    type: "",
-    soundEnabled: true,
+  }>(() => {
+    const { date, time } = getCurrentDateTime();
+    return {
+      title: "",
+      description: "",
+      reminderDate: date,
+      reminderTime: time,
+      type: "",
+      soundEnabled: true,
+    };
   });
 
   const handleSubmit = () => {
@@ -86,11 +97,13 @@ const Reminders: FC<RemindersProps> = ({
       onAddReminder(reminderData);
     }
 
+    // Reset form with current date and time
+    const { date, time } = getCurrentDateTime();
     setFormData({
       title: "",
       description: "",
-      reminderDate: "",
-      reminderTime: "",
+      reminderDate: date,
+      reminderTime: time,
       type: "",
       soundEnabled: true,
     });
@@ -117,11 +130,13 @@ const Reminders: FC<RemindersProps> = ({
   const handleCancelEdit = () => {
     setEditingId(null);
     setShowForm(false);
+    // Reset form with current date and time
+    const { date, time } = getCurrentDateTime();
     setFormData({
       title: "",
       description: "",
-      reminderDate: "",
-      reminderTime: "",
+      reminderDate: date,
+      reminderTime: time,
       type: "",
       soundEnabled: true,
     });
@@ -153,11 +168,6 @@ const Reminders: FC<RemindersProps> = ({
           r.soundEnabled && // Has sound enabled
           r.status === "PENDING" && // Still pending
           isReminderDue(r) // Is currently due
-      );
-
-      console.log(
-        "Completing reminder - other due reminders with sound:",
-        otherDueRemindersWithSound.length
       );
 
       // Only stop alarm if NO other reminders need sound
@@ -230,7 +240,16 @@ const Reminders: FC<RemindersProps> = ({
           </h3>
           {!showForm && (
             <Button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                // Update form with current date and time when opening
+                const { date, time } = getCurrentDateTime();
+                setFormData((prev) => ({
+                  ...prev,
+                  reminderDate: date,
+                  reminderTime: time,
+                }));
+                setShowForm(!showForm);
+              }}
               size="sm"
               className="gap-2 bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
             >

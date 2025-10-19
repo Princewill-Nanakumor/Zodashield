@@ -46,8 +46,15 @@ export const RemindersTab: FC<RemindersTabProps> = ({ leadId }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reminderData),
       });
-      if (!response.ok) throw new Error("Failed to create reminder");
-      return response.json();
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to create reminder: ${response.status} - ${errorText}`
+        );
+      }
+
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reminders", leadId] });

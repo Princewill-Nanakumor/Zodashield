@@ -20,6 +20,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { Activity, Status } from "@/types/leads";
+import { formatTime24Hour } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
 interface ActivitiesProps {
@@ -534,7 +535,10 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
                                     {new Date(
                                       activity.metadata.reminderDate
                                     ).toLocaleDateString()}{" "}
-                                    at {activity.metadata.reminderTime}
+                                    at{" "}
+                                    {formatTime24Hour(
+                                      activity.metadata.reminderTime
+                                    )}
                                   </span>
                                 </div>
                               )}

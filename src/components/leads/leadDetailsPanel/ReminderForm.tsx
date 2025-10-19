@@ -68,7 +68,7 @@ export const ReminderForm: FC<ReminderFormProps> = ({
             Title *
           </label>
           <Input
-            placeholder="e.g., Call client for follow-up"
+            placeholder="e.g., Call for follow-up"
             value={formData.title}
             onChange={(e) =>
               setFormData({ ...formData, title: e.target.value })
@@ -118,6 +118,7 @@ export const ReminderForm: FC<ReminderFormProps> = ({
                 setFormData({ ...formData, reminderTime: e.target.value })
               }
               className="w-full"
+              step="60"
             />
           </div>
         </div>

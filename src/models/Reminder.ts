@@ -97,6 +97,14 @@ reminderSchema.index({ leadId: 1, assignedTo: 1 });
 reminderSchema.index({ adminId: 1, status: 1 });
 reminderSchema.index({ assignedTo: 1, status: 1, reminderDate: 1 });
 reminderSchema.index({ reminderDate: 1, status: 1 });
+// Optimized index for due reminders query
+reminderSchema.index({
+  adminId: 1,
+  assignedTo: 1,
+  status: 1,
+  reminderDate: 1,
+  reminderTime: 1,
+});
 
 const Reminder =
   mongoose.models.Reminder ||

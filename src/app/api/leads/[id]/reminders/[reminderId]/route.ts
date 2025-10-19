@@ -22,9 +22,20 @@ export async function PUT(
     const { reminderId, id } = await params;
     const body = await request.json();
 
+    // Get adminId to ensure we're working within the same organization
+    const adminId =
+      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
+
+    if (!adminId) {
+      return NextResponse.json(
+        { error: "Admin ID not found" },
+        { status: 400 }
+      );
+    }
+
     const reminder = await Reminder.findOne({
       _id: reminderId,
-      assignedTo: session.user.id,
+      adminId: adminId, // Ensure reminder belongs to the same organization
     });
 
     if (!reminder) {
@@ -33,10 +44,6 @@ export async function PUT(
         { status: 404 }
       );
     }
-
-    // Get adminId for activity logging
-    const adminId =
-      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
     const oldStatus = reminder.status;
     const oldTitle = reminder.title;
 
@@ -174,28 +181,85 @@ export async function DELETE(
     await connectMongoDB();
     const { reminderId, id } = await params;
 
+    // Get adminId to ensure we're working within the same organization
+    const adminId =
+      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
+
+    if (!adminId) {
+      return NextResponse.json(
+        { error: "Admin ID not found" },
+        { status: 400 }
+      );
+    }
+
     // Get the reminder before deleting it for activity logging
+    // Users can only delete reminders they created (unless they're admin)
+    // Completed reminders can only be deleted by admins
     const reminder = await Reminder.findOne({
       _id: reminderId,
-      assignedTo: session.user.id,
+      adminId: adminId, // Ensure reminder belongs to the same organization
     });
+
+    if (
+      reminder &&
+      reminder.status === "COMPLETED" &&
+      session.user.role !== "ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Only administrators can delete completed reminders",
+        },
+        { status: 403 }
+      );
+    }
+
+    // For non-completed reminders, non-admins can only delete their own
+    if (
+      reminder &&
+      reminder.status !== "COMPLETED" &&
+      session.user.role !== "ADMIN"
+    ) {
+      const ownReminder = await Reminder.findOne({
+        _id: reminderId,
+        adminId: adminId,
+        createdBy: session.user.id,
+      });
+
+      if (!ownReminder) {
+        return NextResponse.json(
+          {
+            error: "You can only delete reminders you created",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!reminder) {
       return NextResponse.json(
-        { error: "Reminder not found" },
+        {
+          error: "Reminder not found or you don't have permission to delete it",
+        },
         { status: 404 }
       );
     }
 
-    // Get adminId for activity logging
-    const adminId =
-      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
-
-    // Delete the reminder
-    await Reminder.findOneAndDelete({
+    // Delete the reminder based on the permission logic above
+    const deleteQuery: {
+      _id: string;
+      adminId: string;
+      createdBy?: string;
+    } = {
       _id: reminderId,
-      assignedTo: session.user.id,
-    });
+      adminId: adminId,
+    };
+
+    // For non-completed reminders, non-admins can only delete their own
+    if (reminder.status !== "COMPLETED" && session.user.role !== "ADMIN") {
+      deleteQuery.createdBy = session.user.id;
+    }
+
+    await Reminder.findOneAndDelete(deleteQuery);
 
     // Create activity log for reminder deletion
     try {

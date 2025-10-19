@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { format, isValid } from "date-fns";
 import { Reminder } from "@/types/leads";
+import { formatTime24Hour } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,7 @@ export const ReminderCard: FC<ReminderCardProps> = ({
 }) => {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const canDelete = isAdmin || reminder.createdBy._id === session?.user?.id;
   const formatDate = (dateString: string | Date) => {
     try {
       const date = new Date(dateString);
@@ -111,13 +113,21 @@ export const ReminderCard: FC<ReminderCardProps> = ({
               </p>
             )}
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+                {reminder.type}
+              </span>
               <div className="flex items-center gap-1">
                 <CalendarIcon className="w-3 h-3" />
                 {formatDate(reminder.reminderDate)}
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {reminder.reminderTime}
+                {formatTime24Hour(reminder.reminderTime)}
+              </div>
+              <div className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                Created by {reminder.createdBy.firstName}{" "}
+                {reminder.createdBy.lastName}
               </div>
               {reminder.status === "SNOOZED" && (
                 <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
@@ -192,7 +202,7 @@ export const ReminderCard: FC<ReminderCardProps> = ({
                 <Clock className="w-4 h-4 mr-2" />
                 Snooze 1 day
               </DropdownMenuItem>
-              {isAdmin && (
+              {canDelete && (
                 <DropdownMenuItem
                   onClick={() => onDelete(reminder._id)}
                   className="text-red-600"

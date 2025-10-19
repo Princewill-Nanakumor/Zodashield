@@ -1,4 +1,3 @@
-// src/app/api/leads/[id]/reminders/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
@@ -7,7 +6,7 @@ import Reminder from "@/models/Reminder";
 import Activity from "@/models/Activity";
 import mongoose from "mongoose";
 
-// GET - Fetch all reminders for a lead (user-specific)
+// GET - Fetch all reminders for a lead
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -21,15 +20,17 @@ export async function GET(
     await connectMongoDB();
     const { id } = await params;
 
-    // Fetch reminders assigned to current user for this lead
+    // Get adminId to ensure we're working within the same organization
+    const adminId =
+      session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
+
     const reminders = await Reminder.find({
-      leadId: id,
-      assignedTo: session.user.id,
-      status: { $ne: "DISMISSED" }, // Don't show dismissed reminders
+      leadId: new mongoose.Types.ObjectId(id),
+      adminId: new mongoose.Types.ObjectId(adminId),
     })
       .populate("assignedTo", "firstName lastName")
       .populate("createdBy", "firstName lastName")
-      .sort({ reminderDate: 1, reminderTime: 1 });
+      .sort({ createdAt: -1 });
 
     return NextResponse.json(reminders);
   } catch (error) {
@@ -53,21 +54,27 @@ export async function POST(
     }
 
     await connectMongoDB();
+
     // Some Next versions may not pass params reliably; derive from URL as fallback
     let id: string | undefined;
     try {
       const awaited = await params;
       id = awaited?.id;
-    } catch {}
+    } catch {
+      // Continue to URL extraction
+    }
+
     if (!id) {
       const url = new URL(request.url);
       const parts = url.pathname.split("/");
       // /api/leads/:id/reminders → id is at index length - 2
       id = parts[parts.length - 2];
     }
+
     if (!id) {
       return NextResponse.json({ error: "Invalid lead id" }, { status: 400 });
     }
+
     const body = await request.json();
 
     const {
@@ -91,7 +98,7 @@ export async function POST(
     const adminId =
       session.user.role === "ADMIN" ? session.user.id : session.user.adminId;
 
-    const reminder = await Reminder.create({
+    const reminderData = {
       title,
       description,
       reminderDate: new Date(reminderDate),
@@ -104,7 +111,9 @@ export async function POST(
       adminId: new mongoose.Types.ObjectId(adminId),
       notificationSent: false,
       soundEnabled: soundEnabled !== undefined ? soundEnabled : true,
-    });
+    };
+
+    const reminder = await Reminder.create(reminderData);
 
     const populatedReminder = await Reminder.findById(reminder._id)
       .populate("assignedTo", "firstName lastName")

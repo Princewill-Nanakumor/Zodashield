@@ -2,6 +2,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Ensure time inputs display in 24-hour format */
+input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Force 24-hour format for time inputs */
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+/* Dark mode styling for time picker indicator */
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 /* Add to your global CSS file */
 /* Add these performance optimizations to your existing globals.css */
 

@@ -34,7 +34,9 @@ export const usePanelNavigation = ({
         params.delete("name");
       }
 
-      router.push(`${window.location.pathname}?${params.toString()}`, {
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+
+      router.push(newUrl, {
         scroll: false,
       });
     },
@@ -44,7 +46,10 @@ export const usePanelNavigation = ({
   // Stable event handlers
   const handleRowClick = useCallback(
     (lead: Lead) => {
-      if (!lead?._id) return;
+      if (!lead?._id) {
+        return;
+      }
+
       setSelectedLead(lead);
       setIsPanelOpen(true);
       updateUrl(lead);

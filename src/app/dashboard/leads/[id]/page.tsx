@@ -142,11 +142,22 @@ const LeadDetailsPage: React.FC<LeadDetailsPageProps> = ({ params }) => {
   const { updateLeadAsync } = useUpdateLead();
 
   useEffect(() => {
+    console.log("🔍 LEAD DETAIL PAGE EFFECT TRIGGERED");
+    console.log("📋 Effect state:", {
+      status: status,
+      userRole: session?.user?.role,
+      userId: session?.user?.id,
+      leadId: id,
+    });
+
     if (status === "unauthenticated") {
+      console.log("❌ User not authenticated - redirecting to signin");
       router.push("/signin");
     } else if (status === "authenticated" && session?.user?.role === "ADMIN") {
-      // Redirect admins to the admin leads page
+      console.log("🔀 Admin user - redirecting to admin leads page");
       router.push(`/dashboard/all-leads/${id}`);
+    } else if (status === "authenticated") {
+      console.log("✅ User authenticated - staying on user leads page");
     }
   }, [status, session, router, id]);
 
@@ -199,6 +210,7 @@ const LeadDetailsPage: React.FC<LeadDetailsPageProps> = ({ params }) => {
 
   // Error state
   if (error) {
+    console.log("❌ LEAD DETAIL PAGE ERROR:", error);
     return (
       <div className="flex items-center justify-center min-h-screen bg-background dark:bg-gray-900">
         <div className="text-center">

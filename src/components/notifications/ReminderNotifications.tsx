@@ -1,21 +1,21 @@
 // src/components/notifications/ReminderNotifications.tsx
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, X, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Reminder } from "@/types/leads";
-import { useRouter } from "next/navigation";
 import { alarmSound, stopNotificationSound } from "@/lib/notificationSound";
+import { formatTime24Hour } from "@/lib/utils";
 
 export default function ReminderNotifications() {
   const { status } = useSession();
-  const router = useRouter();
   const [notifications, setNotifications] = useState<Reminder[]>([]);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const soundPlayingRef = useRef<boolean>(false);
+  const lastReminderIdsRef = useRef<string>("");
 
   // Request browser notification permission
   useEffect(() => {
@@ -26,96 +26,105 @@ export default function ReminderNotifications() {
         Notification.requestPermission().then((permission) => {
           setPermissionGranted(permission === "granted");
         });
+      } else {
+        setPermissionGranted(false);
       }
     }
   }, [status]);
 
-  // Poll for due reminders - check more frequently for better timing
-  const { data: dueReminders = [] } = useQuery({
+  // Poll for due reminders
+  const { data: dueReminders = [] } = useQuery<Reminder[]>({
     queryKey: ["dueReminders"],
-    queryFn: async (): Promise<Reminder[]> => {
-      const response = await fetch("/api/reminders/check-due");
-      if (!response.ok) return [];
-      const data = await response.json();
-      console.log("Due reminders check:", data);
-      return data;
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/reminders/check-due");
+        if (!response.ok) {
+          return [];
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching due reminders:", error);
+        return [];
+      }
     },
     enabled: status === "authenticated",
-    refetchInterval: 10 * 1000, // Check every 10 seconds for better timing
-    staleTime: 5 * 1000,
+    refetchInterval: 10000, // Check every 10 seconds for accurate timing
+    staleTime: 5000,
   });
 
-  // Show notifications when new due reminders arrive
+  // Create a stable reminder IDs string for comparison
+  const reminderIdsString = useMemo(() => {
+    if (!dueReminders || dueReminders.length === 0) return "";
+    return dueReminders
+      .map((r) => r._id)
+      .sort()
+      .join(",");
+  }, [dueReminders]);
+
+  // Handle notification updates - only when dueReminders actually changes
   useEffect(() => {
-    if (dueReminders.length > 0) {
-      console.log("Processing due reminders:", dueReminders);
-
-      // Check if any reminder has sound enabled
-      const soundEnabledReminders = dueReminders.filter((r) => r.soundEnabled);
-      console.log("Sound enabled reminders:", soundEnabledReminders.length);
-
-      // Start alarm if any reminder has sound enabled and not already playing
-      if (soundEnabledReminders.length > 0 && !soundPlayingRef.current) {
-        console.log("Starting alarm sound!");
-        alarmSound.start();
-        soundPlayingRef.current = true;
-      } else {
-        console.log("Not starting sound:", {
-          hasSound: soundEnabledReminders.length > 0,
-          alreadyPlaying: soundPlayingRef.current,
-        });
+    if (!dueReminders || dueReminders.length === 0) {
+      setNotifications([]);
+      if (soundPlayingRef.current) {
+        stopNotificationSound();
+        soundPlayingRef.current = false;
       }
+      return;
+    }
 
+    // Only update if the reminders have actually changed
+    if (reminderIdsString === lastReminderIdsRef.current) {
+      return;
+    }
+
+    lastReminderIdsRef.current = reminderIdsString;
+
+    // Update notifications with a stable reference
+    setNotifications([...dueReminders]);
+
+    // Handle sound
+    const soundEnabledReminders = dueReminders.filter((r) => r.soundEnabled);
+
+    if (soundEnabledReminders.length > 0 && !soundPlayingRef.current) {
+      alarmSound.start();
+      soundPlayingRef.current = true;
+    }
+
+    // Show browser notifications
+    if (permissionGranted && "Notification" in window) {
       dueReminders.forEach((reminder) => {
-        // Show browser notification
-        if (permissionGranted && "Notification" in window) {
-          const leadName =
-            typeof reminder.leadId === "object"
-              ? `${reminder.leadId.firstName} ${reminder.leadId.lastName}`
-              : "Lead";
+        const leadName =
+          typeof reminder.leadId === "object"
+            ? `${reminder.leadId.firstName} ${reminder.leadId.lastName}`
+            : "Lead";
 
+        try {
           const notification = new Notification("Reminder: " + reminder.title, {
             body: `${reminder.type} - ${leadName}\n${reminder.description || ""}`,
             icon: "/favicon.ico",
             badge: "/favicon.ico",
             tag: reminder._id,
             requireInteraction: true,
-            silent: true, // We control sound manually
+            silent: true,
           });
 
           notification.onclick = () => {
             window.focus();
             if (typeof reminder.leadId === "object") {
-              router.push(`/dashboard/all-leads/${reminder.leadId._id}`);
+              window.location.href = `/dashboard/all-leads/${reminder.leadId._id}`;
             }
             notification.close();
           };
+        } catch (error) {
+          console.error("Error creating browser notification:", error);
         }
-
-        // Add to in-app notifications
-        setNotifications((prev) => {
-          const exists = prev.find((n) => n._id === reminder._id);
-          if (!exists) {
-            return [...prev, reminder];
-          }
-          return prev;
-        });
       });
     }
-  }, [dueReminders, permissionGranted, router]);
-
-  // Stop sound when all notifications are dismissed
-  useEffect(() => {
-    if (notifications.length === 0 && soundPlayingRef.current) {
-      stopNotificationSound();
-      soundPlayingRef.current = false;
-    }
-  }, [notifications]);
+  }, [reminderIdsString, permissionGranted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dismissNotification = useCallback((id: string) => {
     setNotifications((prev) => {
       const updated = prev.filter((n) => n._id !== id);
-      // Stop sound when last notification is dismissed
       if (updated.length === 0 && soundPlayingRef.current) {
         stopNotificationSound();
         soundPlayingRef.current = false;
@@ -126,24 +135,71 @@ export default function ReminderNotifications() {
 
   const handleNotificationClick = useCallback(
     (reminder: Reminder) => {
-      // Stop sound when user interacts
       if (soundPlayingRef.current) {
         stopNotificationSound();
         soundPlayingRef.current = false;
       }
 
-      if (typeof reminder.leadId === "object") {
-        router.push(`/dashboard/all-leads/${reminder.leadId._id}`);
+      if (typeof reminder.leadId === "object" && reminder.leadId._id) {
+        const leadId = reminder.leadId._id;
+        const currentPath = window.location.pathname;
+
+        if (currentPath.includes("/all-leads")) {
+          // Admin leads page
+          window.location.href = `/dashboard/all-leads/${leadId}`;
+        } else {
+          // User leads page
+          window.location.href = `/dashboard/leads/${leadId}`;
+        }
       }
+
       dismissNotification(reminder._id);
     },
-    [router, dismissNotification]
+    [dismissNotification]
   );
 
-  if (notifications.length === 0) return null;
+  const handleMarkAsComplete = useCallback(
+    async (reminder: Reminder) => {
+      try {
+        if (soundPlayingRef.current) {
+          stopNotificationSound();
+          soundPlayingRef.current = false;
+        }
+
+        const response = await fetch(
+          `/api/leads/${reminder.leadId}/reminders/${reminder._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "COMPLETED" }),
+          }
+        );
+
+        if (response.ok) {
+          dismissNotification(reminder._id);
+        }
+      } catch (error) {
+        console.error("Error marking reminder as complete:", error);
+      }
+    },
+    [dismissNotification]
+  );
+
+  // Don't render anything until authentication is complete
+  if (status === "loading") {
+    return null;
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
+  if (notifications.length === 0) {
+    return null;
+  }
 
   return (
-    <div className=" border-t mt-2 fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+    <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
       {notifications.map((reminder) => (
         <div
           key={reminder._id}
@@ -163,8 +219,11 @@ export default function ReminderNotifications() {
                     {reminder.description}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+                      {reminder.type}
+                    </span>
                     <Clock className="w-3 h-3" />
-                    {reminder.reminderTime}
+                    {formatTime24Hour(reminder.reminderTime)}
                     {typeof reminder.leadId === "object" && (
                       <span>
                         • {reminder.leadId.firstName} {reminder.leadId.lastName}
@@ -174,7 +233,6 @@ export default function ReminderNotifications() {
                 </div>
                 <button
                   onClick={() => {
-                    // Stop sound when dismissing
                     if (soundPlayingRef.current) {
                       stopNotificationSound();
                       soundPlayingRef.current = false;
@@ -189,10 +247,17 @@ export default function ReminderNotifications() {
               <div className="mt-3 flex gap-2">
                 <Button
                   size="sm"
+                  onClick={() => handleMarkAsComplete(reminder)}
+                  className="bg-green-500 hover:bg-green-600 text-white"
+                >
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Mark as Complete
+                </Button>
+                <Button
+                  size="sm"
                   onClick={() => handleNotificationClick(reminder)}
                   className="bg-indigo-500 hover:bg-indigo-600 text-white"
                 >
-                  <CheckCircle className="w-3 h-3 mr-1" />
                   View Lead
                 </Button>
               </div>
