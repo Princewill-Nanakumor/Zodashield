@@ -72,7 +72,7 @@ export const RemindersList: FC<RemindersListProps> = ({
 
   return (
     <div
-      className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4 border border-gray-200 dark:border-gray-700"
+      className="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4 border border-gray-200 dark:border-gray-700 mb-4"
       style={{
         scrollbarWidth: "thin",
         scrollbarColor: "#6366f1 #f3f4f6",
