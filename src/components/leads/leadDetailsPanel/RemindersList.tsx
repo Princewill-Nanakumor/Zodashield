@@ -56,7 +56,7 @@ export const RemindersList: FC<RemindersListProps> = ({
 
   if (reminders.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+      <div className="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 py-2">
         <div className="text-center">
           <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
           <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
