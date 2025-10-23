@@ -51,11 +51,14 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
               <p>
                 Admin needs an active subscription for Users to view and manage
                 leads.
-                {subscriptionData?.subscriptionStatus === "expired" ||
-                (subscriptionData?.trialEndsAt &&
-                  new Date() > new Date(subscriptionData.trialEndsAt))
-                  ? " Admin trial has expired."
-                  : " Admin needs to Subscribe."}
+                {subscriptionData?.subscriptionStatus === "expired" &&
+                subscriptionData?.currentPlan
+                  ? " Admin subscription has expired."
+                  : subscriptionData?.subscriptionStatus === "expired" ||
+                      (subscriptionData?.trialEndsAt &&
+                        new Date() > new Date(subscriptionData.trialEndsAt))
+                    ? " Admin trial has expired."
+                    : " Admin needs to Subscribe."}
               </p>
             </div>
             <div className="flex space-x-3"></div>

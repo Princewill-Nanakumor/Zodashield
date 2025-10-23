@@ -16,6 +16,8 @@ interface UsageData {
   maxLeads: number;
   remainingLeads: number;
   canImport: boolean;
+  isOverLimit?: boolean;
+  overLimitBy?: number;
 }
 
 interface FileUploadSectionProps {
@@ -100,7 +102,8 @@ export const FileUploadSection = ({
                   variant="outline"
                   className="text-red-600 dark:text-red-400"
                 >
-                  {usageData.currentLeads}/{usageData.maxLeads} Leads
+                  {usageData.currentLeads.toLocaleString()}/
+                  {usageData.maxLeads.toLocaleString()} Leads
                 </Badge>
               </div>
               <Button
@@ -188,7 +191,8 @@ ${
                 usageData.canImport &&
                 usageData.maxLeads !== -1 && (
                   <p className="text-xs text-blue-500 mt-1">
-                    You can import up to {usageData.remainingLeads} more leads
+                    You can import up to{" "}
+                    {usageData.remainingLeads.toLocaleString()} more leads
                   </p>
                 )}
             </div>

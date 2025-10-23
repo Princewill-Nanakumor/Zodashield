@@ -84,21 +84,21 @@ export default function DashboardNavbar({
   if (!mounted) {
     // SSR fallback
     return (
-      <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
+      <nav className="flex items-center justify-between px-8 py-4 shadow-lg bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1">
         <div className="flex-shrink-0 w-32" />
-        <div className="flex-1 flex justify-center">
+        <div className="flex justify-center flex-1">
           <div className="relative w-full max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-purple-300" />
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search className="w-5 h-5 text-purple-300" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 rounded-lg bg-white/90 border border-purple-200"
+              className="block w-full py-2 pl-10 pr-3 border border-purple-200 rounded-lg bg-white/90"
               disabled
             />
           </div>
         </div>
-        <div className="flex items-center space-x-4 flex-shrink-0 w-32">
+        <div className="flex items-center flex-shrink-0 w-32 space-x-4">
           <UserDropdownMenu
             session={session}
             userProfile={userProfile}
@@ -113,9 +113,9 @@ export default function DashboardNavbar({
   }
 
   return (
-    <nav className="bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1 shadow-lg px-8 py-4 flex items-center justify-between">
+    <nav className="flex items-center justify-between px-8 py-4 shadow-lg bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1">
       {/* Left side - Toggle buttons for leads pages */}
-      <div className="flex items-center space-x-2 flex-shrink-0">
+      <div className="flex items-center flex-shrink-0 space-x-2">
         {showLeadsToggles && (
           <>
             <button
@@ -153,7 +153,7 @@ export default function DashboardNavbar({
       </div>
 
       {/* Center - Search bar */}
-      <div className="flex-1 flex justify-center mx-4">
+      <div className="flex justify-center flex-1 mx-4">
         <div className="w-full max-w-md">
           <DashboardSearchBar
             onSearch={handleSearch}
@@ -165,7 +165,7 @@ export default function DashboardNavbar({
       </div>
 
       {/* Right side - Other controls */}
-      <div className="flex items-center space-x-4 flex-shrink-0">
+      <div className="flex items-center flex-shrink-0 space-x-4">
         <DateTimeDisplay />
         <NotificationBell />
         <ThemeToggle isLoading={isLoading} />

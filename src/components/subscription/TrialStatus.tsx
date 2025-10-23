@@ -148,8 +148,47 @@ export default function TrialStatus({
     );
   }
 
-  // Only show expired if subscription status is actually expired
-  if (subscriptionData.subscriptionStatus === "expired") {
+  // Show expired subscription (not trial) if user had a paid subscription that expired
+  if (
+    subscriptionData.subscriptionStatus === "expired" &&
+    subscriptionData.currentPlan
+  ) {
+    return (
+      <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
+            <AlertTriangle className="h-5 w-5" />
+            <span>Subscription Expired</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-red-700 dark:text-red-300">
+              Your{" "}
+              {subscriptionData.currentPlan.charAt(0).toUpperCase() +
+                subscriptionData.currentPlan.slice(1)}{" "}
+              subscription has expired. Renew to continue using the CRM
+              platform.
+            </p>
+            <div className="flex items-center space-x-2">
+              <Badge
+                variant="outline"
+                className="text-red-600 dark:text-red-400"
+              >
+                Subscription Expired
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show trial expired only if user never had a paid subscription
+  if (
+    subscriptionData.subscriptionStatus === "expired" &&
+    !subscriptionData.currentPlan
+  ) {
     return (
       <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
         <CardHeader>

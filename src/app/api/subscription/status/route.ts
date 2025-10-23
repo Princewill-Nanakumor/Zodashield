@@ -101,11 +101,27 @@ export async function GET() {
     const isOnTrial = user.isOnTrial && trialEndDate && now < trialEndDate;
     const trialExpired = trialEndDate && now > trialEndDate;
 
+    // Check if subscription has expired
+    const subscriptionEndDate = user.subscriptionEndDate
+      ? new Date(user.subscriptionEndDate)
+      : null;
+    const subscriptionExpired =
+      subscriptionEndDate && now > subscriptionEndDate;
+
     // Determine subscription status
     let subscriptionStatus: "active" | "inactive" | "trial" | "expired";
 
     if (user.subscriptionStatus === "active") {
-      subscriptionStatus = "active";
+      // If subscription is marked as active but end date has passed, mark as expired
+      if (subscriptionExpired) {
+        subscriptionStatus = "expired";
+        // Update the database to reflect this
+        await User.findByIdAndUpdate(session.user.id, {
+          subscriptionStatus: "expired",
+        });
+      } else {
+        subscriptionStatus = "active";
+      }
     } else if (isOnTrial) {
       subscriptionStatus = "trial";
     } else if (trialExpired) {

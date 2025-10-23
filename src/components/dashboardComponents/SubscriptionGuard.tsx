@@ -38,11 +38,14 @@ export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
               <Shield className="h-4 w-4" />
               <p>
                 You need an active subscription to view and manage leads.
-                {subscriptionData?.subscriptionStatus === "expired" ||
-                (subscriptionData?.trialEndsAt &&
-                  new Date() > new Date(subscriptionData.trialEndsAt))
-                  ? " Your trial has expired."
-                  : " Please subscribe to continue."}
+                {subscriptionData?.subscriptionStatus === "expired" &&
+                subscriptionData?.currentPlan
+                  ? " Your subscription has expired."
+                  : subscriptionData?.subscriptionStatus === "expired" ||
+                      (subscriptionData?.trialEndsAt &&
+                        new Date() > new Date(subscriptionData.trialEndsAt))
+                    ? " Your trial has expired."
+                    : " Please subscribe to continue."}
               </p>
             </div>
             <div className="flex space-x-3">

@@ -6,6 +6,8 @@ interface UserUsageData {
   maxUsers: number;
   remainingUsers: number;
   canAddTeamMember: boolean;
+  isOverLimit?: boolean;
+  overLimitBy?: number;
 }
 
 interface ApiUsageData {
@@ -17,6 +19,8 @@ interface ApiUsageData {
   maxUsers: number;
   remainingLeads: number;
   remainingUsers: number;
+  isOverLimit?: boolean;
+  overLimitBy?: number;
 }
 
 // Fetch function outside the hook to prevent recreation
@@ -53,6 +57,8 @@ export const useUserUsageData = () => {
         maxUsers: apiData.maxUsers,
         remainingUsers: apiData.remainingUsers,
         canAddTeamMember: apiData.canAddTeamMember,
+        isOverLimit: apiData.isOverLimit,
+        overLimitBy: apiData.overLimitBy,
       }
     : null;
 

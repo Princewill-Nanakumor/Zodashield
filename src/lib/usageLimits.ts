@@ -14,6 +14,8 @@ export interface UsageLimits {
   maxUsers: number;
   remainingLeads: number;
   remainingUsers: number;
+  isOverLimit: boolean; // New field to indicate if user exceeds current plan limits
+  overLimitBy: number; // How many leads over the limit
 }
 
 export async function checkUsageLimits(): Promise<UsageLimits> {
@@ -40,11 +42,17 @@ export async function checkUsageLimits(): Promise<UsageLimits> {
   });
 
   // Check if user is on trial or has active subscription
+  const now = new Date();
   const isOnTrial =
-    user.isOnTrial &&
-    user.trialEndsAt &&
-    new Date() < new Date(user.trialEndsAt);
-  const hasActiveSubscription = user.subscriptionStatus === "active";
+    user.isOnTrial && user.trialEndsAt && now < new Date(user.trialEndsAt);
+
+  // Check if subscription has expired
+  const subscriptionEndDate = user.subscriptionEndDate
+    ? new Date(user.subscriptionEndDate)
+    : null;
+  const subscriptionExpired = subscriptionEndDate && now > subscriptionEndDate;
+  const hasActiveSubscription =
+    user.subscriptionStatus === "active" && !subscriptionExpired;
 
   if (!isOnTrial && !hasActiveSubscription) {
     return {
@@ -56,6 +64,8 @@ export async function checkUsageLimits(): Promise<UsageLimits> {
       maxUsers: 0,
       remainingLeads: 0,
       remainingUsers: 0,
+      isOverLimit: false,
+      overLimitBy: 0,
     };
   }
 
@@ -63,7 +73,11 @@ export async function checkUsageLimits(): Promise<UsageLimits> {
   const maxLeads = user.maxLeads || 50; // Default trial limit
   const maxUsers = user.maxUsers || 1; // Default trial limit
 
-  return {
+  // Check if user is over their current plan limits (downgrade scenario)
+  const isOverLimit = currentLeads > maxLeads;
+  const overLimitBy = Math.max(0, currentLeads - maxLeads);
+
+  const result = {
     canImport: currentLeads < maxLeads,
     canAddTeamMember: currentUsers < maxUsers,
     currentLeads,
@@ -72,5 +86,9 @@ export async function checkUsageLimits(): Promise<UsageLimits> {
     maxUsers,
     remainingLeads: Math.max(0, maxLeads - currentLeads),
     remainingUsers: Math.max(0, maxUsers - currentUsers),
+    isOverLimit,
+    overLimitBy,
   };
+
+  return result;
 }

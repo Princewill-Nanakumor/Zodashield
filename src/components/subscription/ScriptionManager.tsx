@@ -4,9 +4,11 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SubscriptionPlans from "./SubscriptionPlans";
 import TrialStatus from "./TrialStatus";
 import SubscriptionModal from "./SubscriptionModal";
+import DowngradeWarningModal from "./DowngradeWarningModal";
 import { useToast } from "@/components/ui/use-toast";
 
 interface SubscriptionPlan {
@@ -26,6 +28,19 @@ interface SubscriptionData {
   currentPlan: string | null;
   subscriptionStatus: "active" | "inactive" | "trial" | "expired";
   balance: number;
+}
+
+interface UsageData {
+  currentLeads: number;
+  currentUsers: number;
+  maxLeads: number;
+  maxUsers: number;
+  canImport: boolean;
+  canAddTeamMember: boolean;
+  remainingLeads: number;
+  remainingUsers: number;
+  isOverLimit?: boolean;
+  overLimitBy?: number;
 }
 
 const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
@@ -73,54 +88,71 @@ export default function SubscriptionManager() {
   const { status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
-    isOnTrial: true,
-    trialEndsAt: null,
-    currentPlan: null,
-    subscriptionStatus: "trial",
-    balance: 0,
-  });
-
-  const [loading, setLoading] = useState(true);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
     null
   );
 
-  // Fetch subscription data
-  const fetchSubscriptionData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/subscription/status");
-
+  // Use React Query to fetch subscription data (same as navbar)
+  const {
+    data: subscriptionData,
+    isLoading: loading,
+    error,
+  } = useQuery<SubscriptionData>({
+    queryKey: ["subscription", "status"],
+    queryFn: async (): Promise<SubscriptionData> => {
+      const response = await fetch("/api/subscription/status", {
+        credentials: "include",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch subscription data");
       }
+      return response.json();
+    },
+    enabled: status === "authenticated",
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    refetchOnMount: false,
+  });
 
-      const data = await response.json();
-      setSubscriptionData(data);
-    } catch (error) {
+  // Fetch usage data for downgrade prevention
+  const { data: usageData, isLoading: usageLoading } = useQuery<UsageData>({
+    queryKey: ["subscription-usage-data"],
+    queryFn: async (): Promise<UsageData> => {
+      const response = await fetch("/api/usage", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch usage data");
+      }
+      return response.json();
+    },
+    enabled: status === "authenticated",
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    refetchOnMount: false,
+  });
+
+  // Handle error state
+  useEffect(() => {
+    if (error) {
       console.error("Error fetching subscription data:", error);
       toast({
         title: "Error",
         description: "Failed to load subscription information",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchSubscriptionData();
-    }
-  }, [status, fetchSubscriptionData]);
+  }, [error, toast]);
 
   // Check if user should be redirected
   useEffect(() => {
-    if (status === "authenticated" && !loading) {
+    if (status === "authenticated" && !loading && subscriptionData) {
       const { subscriptionStatus } = subscriptionData;
 
       // If trial expired and no active subscription, redirect to subscription page
@@ -143,31 +175,101 @@ export default function SubscriptionManager() {
     }
   }, [status, loading, subscriptionData, router]);
 
-  const handleSubscribe = useCallback((plan: SubscriptionPlan) => {
-    setSelectedPlan(plan);
-    setShowSubscriptionModal(true);
-  }, []);
+  const handleSubscribe = useCallback(
+    (plan: SubscriptionPlan) => {
+      // Check if this would be a downgrade that exceeds limits
+      if (subscriptionData && usageData) {
+        const currentPlanData = SUBSCRIPTION_PLANS.find(
+          (p) => p.id === subscriptionData.currentPlan
+        );
+
+        if (currentPlanData) {
+          const isDowngrade =
+            plan.maxLeads < currentPlanData.maxLeads ||
+            plan.maxUsers < currentPlanData.maxUsers;
+
+          if (isDowngrade) {
+            const wouldExceedLeads = usageData.currentLeads > plan.maxLeads;
+            const wouldExceedUsers = usageData.currentUsers > plan.maxUsers;
+
+            if (wouldExceedLeads || wouldExceedUsers) {
+              setSelectedPlan(plan);
+              setShowDowngradeModal(true);
+              return;
+            }
+          }
+        }
+      }
+
+      setSelectedPlan(plan);
+      setShowSubscriptionModal(true);
+    },
+    [subscriptionData, usageData]
+  );
 
   const handleSubscriptionSuccess = useCallback(async () => {
     setShowSubscriptionModal(false);
     setSelectedPlan(null);
 
-    // Refresh subscription data
-    await fetchSubscriptionData();
+    // Invalidate and refetch all subscription-related data
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["subscription", "status"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["import-usage-data"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["user-usage-data"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["subscription-data"],
+      }),
+      // Invalidate all usage-related queries
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "usage" ||
+          query.queryKey[0] === "import-usage-data" ||
+          query.queryKey[0] === "user-usage-data",
+      }),
+      // Force refetch of all queries
+      queryClient.refetchQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "subscription" ||
+          query.queryKey[0] === "usage" ||
+          query.queryKey[0] === "import-usage-data" ||
+          query.queryKey[0] === "user-usage-data",
+      }),
+    ]);
 
     toast({
       title: "Success",
       description: "Subscription activated successfully!",
       variant: "success",
     });
-  }, [fetchSubscriptionData, toast]);
+  }, [queryClient, toast]);
 
   const handleCloseModal = useCallback(() => {
     setShowSubscriptionModal(false);
     setSelectedPlan(null);
   }, []);
 
-  if (status === "loading" || loading) {
+  const handleCloseDowngradeModal = useCallback(() => {
+    setShowDowngradeModal(false);
+    setSelectedPlan(null);
+  }, []);
+
+  const handleUpgradeFromDowngrade = useCallback(() => {
+    setShowDowngradeModal(false);
+    setSelectedPlan(null);
+    // Scroll to plans section or highlight higher plans
+    const plansSection = document.getElementById("subscription-plans");
+    if (plansSection) {
+      plansSection.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
+
+  if (status === "loading" || loading || usageLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center space-x-2">
@@ -196,27 +298,51 @@ export default function SubscriptionManager() {
         </div>
 
         {/* Trial Status */}
-        <TrialStatus
-          subscriptionData={subscriptionData}
-          onSubscribe={handleSubscribe}
-        />
+        {subscriptionData && (
+          <TrialStatus
+            subscriptionData={subscriptionData}
+            onSubscribe={handleSubscribe}
+          />
+        )}
 
         {/* Subscription Plans */}
-        <SubscriptionPlans
-          plans={SUBSCRIPTION_PLANS}
-          currentPlan={subscriptionData.currentPlan}
-          balance={subscriptionData.balance}
-          onSubscribe={handleSubscribe}
-        />
+        {subscriptionData && (
+          <div id="subscription-plans">
+            <SubscriptionPlans
+              plans={SUBSCRIPTION_PLANS}
+              currentPlan={subscriptionData.currentPlan}
+              balance={subscriptionData.balance}
+              subscriptionStatus={subscriptionData.subscriptionStatus}
+              usageData={usageData}
+              onSubscribe={handleSubscribe}
+            />
+          </div>
+        )}
 
         {/* Subscription Modal */}
-        {selectedPlan && (
+        {selectedPlan && subscriptionData && (
           <SubscriptionModal
             plan={selectedPlan}
             isOpen={showSubscriptionModal}
             onClose={handleCloseModal}
             onSuccess={handleSubscriptionSuccess}
             balance={subscriptionData.balance}
+          />
+        )}
+
+        {/* Downgrade Warning Modal */}
+        {selectedPlan && subscriptionData && usageData && (
+          <DowngradeWarningModal
+            isOpen={showDowngradeModal}
+            onClose={handleCloseDowngradeModal}
+            selectedPlan={selectedPlan}
+            currentPlan={
+              SUBSCRIPTION_PLANS.find(
+                (p) => p.id === subscriptionData.currentPlan
+              ) || null
+            }
+            usageData={usageData}
+            onUpgrade={handleUpgradeFromDowngrade}
           />
         )}
       </div>

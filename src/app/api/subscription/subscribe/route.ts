@@ -80,12 +80,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // ✅ Check if user already has an active subscription
+    // ✅ Check if user already has an active subscription (but allow renewal of expired subscriptions)
     if (user.subscriptionStatus === "active") {
-      return NextResponse.json(
-        { error: "You already have an active subscription" },
-        { status: 400 }
-      );
+      // Check if the subscription has actually expired
+      const now = new Date();
+      const subscriptionEndDate = user.subscriptionEndDate
+        ? new Date(user.subscriptionEndDate)
+        : null;
+      const subscriptionExpired =
+        subscriptionEndDate && now > subscriptionEndDate;
+
+      if (!subscriptionExpired) {
+        return NextResponse.json(
+          { error: "You already have an active subscription" },
+          { status: 400 }
+        );
+      }
+      // If subscription is expired, allow renewal
     }
 
     // ✅ Server-side balance check with fallback

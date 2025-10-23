@@ -17,10 +17,19 @@ interface SubscriptionPlan {
   isPopular?: boolean;
 }
 
+interface UsageData {
+  currentLeads: number;
+  currentUsers: number;
+  maxLeads: number;
+  maxUsers: number;
+}
+
 interface SubscriptionPlansProps {
   plans: SubscriptionPlan[];
   currentPlan: string | null;
   balance: number;
+  subscriptionStatus?: "active" | "inactive" | "trial" | "expired";
+  usageData?: UsageData | null;
   onSubscribe: (plan: SubscriptionPlan) => void;
 }
 
@@ -28,6 +37,8 @@ export default function SubscriptionPlans({
   plans,
   currentPlan,
   balance,
+  subscriptionStatus,
+  usageData,
   onSubscribe,
 }: SubscriptionPlansProps) {
   const formatCurrency = (amount: number) => {
@@ -43,13 +54,39 @@ export default function SubscriptionPlans({
 
   const hasZeroBalance = balance === 0;
 
+  // Check if selecting this plan would be a downgrade that exceeds limits
+  const wouldExceedLimits = (plan: SubscriptionPlan) => {
+    if (!usageData) return false;
+
+    const currentPlanData = plans.find((p) => p.id === currentPlan);
+    if (!currentPlanData) return false;
+
+    // Check if this is a downgrade (lower limits than current plan)
+    const isDowngrade =
+      plan.maxLeads < currentPlanData.maxLeads ||
+      plan.maxUsers < currentPlanData.maxUsers;
+
+    if (!isDowngrade) return false;
+
+    // Check if current usage would exceed the new plan limits
+    const wouldExceedLeads = usageData.currentLeads > plan.maxLeads;
+    const wouldExceedUsers = usageData.currentUsers > plan.maxUsers;
+
+    return wouldExceedLeads || wouldExceedUsers;
+  };
+
   return (
     <div className="space-y-6">
       {/* Subscription Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plans.map((plan) => {
           const isCurrentPlan = currentPlan === plan.id;
+          const isActiveCurrentPlan =
+            isCurrentPlan && subscriptionStatus === "active";
+          const isExpiredCurrentPlan =
+            isCurrentPlan && subscriptionStatus === "expired";
           const hasEnoughBalance = canAfford(plan);
+          const wouldExceedLimitsOnDowngrade = wouldExceedLimits(plan);
 
           return (
             <Card
@@ -59,7 +96,13 @@ export default function SubscriptionPlans({
                   ? "border-purple-500 dark:border-purple-400 shadow-lg"
                   : "border-gray-200 dark:border-gray-700"
               } ${
-                isCurrentPlan ? "ring-2 ring-green-500 dark:ring-green-400" : ""
+                isActiveCurrentPlan
+                  ? "ring-2 ring-green-500 dark:ring-green-400"
+                  : ""
+              } ${
+                isExpiredCurrentPlan
+                  ? "ring-2 ring-red-500 dark:ring-red-400"
+                  : ""
               }`}
             >
               {plan.isPopular && (
@@ -71,10 +114,18 @@ export default function SubscriptionPlans({
                 </div>
               )}
 
-              {isCurrentPlan && (
+              {isActiveCurrentPlan && (
                 <div className="absolute -top-3 right-4">
                   <Badge className="bg-green-600 text-white px-3 py-1">
                     Current Plan
+                  </Badge>
+                </div>
+              )}
+
+              {isExpiredCurrentPlan && (
+                <div className="absolute -top-3 right-4">
+                  <Badge className="bg-red-600 text-white px-3 py-1">
+                    Expired Plan
                   </Badge>
                 </div>
               )}
@@ -107,12 +158,19 @@ export default function SubscriptionPlans({
 
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="text-center space-y-2">
-                    {isCurrentPlan ? (
+                    {isActiveCurrentPlan ? (
                       <Button
                         disabled
                         className="w-full bg-green-600 hover:bg-green-700 text-white"
                       >
                         Current Plan
+                      </Button>
+                    ) : isExpiredCurrentPlan ? (
+                      <Button
+                        onClick={() => onSubscribe(plan)}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Renew Subscription
                       </Button>
                     ) : hasZeroBalance ? (
                       <div className="space-y-2">
@@ -139,6 +197,18 @@ export default function SubscriptionPlans({
                         </Button>
                         <p className="text-xs text-red-600 dark:text-red-400">
                           Need {formatCurrency(plan.price - balance)}
+                        </p>
+                      </div>
+                    ) : wouldExceedLimitsOnDowngrade ? (
+                      <div className="space-y-2">
+                        <Button
+                          disabled
+                          className="w-full bg-orange-500 text-white cursor-not-allowed"
+                        >
+                          Downgrade Not Allowed
+                        </Button>
+                        <p className="text-xs text-orange-600 dark:text-orange-400">
+                          Current usage exceeds this plan&apos;s limits
                         </p>
                       </div>
                     ) : (

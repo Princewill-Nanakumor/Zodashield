@@ -6,6 +6,7 @@ interface SubscriptionData {
   trialEndsAt: string | null;
   currentPlan: string | null;
   subscriptionStatus: "active" | "inactive" | "trial" | "expired";
+  subscriptionEndDate: string | null;
   balance: number;
 }
 
@@ -47,13 +48,20 @@ export const useSubscriptionData = () => {
         const trialEndDate = subscriptionData.trialEndsAt
           ? new Date(subscriptionData.trialEndsAt)
           : null;
+        const subscriptionEndDate = subscriptionData.subscriptionEndDate
+          ? new Date(subscriptionData.subscriptionEndDate)
+          : null;
+
         const isTrialExpired = trialEndDate && now > trialEndDate;
+        const isSubscriptionExpired =
+          subscriptionEndDate && now > subscriptionEndDate;
 
         // User has active subscription if:
-        // 1. They have a paid subscription (active)
+        // 1. They have a paid subscription (active) and it's not expired
         // 2. They're in trial period and trial hasn't expired
         return (
-          subscriptionData.subscriptionStatus === "active" ||
+          (subscriptionData.subscriptionStatus === "active" &&
+            !isSubscriptionExpired) ||
           (subscriptionData.subscriptionStatus === "trial" && !isTrialExpired)
         );
       })()

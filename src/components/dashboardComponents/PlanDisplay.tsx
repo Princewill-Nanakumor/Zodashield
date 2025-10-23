@@ -56,6 +56,11 @@ export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
       subscriptionData.subscriptionEndDate
     ) {
       endDate = new Date(subscriptionData.subscriptionEndDate);
+    } else if (
+      subscriptionData.subscriptionStatus === "expired" &&
+      subscriptionData.subscriptionEndDate
+    ) {
+      endDate = new Date(subscriptionData.subscriptionEndDate);
     } else if (subscriptionData.subscriptionStatus === "active") {
       return null; // No end date for recurring subscriptions
     }
@@ -145,6 +150,8 @@ export function PlanDisplay({ isAdmin }: PlanDisplayProps) {
       if (days === 0) return "Time left: 0 days";
       if (days === 1) return "Time left: 1 day";
       return `Time left: ${days} days`;
+    } else if (status === "expired") {
+      return "Expired";
     }
 
     return "";

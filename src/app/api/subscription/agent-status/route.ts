@@ -40,11 +40,23 @@ export async function GET() {
     const isOnTrial = admin.isOnTrial && trialEndDate && now < trialEndDate;
     const trialExpired = trialEndDate && now > trialEndDate;
 
+    // Check if admin's subscription has expired
+    const subscriptionEndDate = admin.subscriptionEndDate
+      ? new Date(admin.subscriptionEndDate)
+      : null;
+    const subscriptionExpired =
+      subscriptionEndDate && now > subscriptionEndDate;
+
     // Determine admin's subscription status
     let subscriptionStatus: "active" | "inactive" | "trial" | "expired";
 
     if (admin.subscriptionStatus === "active") {
-      subscriptionStatus = "active";
+      // If subscription is marked as active but end date has passed, mark as expired
+      if (subscriptionExpired) {
+        subscriptionStatus = "expired";
+      } else {
+        subscriptionStatus = "active";
+      }
     } else if (isOnTrial) {
       subscriptionStatus = "trial";
     } else if (trialExpired) {

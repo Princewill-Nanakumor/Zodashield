@@ -111,15 +111,46 @@ export default function UsageLimitsDisplay({
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-red-800 dark:text-red-200">
               <AlertTriangle className="h-5 w-5" />
-              <span>Team Member Limit Reached</span>
+              <span>
+                {userUsageData.isOverLimit
+                  ? "Plan Downgrade Detected"
+                  : "Team Member Limit Reached"}
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-red-700 dark:text-red-300">
-                You have reached your team member limit. Upgrade your
-                subscription to add more team members.
-              </p>
+              {userUsageData.isOverLimit ? (
+                <>
+                  <p className="text-red-700 dark:text-red-300">
+                    You currently have{" "}
+                    <strong>{userUsageData.currentUsers}</strong> team members,
+                    but your current plan only allows{" "}
+                    <strong>{userUsageData.maxUsers}</strong> members.
+                    You&apos;re over the limit by{" "}
+                    <strong>{userUsageData.overLimitBy}</strong> members.
+                  </p>
+                  <p className="text-red-600 dark:text-red-400 text-sm">
+                    This typically happens when you downgrade from a higher
+                    plan. You have two options:
+                  </p>
+                  <div className="space-y-2 text-sm text-red-600 dark:text-red-400">
+                    <p>
+                      • <strong>Upgrade your plan</strong> to match your current
+                      team size
+                    </p>
+                    <p>
+                      • <strong>Remove some team members</strong> to fit within
+                      your current plan limits
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-red-700 dark:text-red-300">
+                  You have reached your team member limit. Upgrade your
+                  subscription to add more team members.
+                </p>
+              )}
               <div className="flex items-center space-x-2">
                 <Badge
                   variant="outline"
@@ -127,16 +158,38 @@ export default function UsageLimitsDisplay({
                 >
                   {userUsageData.currentUsers}/{userUsageData.maxUsers} Members
                 </Badge>
+                {userUsageData.isOverLimit && userUsageData.overLimitBy && (
+                  <Badge
+                    variant="outline"
+                    className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
+                  >
+                    +{userUsageData.overLimitBy} Over Limit
+                  </Badge>
+                )}
               </div>
-              <Button
-                onClick={() => {
-                  onShowUsageLimit(false); // Close the warning
-                  window.location.href = "/dashboard/subscription";
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                Upgrade Plan
-              </Button>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => {
+                    onShowUsageLimit(false); // Close the warning
+                    window.location.href = "/dashboard/subscription";
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {userUsageData.isOverLimit ? "Upgrade Plan" : "Upgrade Plan"}
+                </Button>
+                {userUsageData.isOverLimit && (
+                  <Button
+                    onClick={() => {
+                      onShowUsageLimit(false); // Close the warning
+                      window.location.href = "/dashboard/users";
+                    }}
+                    variant="outline"
+                    className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Manage Team
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
