@@ -5,7 +5,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "https://zodashield.com/",
+        hostname: "zodashield.com",
         pathname: "/**",
       },
       {

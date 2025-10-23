@@ -2,14 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ClientProviders from "@/components/ClientProviders";
-import { Toaster } from "@/components/ui/toaster";
-import { StatusProvider } from "@/context/StatusContext";
-import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
-import { Providers } from "@/app/providers";
-import { ConnectionStatus } from "@/components/ConnectionStatus";
-import PerformanceMonitor from "@/components/dashboardComponents/PerformanceMonitor";
-import ReminderNotifications from "@/components/notifications/ReminderNotifications";
+// Temporarily removed ClientProviders due to persistent webpack issues
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -163,20 +156,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>
-          <ThemeProvider>
-            <PerformanceMonitor>
-              <Toaster />
-              <ClientProviders>
-                <StatusProvider>
-                  {children}
-                  <ConnectionStatus />
-                  <ReminderNotifications />
-                </StatusProvider>
-              </ClientProviders>
-            </PerformanceMonitor>
-          </ThemeProvider>
-        </Providers>
+        {children}
       </body>
     </html>
   );

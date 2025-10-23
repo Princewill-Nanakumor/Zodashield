@@ -3,7 +3,16 @@
 
 import { FC, useState, useEffect, KeyboardEvent } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2, Plus, Trash2, Pencil, Save, X } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Pencil,
+  Save,
+  X,
+  ChevronUp,
+  Type,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, formatDistanceToNow, isValid } from "date-fns";
@@ -22,6 +31,7 @@ interface CommentsProps {
 }
 
 const LOCAL_STORAGE_KEY = "lead_comment_draft";
+const TEXTAREA_TOGGLE_KEY = "lead_comment_textarea_visible";
 
 const Comments: FC<CommentsProps> = ({
   comments,
@@ -38,8 +48,35 @@ const Comments: FC<CommentsProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showTextarea, setShowTextarea] = useState<boolean>(true);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   const isAdmin = session?.user?.role === "ADMIN";
+
+  // Check for dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+
+    checkDarkMode();
+
+    // Watch for dark mode changes
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Handle textarea toggle
+  const handleToggleTextarea = () => {
+    const newState = !showTextarea;
+    setShowTextarea(newState);
+    localStorage.setItem(TEXTAREA_TOGGLE_KEY, JSON.stringify(newState));
+  };
 
   // Load draft from localStorage on mount
   useEffect(() => {
@@ -48,6 +85,14 @@ const Comments: FC<CommentsProps> = ({
       setCommentContent(saved);
     }
     // eslint-disable-next-line
+  }, []);
+
+  // Load textarea visibility state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(TEXTAREA_TOGGLE_KEY);
+    if (saved !== null) {
+      setShowTextarea(JSON.parse(saved));
+    }
   }, []);
 
   // Save draft to localStorage on change
@@ -127,39 +172,111 @@ const Comments: FC<CommentsProps> = ({
       style={{ height: "100%" }}
     >
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-gray-100 dark:border-gray-700 flex-1 min-h-0 flex flex-col">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
-          Add a comment
-        </h3>
-        <textarea
-          placeholder="Write your thoughts about this lead... (Press Cmd/Ctrl + Enter to submit)"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:border-indigo-400 dark:focus:border-indigo-500 resize-none min-h-[120px] text-gray-700 dark:text-gray-200 bg-transparent"
-          rows={4}
-          value={commentContent}
-          onChange={(e) => setCommentContent(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isSaving}
-        />
-        <div className="flex justify-end mt-3">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            Add a comment
+          </h3>
           <Button
-            onClick={handleAddComment}
-            disabled={isSaving || !commentContent.trim()}
-            className="gap-2 bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white"
+            onClick={handleToggleTextarea}
+            variant="ghost"
+            size="sm"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title={`${showTextarea ? "Hide" : "Show"} comment textarea`}
           >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Posting...
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                Comment
-              </>
-            )}
+            <Type className="h-4 w-4" />
+            <ChevronUp
+              className={`h-4 w-4 transition-transform duration-300 ease-in-out ${
+                showTextarea ? "rotate-0" : "rotate-180"
+              }`}
+            />
           </Button>
         </div>
+        {/* Textarea container with smooth transition */}
+        <div
+          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+            showTextarea ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="space-y-3">
+            {/* Textarea with explicit border control to fix thickness inconsistency */}
+            <textarea
+              placeholder="Write your thoughts about this lead... (Press Cmd/Ctrl + Enter to submit)"
+              className="w-full p-3 rounded-md focus:outline-none resize-none min-h-[120px] text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700/50 transition-all duration-200"
+              style={{
+                borderTopWidth: "1px",
+                borderRightWidth: "1px",
+                borderBottomWidth: "1px",
+                borderLeftWidth: "1px",
+                borderTopStyle: "solid",
+                borderRightStyle: "solid",
+                borderBottomStyle: "solid",
+                borderLeftStyle: "solid",
+                borderTopColor: isDarkMode
+                  ? "rgb(75 85 99)"
+                  : "rgb(209 213 219)",
+                borderRightColor: isDarkMode
+                  ? "rgb(75 85 99)"
+                  : "rgb(209 213 219)",
+                borderBottomColor: isDarkMode
+                  ? "rgb(75 85 99)"
+                  : "rgb(209 213 219)",
+                borderLeftColor: isDarkMode
+                  ? "rgb(75 85 99)"
+                  : "rgb(209 213 219)",
+                boxShadow: "none", // Remove any shadow that might interfere
+              }}
+              onFocus={(e) => {
+                const focusColor = "rgb(99 102 241)"; // indigo-500
+                e.target.style.borderTopColor = focusColor;
+                e.target.style.borderRightColor = focusColor;
+                e.target.style.borderBottomColor = focusColor;
+                e.target.style.borderLeftColor = focusColor;
+                e.target.style.boxShadow = `0 0 0 2px ${isDarkMode ? "rgb(99 102 241 / 0.2)" : "rgb(99 102 241 / 0.2)"}`;
+              }}
+              onBlur={(e) => {
+                const defaultColor = isDarkMode
+                  ? "rgb(75 85 99)"
+                  : "rgb(209 213 219)";
+                e.target.style.borderTopColor = defaultColor;
+                e.target.style.borderRightColor = defaultColor;
+                e.target.style.borderBottomColor = defaultColor;
+                e.target.style.borderLeftColor = defaultColor;
+                e.target.style.boxShadow = "none";
+              }}
+              rows={4}
+              value={commentContent}
+              onChange={(e) => setCommentContent(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isSaving}
+            />
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={handleAddComment}
+                disabled={isSaving || !commentContent.trim()}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:pointer-events-none"
+                style={{ border: "none", boxShadow: "none" }}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Posting...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Comment
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
 
-        <div className="mt-6 flex-1 min-h-0 flex flex-col">
+        <div
+          className={`transition-all duration-300 ease-in-out ${
+            showTextarea ? "mt-6" : "mt-0"
+          } flex-1 min-h-0 flex flex-col`}
+        >
           <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">
             Comments ({comments.length})
           </h3>

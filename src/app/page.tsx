@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
 import AboutComponent from "@/components/homepageComponents/About";
 import Hero from "@/components/homepageComponents/Hero";
 import Navbar from "@/components/homepageComponents/Navabar";
@@ -37,80 +39,84 @@ const sectionVariants = {
 
 export default function HomePage() {
   return (
-    <motion.div
-      className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <Navbar />
-      </motion.div>
+    <SessionProvider>
+      <ThemeProvider>
+        <motion.div
+          className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <Navbar />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <Hero />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <Hero />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <StatsSection />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <StatsSection />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <FeaturesSection />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <FeaturesSection />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <PricingSection />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <PricingSection />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <AboutComponent />
-      </motion.div>
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <KeyFeatures />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <AboutComponent />
+          </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <KeyFeatures />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <TestimonialsSection />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <TestimonialsSection />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <CTASection />
-      </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <CTASection />
+          </motion.div>
 
-      <motion.div
-        variants={sectionVariants}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <Footer />
-      </motion.div>
-    </motion.div>
+          <motion.div
+            variants={sectionVariants}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <Footer />
+          </motion.div>
+        </motion.div>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

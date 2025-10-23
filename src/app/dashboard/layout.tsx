@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "@/components/dashboardComponents/Theme-Provider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { StatusProvider } from "@/context/StatusContext";
 import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "@/components/dashboardComponents/Sidebar";
 import DashboardNavbar from "@/components/dashboardComponents/DashboardNavbar";
@@ -99,11 +103,32 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
+
   return (
-    <SearchProvider>
-      <DateTimeSettingsProvider>
-        <DashboardContent>{children}</DashboardContent>
-      </DateTimeSettingsProvider>
-    </SearchProvider>
+    <SessionProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusProvider>
+            <SearchProvider>
+              <DateTimeSettingsProvider>
+                <DashboardContent>{children}</DashboardContent>
+              </DateTimeSettingsProvider>
+            </SearchProvider>
+          </StatusProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

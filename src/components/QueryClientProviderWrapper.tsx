@@ -1,10 +1,9 @@
-// src/app/providers.tsx
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function QueryClientProviderWrapper({ children }: { children: React.ReactNode }) {
   // Create QueryClient on the client side to avoid server/client serialization issues
   const [queryClient] = useState(
     () =>

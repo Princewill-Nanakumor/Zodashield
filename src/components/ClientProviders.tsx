@@ -2,7 +2,6 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
-import { ContactsProvider } from "@/context/ContactsContext";
 
 export default function ClientProviders({
   children,
@@ -11,7 +10,7 @@ export default function ClientProviders({
 }) {
   return (
     <SessionProvider>
-      <ContactsProvider>{children}</ContactsProvider>
+      {children}
     </SessionProvider>
   );
 }

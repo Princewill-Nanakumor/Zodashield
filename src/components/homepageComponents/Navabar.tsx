@@ -93,6 +93,8 @@ export default function Navbar() {
             <>
               <motion.div
                 variants={buttonVariants}
+                initial="visible"
+                animate="visible"
                 transition={{ duration: 0.4, ease: "easeOut" }}
               >
                 <Link
@@ -106,6 +108,8 @@ export default function Navbar() {
                 onClick={() => signOut({ callbackUrl: "/" })}
                 className={`${buttonBaseClasses} bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white hover:from-indigo-700 hover:to-purple-700 dark:hover:from-indigo-600 dark:hover:to-purple-600`}
                 variants={buttonVariants}
+                initial="visible"
+                animate="visible"
                 whileHover="hover"
                 whileTap="tap"
                 transition={{ duration: 0.4, ease: "easeOut" }}
@@ -117,6 +121,8 @@ export default function Navbar() {
             <>
               <motion.div
                 variants={buttonVariants}
+                initial="visible"
+                animate="visible"
                 transition={{ duration: 0.4, ease: "easeOut" }}
               >
                 <Link href="/signin" className={signInClasses}>
@@ -125,6 +131,8 @@ export default function Navbar() {
               </motion.div>
               <motion.div
                 variants={buttonVariants}
+                initial="visible"
+                animate="visible"
                 transition={{ duration: 0.4, ease: "easeOut" }}
               >
                 <Link
@@ -138,6 +146,8 @@ export default function Navbar() {
           )}
           <motion.div
             variants={buttonVariants}
+            initial="visible"
+            animate="visible"
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <ThemeToggle />
