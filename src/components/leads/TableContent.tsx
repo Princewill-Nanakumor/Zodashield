@@ -10,8 +10,7 @@ import {
 } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 interface TableContentProps {
   table: TanstackTable<Lead>;
@@ -92,9 +91,41 @@ export function TableContent({
   selectedLead,
   isLoading = false,
 }: TableContentProps) {
-  const { toast } = useToast();
-  const [statuses, setStatuses] = useState<Status[]>([]);
-  const [isStatusLoading, setIsStatusLoading] = useState(true);
+  // Use React Query for consistent status caching
+  const { data: statuses = [], isLoading: isStatusLoading } = useQuery({
+    queryKey: ["statuses"],
+    queryFn: async (): Promise<Status[]> => {
+      const response = await fetch("/api/statuses");
+      if (!response.ok) throw new Error("Failed to fetch statuses");
+      const data = await response.json();
+
+      const hasNewStatus = data.some((status: Status) => status._id === "NEW");
+      if (!hasNewStatus) {
+        data.unshift({
+          _id: "NEW",
+          id: "NEW",
+          name: "New",
+          color: "#3B82F6",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      return data.sort((a: Status, b: Status) => {
+        if (a._id === "NEW") return -1;
+        if (b._id === "NEW") return 1;
+        return (
+          new Date(b.createdAt || new Date()).getTime() -
+          new Date(a.createdAt || new Date()).getTime()
+        );
+      });
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
   // Helper to format date as DD/MM/YYYY
   const formatDateDMY = (dateString: string) => {
@@ -104,50 +135,6 @@ export function TableContent({
     const yyyy = date.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   };
-
-  const fetchStatuses = useCallback(async () => {
-    try {
-      setIsStatusLoading(true);
-      const response = await fetch("/api/statuses");
-      if (!response.ok) throw new Error("Failed to fetch statuses");
-      let data = await response.json();
-
-      const hasNewStatus = data.some((status: Status) => status._id === "NEW");
-      if (!hasNewStatus) {
-        data.unshift({
-          _id: "NEW",
-          id: "NEW", // Add the required id property
-          name: "New",
-          color: "#3B82F6",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-
-      data = data.sort((a: Status, b: Status) => {
-        if (a._id === "NEW") return -1;
-        if (b._id === "NEW") return 1;
-        return (
-          new Date(b.createdAt || new Date()).getTime() -
-          new Date(a.createdAt || new Date()).getTime()
-        );
-      });
-      setStatuses(data);
-    } catch (error) {
-      console.error("Error fetching statuses:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load statuses",
-        variant: "destructive",
-      });
-    } finally {
-      setIsStatusLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    fetchStatuses();
-  }, [fetchStatuses]);
 
   const getStatusStyle = (leadStatus: string) => {
     const status = statuses.find((s) => s._id === leadStatus);
@@ -173,7 +160,7 @@ export function TableContent({
             variant="outline"
             className="flex items-center gap-1.5 dark:border-gray-700 w-full max-w-[120px] justify-center"
           >
-            <Loader2 className="h-3 w-3 animate-spin dark:text-gray-400 flex-shrink-0" />
+            <Loader2 className="h-3 w-3 animate-spin dark:text-gray-400 shrink-0" />
             <span className="dark:text-gray-400 text-xs truncate">
               Loading...
             </span>
@@ -195,7 +182,7 @@ export function TableContent({
           title={statusName} // Tooltip for full text
         >
           <div
-            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            className="w-1.5 h-1.5 rounded-full shrink-0"
             style={{ backgroundColor: statusColor }}
           />
           <span className="text-xs truncate">{statusName}</span>

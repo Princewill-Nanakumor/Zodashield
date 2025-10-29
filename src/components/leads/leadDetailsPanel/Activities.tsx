@@ -40,8 +40,8 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
       }
       return response.json();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
   // Fetch activities
@@ -401,7 +401,7 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
             >
               <div className="flex gap-3">
                 <div
-                  className={`p-2.5 rounded-full ${getActivityBackground(activity.type)} flex-shrink-0`}
+                  className={`p-2.5 rounded-full ${getActivityBackground(activity.type)} shrink-0`}
                 >
                   {getActivityIcon(activity.type)}
                 </div>
@@ -484,7 +484,7 @@ const Activities: FC<ActivitiesProps> = ({ leadId }) => {
                       </span>
                     </div>
 
-                    <span className="text-xs text-gray-600 dark:text-gray-400 font-sans bg-gray-100 dark:bg-gray-700 px-2 py-2 rounded-md border border-gray-200 dark:border-gray-600 whitespace-nowrap flex-shrink-0">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-sans bg-gray-100 dark:bg-gray-700 px-2 py-2 rounded-md border border-gray-200 dark:border-gray-600 whitespace-nowrap shrink-0">
                       {formatDateTime(activity.createdAt)}
                     </span>
                   </div>

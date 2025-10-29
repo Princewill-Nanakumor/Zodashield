@@ -5,8 +5,8 @@ import { TableCell, TableRow } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { Lead, Status } from "@/types/leads";
-import { useEffect, useState, useCallback } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface UserLeadRowProps {
   lead: Lead;
@@ -20,25 +20,19 @@ export function UserLeadRow({
   onLeadClick,
   selectedLead,
 }: UserLeadRowProps) {
-  const { toast } = useToast();
-  const [statuses, setStatuses] = useState<Status[]>([]);
-  const [currentStatus, setCurrentStatus] = useState<Status | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const isSelected = selectedLead?._id === lead._id;
-
-  const fetchStatuses = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  // Use React Query for consistent status caching
+  const { data: statuses = [], isLoading } = useQuery({
+    queryKey: ["statuses"],
+    queryFn: async (): Promise<Status[]> => {
       const response = await fetch("/api/statuses");
       if (!response.ok) throw new Error("Failed to fetch statuses");
-      let data = await response.json();
+      const data = await response.json();
 
       const hasNewStatus = data.some((status: Status) => status._id === "NEW");
       if (!hasNewStatus) {
         data.unshift({
           _id: "NEW",
-          id: "NEW", // Add the required id property
+          id: "NEW",
           name: "New",
           color: "#3B82F6",
           createdAt: new Date().toISOString(),
@@ -46,7 +40,7 @@ export function UserLeadRow({
         });
       }
 
-      data = data.sort((a: Status, b: Status) => {
+      return data.sort((a: Status, b: Status) => {
         if (a._id === "NEW") return -1;
         if (b._id === "NEW") return 1;
         return (
@@ -54,42 +48,30 @@ export function UserLeadRow({
           new Date(a.createdAt || new Date()).getTime()
         );
       });
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 
-      setStatuses(data);
-    } catch (error) {
-      console.error("Error fetching statuses:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load statuses 3",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+  const isSelected = selectedLead?._id === lead._id;
 
-  useEffect(() => {
-    fetchStatuses();
-  }, [fetchStatuses]);
-
-  useEffect(() => {
-    if (statuses.length > 0) {
-      let status = statuses.find((s) => s._id === lead.status);
-      if (!status && lead.status !== "NEW") {
-        status =
-          statuses.find((s) => s._id === "NEW") ||
-          ({
-            _id: "NEW",
-            id: "NEW", // Add the required id property
-            name: "New",
-            color: "#3B82F6",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } as Status); // Add type assertion
+  // Find current status from the shared cache
+  const currentStatus = useMemo(() => {
+    return (
+      statuses.find((s) => s._id === lead.status) ||
+      statuses.find((s) => s._id === "NEW") || {
+        _id: "NEW",
+        id: "NEW",
+        name: "New",
+        color: "#3B82F6",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }
-      setCurrentStatus(status || null);
-    }
-  }, [lead.status, statuses]);
+    );
+  }, [statuses, lead.status]);
 
   const getStatusStyle = () => {
     if (!currentStatus) {

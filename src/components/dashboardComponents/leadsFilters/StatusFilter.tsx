@@ -30,7 +30,7 @@ export const StatusFilter = ({
       if (!response.ok) throw new Error("Failed to fetch statuses");
       return response.json();
     },
-    staleTime: 60 * 60 * 1000, // 1 hour
+    staleTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 2,
