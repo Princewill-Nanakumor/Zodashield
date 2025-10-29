@@ -290,6 +290,7 @@ export const CommentsTab: FC<CommentsTabProps> = ({ leadId }) => {
       onCommentEdited={handleCommentEdited}
       isDeleting={deleteCommentMutation.isPending}
       isEditing={editCommentMutation.isPending}
+      leadId={leadId}
     />
   );
 };

@@ -28,9 +28,10 @@ interface CommentsProps {
   onCommentEdited?: (updatedComment: CommentType) => void;
   isDeleting?: boolean;
   isEditing?: boolean;
+  leadId: string;
 }
 
-const LOCAL_STORAGE_KEY = "lead_comment_draft";
+const LOCAL_STORAGE_KEY = (leadId: string) => `lead_comment_draft_${leadId}`;
 const TEXTAREA_TOGGLE_KEY = "lead_comment_textarea_visible";
 
 const Comments: FC<CommentsProps> = ({
@@ -43,6 +44,7 @@ const Comments: FC<CommentsProps> = ({
   onCommentEdited,
   isDeleting = false,
   isEditing = false,
+  leadId,
 }) => {
   const { data: session } = useSession();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -78,14 +80,14 @@ const Comments: FC<CommentsProps> = ({
     localStorage.setItem(TEXTAREA_TOGGLE_KEY, JSON.stringify(newState));
   };
 
-  // Load draft from localStorage on mount
+  // Load draft from localStorage on mount - lead-specific
   useEffect(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY(leadId));
     if (saved && !commentContent) {
       setCommentContent(saved);
     }
     // eslint-disable-next-line
-  }, []);
+  }, [leadId]);
 
   // Load textarea visibility state from localStorage
   useEffect(() => {
@@ -95,14 +97,19 @@ const Comments: FC<CommentsProps> = ({
     }
   }, []);
 
-  // Save draft to localStorage on change
+  // Save draft to localStorage on change - lead-specific
   useEffect(() => {
     if (commentContent) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, commentContent);
+      localStorage.setItem(LOCAL_STORAGE_KEY(leadId), commentContent);
     } else {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_KEY(leadId));
     }
-  }, [commentContent]);
+  }, [commentContent, leadId]);
+
+  // Clear draft when lead changes
+  useEffect(() => {
+    setCommentContent("");
+  }, [leadId, setCommentContent]);
 
   const formatDate = (dateString: string) => {
     try {
