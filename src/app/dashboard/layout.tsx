@@ -15,6 +15,7 @@ import Footer from "@/components/dashboardComponents/Footer";
 import { DateTimeSettingsProvider } from "@/context/DateTimeSettingsContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { ToggleProvider } from "@/context/ToggleContext";
+import ReminderNotifications from "@/components/notifications/ReminderNotifications";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { searchQuery, setSearchQuery, isLoading } = useSearchContext();
@@ -92,6 +93,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <Footer />
+          <ReminderNotifications />
         </div>
       </div>
     </ToggleProvider>

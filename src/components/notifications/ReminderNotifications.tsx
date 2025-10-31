@@ -166,8 +166,14 @@ export default function ReminderNotifications() {
           soundPlayingRef.current = false;
         }
 
+        // Handle leadId being either string or object
+        const leadId =
+          typeof reminder.leadId === "object"
+            ? reminder.leadId._id
+            : reminder.leadId;
+
         const response = await fetch(
-          `/api/leads/${reminder.leadId}/reminders/${reminder._id}`,
+          `/api/leads/${leadId}/reminders/${reminder._id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -199,27 +205,27 @@ export default function ReminderNotifications() {
   }
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+    <div className="fixed z-50 max-w-sm mt-2 space-y-2 border-t top-20 right-2">
       {notifications.map((reminder) => (
         <div
           key={reminder._id}
-          className="bg-white dark:bg-gray-800 border-l-4 border-indigo-500 rounded-lg shadow-lg p-4 animate-slide-in-right"
+          className="p-4 bg-white border-l-4 border-indigo-500 rounded-lg shadow-lg dark:bg-gray-800 animate-slide-in-right"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+            <div className="p-2 bg-indigo-100 rounded-lg dark:bg-indigo-900/30">
               <Bell className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-shake-bell" />
             </div>
             <div className="flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  <h4 className="mb-1 font-semibold text-gray-900 dark:text-gray-100">
                     {reminder.title}
                   </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
                     {reminder.description}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full dark:bg-blue-900/30 dark:text-blue-300">
                       {reminder.type}
                     </span>
                     <Clock className="w-3 h-3" />
@@ -244,11 +250,11 @@ export default function ReminderNotifications() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="mt-3 flex gap-2">
+              <div className="flex gap-2 mt-3">
                 <Button
                   size="sm"
                   onClick={() => handleMarkAsComplete(reminder)}
-                  className="bg-green-500 hover:bg-green-600 text-white"
+                  className="text-white bg-green-500 hover:bg-green-600"
                 >
                   <CheckCircle className="w-3 h-3 mr-1" />
                   Mark as Complete
@@ -256,7 +262,7 @@ export default function ReminderNotifications() {
                 <Button
                   size="sm"
                   onClick={() => handleNotificationClick(reminder)}
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                  className="text-white bg-indigo-500 hover:bg-indigo-600"
                 >
                   View Lead
                 </Button>
