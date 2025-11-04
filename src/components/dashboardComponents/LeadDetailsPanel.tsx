@@ -147,6 +147,23 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     }
   }, [lead?._id, isOpen, queryClient, currentLead?.status]);
 
+  // Handle ESC key to close panel
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscKey);
+    };
+  }, [isOpen, onClose]);
+
   if (!currentLead?._id || !isOpen) {
     return null;
   }
