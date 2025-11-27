@@ -123,6 +123,10 @@ export const CommentsTab: FC<CommentsTabProps> = ({ leadId }) => {
       // Invalidate activities to refresh them
       queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
 
+      // Invalidate all leads queries to update last comment in table
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["assignedLeads"] });
+
       setCommentContent("");
       toast({
         title: "Success",
@@ -165,6 +169,10 @@ export const CommentsTab: FC<CommentsTabProps> = ({ leadId }) => {
 
       // Invalidate activities to refresh them
       queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
+
+      // Invalidate all leads queries to update last comment in table
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["assignedLeads"] });
 
       toast({
         title: "Success",
@@ -220,6 +228,10 @@ export const CommentsTab: FC<CommentsTabProps> = ({ leadId }) => {
 
       // Invalidate activities to refresh them
       queryClient.invalidateQueries({ queryKey: ["activities", leadId] });
+
+      // Invalidate all leads queries to update last comment in table
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["assignedLeads"] });
 
       toast({
         title: "Success",

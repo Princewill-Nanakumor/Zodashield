@@ -29,7 +29,7 @@ interface Status {
 function LoadingRow() {
   return (
     <TableRow>
-      <TableCell colSpan={8} className="h-24 text-center">
+      <TableCell colSpan={10} className="h-24 text-center">
         <div className="flex items-center justify-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading leads...
@@ -43,7 +43,7 @@ function EmptyRow() {
   return (
     <TableRow>
       <TableCell
-        colSpan={8}
+        colSpan={10}
         className="h-24 text-center text-gray-500 dark:text-gray-400"
       >
         No leads found
@@ -202,6 +202,44 @@ function UserLeadRow({
           {getAssignedUserName()}
         </span>
       </TableCell>
+      <TableCell
+        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
+      >
+        {lead.lastComment ? (
+          <div
+            className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
+            title={lead.lastComment}
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {lead.lastComment}
+          </div>
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500 italic">
+            No comments
+          </span>
+        )}
+      </TableCell>
+      <TableCell
+        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
+      >
+        {lead.lastCommentDate ? (
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            {(() => {
+              const date = new Date(lead.lastCommentDate);
+              const day = String(date.getDate()).padStart(2, "0");
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const year = date.getFullYear();
+              return `${day}/${month}/${year}`;
+            })()}
+          </div>
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500">—</span>
+        )}
+      </TableCell>
     </TableRow>
   );
 }
@@ -273,6 +311,12 @@ export function UserLeadTable({
           <SortableHeader field="source">Source</SortableHeader>
           <TableHead className="text-gray-900 dark:text-white">
             Assigned To
+          </TableHead>
+          <TableHead className="text-gray-900 dark:text-white max-w-[200px]">
+            Last Comment
+          </TableHead>
+          <TableHead className="text-gray-900 dark:text-white">
+            Last Comment Date
           </TableHead>
         </TableRow>
       </TableHeader>

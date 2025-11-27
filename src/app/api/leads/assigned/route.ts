@@ -68,6 +68,70 @@ export async function GET() {
 
     console.log("Found assigned leads count:", assignedLeads.length);
 
+    // Get adminId for comment queries
+    const adminIdForComments =
+      session.user.role === "ADMIN"
+        ? userObjectId
+        : session.user.adminId
+          ? new mongoose.Types.ObjectId(session.user.adminId)
+          : null;
+
+    // Collect lead IDs for batch comment lookup
+    const leadIds = assignedLeads.map(
+      (lead: { _id: mongoose.Types.ObjectId }) => lead._id
+    );
+
+    // Fetch last comment for each lead using aggregation
+    const lastCommentsMap = new Map<
+      string,
+      { content: string; createdAt: Date }
+    >();
+
+    if (adminIdForComments && leadIds.length > 0) {
+      try {
+        interface LastCommentResult {
+          _id: mongoose.Types.ObjectId;
+          content: string;
+          createdAt: Date;
+        }
+
+        const lastComments = await mongoose.connection.db
+          .collection("comments")
+          .aggregate<LastCommentResult>([
+            {
+              $match: {
+                leadId: { $in: leadIds },
+                $or: [
+                  { adminId: adminIdForComments },
+                  { adminId: { $exists: false } },
+                ],
+              },
+            },
+            {
+              $sort: { createdAt: -1 },
+            },
+            {
+              $group: {
+                _id: "$leadId",
+                content: { $first: "$content" },
+                createdAt: { $first: "$createdAt" },
+              },
+            },
+          ])
+          .toArray();
+
+        lastComments.forEach((comment) => {
+          lastCommentsMap.set(comment._id.toString(), {
+            content: comment.content,
+            createdAt: comment.createdAt,
+          });
+        });
+      } catch (error) {
+        console.error("Error fetching last comments:", error);
+        // Continue without comment data rather than failing completely
+      }
+    }
+
     // Transform the leads to match the expected format
     const transformedLeads = assignedLeads.map((lead) => {
       // Handle different assignedTo formats
@@ -90,8 +154,18 @@ export async function GET() {
         }
       }
 
+      // Get last comment for this lead
+      const leadIdString = lead._id.toString();
+      const lastComment = lastCommentsMap.get(leadIdString);
+      const lastCommentContent = lastComment?.content || null;
+      const lastCommentDate = lastComment?.createdAt
+        ? lastComment.createdAt instanceof Date
+          ? lastComment.createdAt.toISOString()
+          : (lastComment.createdAt as string)
+        : null;
+
       return {
-        _id: lead._id.toString(),
+        _id: leadIdString,
         firstName: lead.firstName,
         lastName: lead.lastName,
         email: lead.email,
@@ -101,6 +175,8 @@ export async function GET() {
         source: lead.source,
         status: lead.status,
         comments: lead.comments || "",
+        lastComment: lastCommentContent,
+        lastCommentDate: lastCommentDate,
         assignedAt: lead.assignedAt || lead.updatedAt,
         assignedTo: assignedToUser,
         createdAt: lead.createdAt,

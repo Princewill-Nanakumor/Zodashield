@@ -157,6 +157,8 @@ export interface Lead {
   statusName?: string;
   statusColor?: string;
   comments?: Comment[];
+  lastComment?: string;
+  lastCommentDate?: string;
   assignedTo?: {
     id: string;
     firstName: string;

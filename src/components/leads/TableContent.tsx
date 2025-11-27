@@ -211,6 +211,7 @@ export function TableContent({
             {headerGroup.headers.map((header) => {
               const isSelectColumn = header.column.id === "select";
               const isStatusColumn = header.column.id === "status";
+              const isLastCommentColumn = header.column.id === "lastComment";
               return (
                 <TableHead
                   key={generateUniqueKey("header", header.id)}
@@ -221,7 +222,9 @@ export function TableContent({
                         ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
                         : isStatusColumn
                           ? "w-32 min-w-[120px] px-4"
-                          : "px-4"
+                          : isLastCommentColumn
+                            ? "max-w-[200px] px-4"
+                            : "px-4"
                     }
                   `}
                 >
@@ -273,6 +276,7 @@ export function TableContent({
               >
                 {row.getVisibleCells().map((cell) => {
                   const isStatusCell = cell.column.id === "status";
+                  const isLastCommentCell = cell.column.id === "lastComment";
                   return (
                     <TableCell
                       key={cell.id}
@@ -284,7 +288,9 @@ export function TableContent({
                             ? "px-3 border-r border-gray-200 dark:border-gray-700"
                             : isStatusCell
                               ? "w-32 min-w-[120px] px-4"
-                              : "px-4"
+                              : isLastCommentCell
+                                ? "max-w-[200px] px-4"
+                                : "px-4"
                         }
                       `}
                     >

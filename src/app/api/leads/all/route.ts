@@ -174,6 +174,66 @@ export async function GET() {
       }
     }
 
+    // Get adminId for comment queries
+    const adminIdForComments = session.user.role === "ADMIN"
+      ? new ObjectId(session.user.id)
+      : session.user.adminId
+        ? new ObjectId(session.user.adminId)
+        : null;
+
+    // Collect lead IDs for batch comment lookup
+    const leadIds = leads.map((lead: Record<string, unknown>) => 
+      lead._id instanceof ObjectId ? lead._id : new ObjectId(safeObjectIdToString(lead._id) || "")
+    );
+
+    // Fetch last comment for each lead using aggregation
+    const lastCommentsMap = new Map<string, { content: string; createdAt: Date }>();
+    
+    if (adminIdForComments && leadIds.length > 0) {
+      try {
+        interface LastCommentResult {
+          _id: ObjectId;
+          content: string;
+          createdAt: Date;
+        }
+
+        const lastComments = await db
+          .collection("comments")
+          .aggregate<LastCommentResult>([
+            {
+              $match: {
+                leadId: { $in: leadIds },
+                $or: [
+                  { adminId: adminIdForComments },
+                  { adminId: { $exists: false } }
+                ]
+              }
+            },
+            {
+              $sort: { createdAt: -1 }
+            },
+            {
+              $group: {
+                _id: "$leadId",
+                content: { $first: "$content" },
+                createdAt: { $first: "$createdAt" }
+              }
+            }
+          ])
+          .toArray();
+
+        lastComments.forEach((comment) => {
+          lastCommentsMap.set(comment._id.toString(), {
+            content: comment.content,
+            createdAt: comment.createdAt
+          });
+        });
+      } catch (error) {
+        console.error("Error fetching last comments:", error);
+        // Continue without comment data rather than failing completely
+      }
+    }
+
     // Transform leads
     const transformedLeads = await Promise.all(
       leads.map(async (lead: Record<string, unknown>) => {
@@ -188,9 +248,19 @@ export async function GET() {
           );
         }
 
+        // Get last comment for this lead
+        const leadIdString = safeObjectIdToString(lead._id) || "";
+        const lastComment = lastCommentsMap.get(leadIdString);
+        const lastCommentContent = lastComment?.content || null;
+        const lastCommentDate = lastComment?.createdAt
+          ? (lastComment.createdAt instanceof Date
+              ? lastComment.createdAt.toISOString()
+              : (lastComment.createdAt as string))
+          : null;
+
         const transformedLead = {
-          _id: safeObjectIdToString(lead._id),
-          id: safeObjectIdToString(lead._id),
+          _id: leadIdString,
+          id: leadIdString,
           firstName: (lead.firstName as string) || "",
           lastName: (lead.lastName as string) || "",
           name: `${(lead.firstName as string) || ""} ${(lead.lastName as string) || ""}`.trim(),
@@ -209,6 +279,8 @@ export async function GET() {
               ? lead.updatedAt.toISOString()
               : (lead.updatedAt as string) || new Date().toISOString(),
           comments: (lead.comments as string) || "",
+          lastComment: lastCommentContent,
+          lastCommentDate: lastCommentDate,
         };
 
         return transformedLead;

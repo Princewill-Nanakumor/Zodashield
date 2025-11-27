@@ -319,6 +319,63 @@ export const useTableColumns = ({
         cell: ({ row }) =>
           new Date(row.original.createdAt).toLocaleDateString(),
       },
+      {
+        id: "lastComment",
+        header: () => (
+          <div className="text-left font-medium max-w-[200px]">Last Comment</div>
+        ),
+        size: 200,
+        maxSize: 200,
+        cell: ({ row }) => {
+          const lead = row.original;
+          const comment = lead.lastComment;
+          if (!comment) {
+            return (
+              <span className="text-gray-400 dark:text-gray-500 italic">
+                No comments
+              </span>
+            );
+          }
+          return (
+            <div
+              className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
+              title={comment}
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {comment}
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        id: "lastCommentDate",
+        header: () => (
+          <div className="text-left font-medium">Last Comment Date</div>
+        ),
+        cell: ({ row }) => {
+          const lead = row.original;
+          if (!lead.lastCommentDate) {
+            return (
+              <span className="text-gray-400 dark:text-gray-500">—</span>
+            );
+          }
+          const date = new Date(lead.lastCommentDate);
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+          return (
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              {day}/{month}/{year}
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
     ],
     [
       sortField,

@@ -1,3 +1,5 @@
+// /Users/safeconnection/progamming/zodashield/src/app/(auth)/layout.tsx
+
 "use client";
 
 import { Inter } from "next/font/google";
