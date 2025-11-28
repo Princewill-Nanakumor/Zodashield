@@ -252,14 +252,16 @@ export default function LeadsTable({
 
   return (
     <>
-      <div className="p-4 rounded-lg shadow dark:bg-gray-800 dark:text-white">
-        <CustomTableHeader
-          table={table}
-          pageSize={pageSize}
-          pageIndex={pageIndex}
-          totalRows={sortedLeads.length}
-          tableId="adminLeadsTable"
-        />
+      <div className="rounded-lg shadow dark:bg-gray-800 dark:text-white">
+        <div className="p-4">
+          <CustomTableHeader
+            table={table}
+            pageSize={pageSize}
+            pageIndex={pageIndex}
+            totalRows={sortedLeads.length}
+            tableId="adminLeadsTable"
+          />
+        </div>
 
         <DndContext
           sensors={sensors}
@@ -292,11 +294,13 @@ export default function LeadsTable({
           </Table>
         </DndContext>
 
-        <TablePagination
-          pageIndex={pageIndex}
-          pageCount={table.getPageCount()}
-          onPageChange={handlePageChange}
-        />
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <TablePagination
+            pageIndex={pageIndex}
+            pageCount={table.getPageCount()}
+            onPageChange={handlePageChange}
+          />
+        </div>
       </div>
 
       {selectedLead && (

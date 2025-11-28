@@ -64,6 +64,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     showEmptyState,
     handleAssignLeads,
     handleUnassignLeads,
+    handleBulkStatusChange,
+    handleBulkDelete,
     handleSelectionChange,
     handleCountryFilterChange,
     handleStatusFilterChange,
@@ -219,6 +221,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             isUpdating={isAssigning || isUnassigning}
             onAssign={handleAssignClick}
             onUnassign={handleUnassignClick}
+            onStatusChange={handleBulkStatusChange}
+            onDelete={handleBulkDelete}
             filterByCountry={uiState.filterByCountry}
             onCountryFilterChange={handleCountryFilterChange}
             filterByStatus={uiState.filterByStatus}
@@ -229,6 +233,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             filterByUser={filterByUser}
             onFilterChange={handleFilterChange}
             users={users}
+            statuses={statuses}
             isLoadingStatuses={isLoadingStatuses}
           />
         </div>

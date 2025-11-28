@@ -312,6 +312,145 @@ export const useLeadsPage = (
     },
   });
 
+  // Bulk status change mutation
+  const bulkStatusChangeMutation = useMutation({
+    mutationFn: async ({
+      leadIds,
+      status,
+    }: {
+      leadIds: string[];
+      status: string;
+    }) => {
+      const response = await fetch("/api/leads/bulk/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds, status }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to change lead statuses");
+      }
+      return response.json();
+    },
+    onMutate: async ({ leadIds, status }) => {
+      if (mutationInProgressRef.current) {
+        throw new Error("Another operation is in progress");
+      }
+      mutationInProgressRef.current = true;
+
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
+      const previousLeads = queryClient.getQueryData<Lead[]>(["leads"]);
+
+      // Optimistic update
+      queryClient.setQueryData<Lead[]>(["leads"], (old = []) => {
+        return old.map((lead) => {
+          if (leadIds.includes(lead._id)) {
+            return {
+              ...lead,
+              status,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return lead;
+        });
+      });
+
+      return { previousLeads };
+    },
+    onError: (err, variables, context) => {
+      mutationInProgressRef.current = false;
+
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads"], context.previousLeads);
+      }
+      toast({
+        title: "Status change failed",
+        description:
+          err instanceof Error ? err.message : "Failed to change lead statuses",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (data, variables) => {
+      mutationInProgressRef.current = false;
+
+      toast({
+        title: "Success!",
+        description: `Successfully changed status for ${variables.leadIds.length} lead(s)`,
+        variant: "success",
+      });
+    },
+    onSettled: () => {
+      setTimeout(() => {
+        if (!mutationInProgressRef.current) {
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
+        }
+      }, 2000);
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async ({ leadIds }: { leadIds: string[] }) => {
+      const response = await fetch("/api/leads/bulk/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete leads");
+      }
+      return response.json();
+    },
+    onMutate: async ({ leadIds }) => {
+      if (mutationInProgressRef.current) {
+        throw new Error("Another operation is in progress");
+      }
+      mutationInProgressRef.current = true;
+
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
+      const previousLeads = queryClient.getQueryData<Lead[]>(["leads"]);
+
+      // Optimistic update - remove deleted leads
+      queryClient.setQueryData<Lead[]>(["leads"], (old = []) => {
+        return old.filter((lead) => !leadIds.includes(lead._id));
+      });
+
+      return { previousLeads };
+    },
+    onError: (err, variables, context) => {
+      mutationInProgressRef.current = false;
+
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads"], context.previousLeads);
+      }
+      toast({
+        title: "Delete failed",
+        description:
+          err instanceof Error ? err.message : "Failed to delete leads",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (data, variables) => {
+      mutationInProgressRef.current = false;
+
+      toast({
+        title: "Success!",
+        description: `Successfully deleted ${variables.leadIds.length} lead(s)`,
+        variant: "success",
+      });
+    },
+    onSettled: () => {
+      setTimeout(() => {
+        if (!mutationInProgressRef.current) {
+          queryClient.invalidateQueries({ queryKey: ["leads"] });
+        }
+      }, 2000);
+    },
+  });
+
   // ===== STORE HOOKS =====
   const { selectedLeads, setSelectedLeads, filterByUser, setFilterByUser } =
     useLeadsStore();
@@ -629,6 +768,56 @@ export const useLeadsPage = (
     }
   }, [selectedLeads, unassignLeadsMutation, setSelectedLeads, toast]);
 
+  const handleBulkStatusChange = useCallback(
+    async (statusId: string) => {
+      if (selectedLeads.length === 0) {
+        toast({
+          title: "No leads selected",
+          description: "Please select leads to change status",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        await bulkStatusChangeMutation.mutateAsync({
+          leadIds: selectedLeads.map((l) => l._id),
+          status: statusId,
+        });
+
+        // Clear selection after successful change
+        setSelectedLeads([]);
+      } catch (error) {
+        // Error handling is done in mutation
+        console.error("Bulk status change error:", error);
+      }
+    },
+    [selectedLeads, bulkStatusChangeMutation, setSelectedLeads, toast]
+  );
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedLeads.length === 0) {
+      toast({
+        title: "No leads selected",
+        description: "Please select leads to delete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await bulkDeleteMutation.mutateAsync({
+        leadIds: selectedLeads.map((l) => l._id),
+      });
+
+      // Clear selection after successful delete
+      setSelectedLeads([]);
+    } catch (error) {
+      // Error handling is done in mutation
+      console.error("Bulk delete error:", error);
+    }
+  }, [selectedLeads, bulkDeleteMutation, setSelectedLeads, toast]);
+
   const handleSelectionChange = useCallback(
     (newSelectedLeads: Lead[]) => setSelectedLeads(newSelectedLeads),
     [setSelectedLeads]
@@ -739,6 +928,8 @@ export const useLeadsPage = (
     availableStatuses,
     handleAssignLeads,
     handleUnassignLeads,
+    handleBulkStatusChange,
+    handleBulkDelete,
     handleSelectionChange,
     handleCountryFilterChange,
     handleStatusFilterChange,

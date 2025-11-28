@@ -67,6 +67,8 @@ interface LeadsFilterControlsProps {
   isUpdating: boolean;
   onAssign: () => void;
   onUnassign: () => void;
+  onStatusChange?: (statusId: string) => Promise<void>;
+  onDelete?: () => Promise<void>;
   filterByCountry: string;
   onCountryFilterChange: (country: string) => void;
   filterByStatus: string;
@@ -77,6 +79,7 @@ interface LeadsFilterControlsProps {
   filterByUser: string;
   onFilterChange: (value: string) => void;
   users: User[];
+  statuses?: Array<{ id: string; name: string; color?: string; _id?: string }>;
   isLoadingStatuses?: boolean;
   onAddLead?: () => void;
 }
@@ -88,6 +91,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   isUpdating,
   onAssign,
   onUnassign,
+  onStatusChange,
+  onDelete,
   filterByCountry,
   onCountryFilterChange,
   filterByStatus,
@@ -97,6 +102,7 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   isLoading,
   filterByUser,
   onFilterChange,
+  statuses,
   isLoadingStatuses = false,
 }) => {
   const [isAddLeadDialogOpen, setIsAddLeadDialogOpen] = useState(false);
@@ -121,6 +127,10 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
                 isUpdating={isUpdating}
                 onAssign={onAssign}
                 onUnassign={onUnassign}
+                onStatusChange={onStatusChange || (async () => {})}
+                onDelete={onDelete || (async () => {})}
+                statuses={statuses}
+                isLoadingStatuses={isLoadingStatuses}
               />
             </ErrorBoundary>
           </div>

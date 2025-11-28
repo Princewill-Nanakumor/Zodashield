@@ -2,9 +2,17 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Lead } from "@/types/leads";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface BulkActionsProps {
   selectedLeads: Lead[];
@@ -13,6 +21,10 @@ interface BulkActionsProps {
   isUpdating: boolean;
   onAssign: () => void;
   onUnassign: () => void;
+  onStatusChange: (statusId: string) => Promise<void>;
+  onDelete: () => Promise<void>;
+  statuses?: Array<{ id: string; name: string; color?: string; _id?: string }>;
+  isLoadingStatuses?: boolean;
 }
 
 // Update your BulkActions component to show immediate feedback
@@ -23,9 +35,35 @@ export const BulkActions: React.FC<BulkActionsProps> = ({
   isUpdating,
   onAssign,
   onUnassign,
+  onStatusChange,
+  onDelete,
+  statuses: propStatuses,
+  isLoadingStatuses: propIsLoadingStatuses,
 }) => {
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUnassigning, setIsUnassigning] = useState(false);
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+
+  // Fetch statuses if not provided via props
+  const { data: fetchedStatuses = [], isLoading: isFetchingStatuses } =
+    useQuery({
+      queryKey: ["statuses"],
+      queryFn: async () => {
+        const response = await fetch("/api/statuses", {
+          credentials: "include",
+        });
+        if (!response.ok) throw new Error("Failed to fetch statuses");
+        return response.json();
+      },
+      enabled: !propStatuses, // Only fetch if not provided via props
+      staleTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    });
+
+  const statuses = propStatuses || fetchedStatuses;
+  const isLoadingStatuses = propIsLoadingStatuses ?? isFetchingStatuses;
 
   const handleAssign = async () => {
     setIsAssigning(true);
@@ -45,14 +83,41 @@ export const BulkActions: React.FC<BulkActionsProps> = ({
     }
   };
 
+  const handleStatusChange = async (statusId: string) => {
+    if (!statusId) return;
+    setIsChangingStatus(true);
+    try {
+      await onStatusChange(statusId);
+      setSelectedStatus(""); // Reset after successful change
+    } finally {
+      setIsChangingStatus(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedLeads.length} lead(s)? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (selectedLeads.length === 0) return null;
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap items-center">
       <Button
         variant="default"
         onClick={handleAssign}
-        disabled={isUpdating || isAssigning}
+        disabled={isUpdating || isAssigning || isChangingStatus || isDeleting}
       >
         {isAssigning ? (
           <>
@@ -67,7 +132,7 @@ export const BulkActions: React.FC<BulkActionsProps> = ({
         <Button
           variant="destructive"
           onClick={handleUnassign}
-          disabled={isUpdating || isUnassigning}
+          disabled={isUpdating || isUnassigning || isChangingStatus || isDeleting}
         >
           {isUnassigning ? (
             <>
@@ -79,6 +144,64 @@ export const BulkActions: React.FC<BulkActionsProps> = ({
           )}
         </Button>
       )}
+      <Select
+        value={selectedStatus}
+        onValueChange={handleStatusChange}
+        disabled={isUpdating || isChangingStatus || isDeleting || isLoadingStatuses}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Change Status" />
+        </SelectTrigger>
+        <SelectContent>
+          {isLoadingStatuses ? (
+            <SelectItem value="loading" disabled>
+              Loading statuses...
+            </SelectItem>
+          ) : statuses.length > 0 ? (
+            statuses.map((status: { id: string; name: string; color?: string; _id?: string }) => (
+              <SelectItem
+                key={status._id || status.id}
+                value={status._id || status.id || ""}
+              >
+                <div className="flex items-center gap-2">
+                  {status.color && (
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: status.color }}
+                    />
+                  )}
+                  <span>{status.name}</span>
+                </div>
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="NEW">New</SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+      {isChangingStatus && (
+        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Changing status...
+        </div>
+      )}
+      <Button
+        variant="destructive"
+        onClick={handleDelete}
+        disabled={isUpdating || isAssigning || isUnassigning || isChangingStatus || isDeleting}
+      >
+        {isDeleting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Deleting...
+          </>
+        ) : (
+          <>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete {selectedLeads.length} Lead{selectedLeads.length > 1 ? "s" : ""}
+          </>
+        )}
+      </Button>
     </div>
   );
 };
