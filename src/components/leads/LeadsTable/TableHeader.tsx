@@ -1,12 +1,14 @@
 // src/components/leads/LeadsTable/TableHeader.tsx
 import { Table } from "@tanstack/react-table";
 import { Lead } from "@/types/leads";
+import { ColumnVisibilityToggle } from "@/components/dashboardComponents/ColumnVisibilityToggle";
 
 interface TableHeaderProps {
   table: Table<Lead>;
   pageSize: number;
   pageIndex: number;
   totalRows: number;
+  tableId?: "adminLeadsTable" | "userLeadsTable";
 }
 
 const pageSizeOptions = [10, 15, 20, 30, 40, 50, 100, 500];
@@ -16,6 +18,7 @@ export function TableHeader({
   pageSize,
   pageIndex,
   totalRows,
+  tableId = "adminLeadsTable",
 }: TableHeaderProps) {
   const currentPageStart = pageIndex * pageSize + 1;
   const currentPageEnd = Math.min((pageIndex + 1) * pageSize, totalRows);
@@ -43,6 +46,7 @@ export function TableHeader({
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           entries
         </span>
+        <ColumnVisibilityToggle table={table} tableId={tableId} />
       </div>
       <div className="text-sm text-gray-700 dark:text-gray-300">
         Showing {currentPageStart} to {currentPageEnd} of {totalRows} entries

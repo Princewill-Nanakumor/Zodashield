@@ -1,6 +1,7 @@
 // src/components/user-leads/UserLeadsColumnRenderer.tsx
 "use client";
 
+import React from "react";
 import { Lead } from "@/types/leads";
 import { TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,7 @@ export function renderUserLeadCell({
   statuses,
   statusesLoading,
   detailUrl,
-}: ColumnRendererProps) {
+}: ColumnRendererProps): React.ReactElement | null {
 
   const getAssignedUserName = () => {
     if (!lead.assignedTo) return "Unassigned";
@@ -60,28 +61,32 @@ export function renderUserLeadCell({
   const renderStatus = () => {
     if (statusesLoading) {
       return (
-        <Badge variant="outline" className="flex items-center gap-1.5">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Loading...
-        </Badge>
+        <div className="flex items-center justify-center">
+          <Badge variant="outline" className="flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading...
+          </Badge>
+        </div>
       );
     }
 
     return (
-      <Badge variant="outline" style={getStatusStyle()} className="flex items-center gap-1.5">
-        <div
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: currentStatus.color }}
-        />
-        {currentStatus.name}
-      </Badge>
+      <div className="flex items-center justify-center">
+        <Badge variant="outline" style={getStatusStyle()} className="flex items-center gap-1.5">
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: currentStatus.color }}
+          />
+          {currentStatus.name}
+        </Badge>
+      </div>
     );
   };
 
   switch (columnId) {
     case "actions":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <div className="flex items-center justify-center">
             <Link
               href={detailUrl}
@@ -99,15 +104,15 @@ export function renderUserLeadCell({
 
     case "name":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           {lead.firstName} {lead.lastName}
         </TableCell>
       );
 
     case "email":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
-          <div className="flex items-center">
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
+          <div className="flex items-center justify-center">
             <span>{lead.email}</span>
           </div>
         </TableCell>
@@ -115,8 +120,8 @@ export function renderUserLeadCell({
 
     case "phone":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
-          <div className="flex items-center">
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
+          <div className="flex items-center justify-center">
             <span>{lead.phone || "-"}</span>
           </div>
         </TableCell>
@@ -124,24 +129,28 @@ export function renderUserLeadCell({
 
     case "country":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <span>{lead.country || "-"}</span>
         </TableCell>
       );
 
     case "status":
-      return <TableCell>{renderStatus()}</TableCell>;
+      return (
+        <TableCell className="text-center">
+          {renderStatus()}
+        </TableCell>
+      );
 
     case "source":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <span>{lead.source}</span>
         </TableCell>
       );
 
     case "assignedTo":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <span
             className={!lead.assignedTo ? "text-gray-500 dark:text-gray-400" : ""}
           >
@@ -152,10 +161,10 @@ export function renderUserLeadCell({
 
     case "lastComment":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           {lead.lastComment ? (
             <div
-              className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
+              className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate mx-auto"
               title={lead.lastComment}
               style={{
                 overflow: "hidden",
@@ -175,9 +184,9 @@ export function renderUserLeadCell({
 
     case "lastCommentDate":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           {lead.lastCommentDate ? (
-            <div className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
               {(() => {
                 const date = new Date(lead.lastCommentDate);
                 const day = String(date.getDate()).padStart(2, "0");
@@ -187,21 +196,23 @@ export function renderUserLeadCell({
               })()}
             </div>
           ) : (
-            <span className="text-gray-400 dark:text-gray-500">—</span>
+            <div className="text-center">
+              <span className="text-gray-400 dark:text-gray-500">—</span>
+            </div>
           )}
         </TableCell>
       );
 
     case "commentCount":
       return (
-        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
             {lead.commentCount && lead.commentCount > 0 ? (
               <span className="inline-flex items-center justify-center font-medium">
                 {lead.commentCount}
               </span>
             ) : (
-              <span className="text-gray-400 dark:text-gray-500">—</span>
+              <span className="inline-flex items-center justify-center text-gray-400 dark:text-gray-500">—</span>
             )}
           </div>
         </TableCell>

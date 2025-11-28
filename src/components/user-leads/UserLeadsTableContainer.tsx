@@ -4,6 +4,7 @@ import { Lead } from "@/types/leads";
 import { UserLeadTable } from "@/components/user-leads/UserLeadTable";
 import UserLeadTableControls from "./UserLeadTableControls";
 import { TablePagination } from "@/components/leads/TablePagination";
+import { useUserLeadsColumnOrder } from "@/hooks/useUserLeadsColumnOrder";
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt";
 type SortOrder = "asc" | "desc";
@@ -41,6 +42,9 @@ export const UserLeadsTableContainer: React.FC<
   onPageSizeChange,
   onPageChange,
 }) => {
+  // Get column order for column visibility toggle
+  const { columnOrder } = useUserLeadsColumnOrder();
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <UserLeadTableControls
@@ -48,6 +52,7 @@ export const UserLeadsTableContainer: React.FC<
         pageIndex={pageIndex}
         totalEntries={totalEntries}
         onPageSizeChange={onPageSizeChange}
+        columnOrder={columnOrder}
       />
 
       <UserLeadTable

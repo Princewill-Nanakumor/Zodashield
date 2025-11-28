@@ -1,6 +1,7 @@
 // src/components/user-leads/UserLeadTable.tsx
 "use client";
 
+import React from "react";
 import {
   Table,
   TableHeader,
@@ -12,6 +13,7 @@ import { Loader2 } from "lucide-react";
 import { Lead } from "@/types/leads";
 import { useStatuses } from "@/hooks/useStatuses";
 import { useUserLeadsColumnOrder } from "@/hooks/useUserLeadsColumnOrder";
+import { useUserLeadsColumnVisibility } from "@/hooks/useUserLeadsColumnVisibility";
 import { UserLeadsDraggableHeader } from "./UserLeadsDraggableHeader";
 import { renderUserLeadCell } from "./UserLeadsColumnRenderer";
 import {
@@ -81,6 +83,7 @@ export function UserLeadTable({
 }: UserLeadTableProps) {
   const { statuses, isLoading: statusesLoading } = useStatuses();
   const { columnOrder, setColumnOrder } = useUserLeadsColumnOrder();
+  const { isColumnVisible } = useUserLeadsColumnVisibility();
   const searchParams = useSearchParams();
 
   const sensors = useSensors(
@@ -92,14 +95,25 @@ export function UserLeadTable({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
+    
     if (over && active.id !== over.id) {
-      const oldIndex = columnOrder.findIndex((id) => id === active.id);
-      const newIndex = columnOrder.findIndex((id) => id === over.id);
+      // Find indices in visibleColumnOrder (what's actually displayed)
+      const oldIndex = visibleColumnOrder.findIndex((id) => id === active.id);
+      const newIndex = visibleColumnOrder.findIndex((id) => id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newColumnOrder = arrayMove(columnOrder, oldIndex, newIndex);
-        setColumnOrder(newColumnOrder);
+        // Reorder visible columns
+        const newVisibleOrder = arrayMove(visibleColumnOrder, oldIndex, newIndex);
+        
+        // Rebuild full columnOrder: keep the order from newVisibleOrder, 
+        // and append any hidden columns that aren't in visible order
+        const hiddenColumns = columnOrder.filter(
+          (id) => !visibleColumnOrder.includes(id)
+        );
+        
+        // Merge: visible columns in new order, then hidden columns
+        const updatedOrder = [...newVisibleOrder, ...hiddenColumns];
+        setColumnOrder(updatedOrder);
       }
     }
   };
@@ -118,8 +132,16 @@ export function UserLeadTable({
     assignedTo: { label: "Assigned To", isSortable: false },
     lastComment: { label: "Last Comment", isSortable: false },
     lastCommentDate: { label: "Last Comment Date", isSortable: false },
-    commentCount: { label: "Comments", isSortable: false },
+    commentCount: { label: "Comments Numbers", isSortable: false },
   };
+
+  // Filter columnOrder to only include visible columns
+  const visibleColumnOrder = columnOrder.filter((columnId) => {
+    // Actions column is always visible
+    if (columnId === "actions") return true;
+    // Check visibility state
+    return isColumnVisible(columnId);
+  });
 
   return (
     <DndContext
@@ -131,10 +153,10 @@ export function UserLeadTable({
         <TableHeader className="bg-gray-100 dark:bg-gray-700">
           <TableRow>
             <SortableContext
-              items={columnOrder}
+              items={visibleColumnOrder}
               strategy={horizontalListSortingStrategy}
             >
-              {columnOrder.map((columnId) => {
+              {visibleColumnOrder.map((columnId) => {
                 const config = columnConfig[columnId];
                 if (!config) return null;
 
@@ -159,47 +181,49 @@ export function UserLeadTable({
         </TableHeader>
         <TableBody>
           {loading ? (
-            <LoadingRow columnCount={columnOrder.length} />
+            <LoadingRow columnCount={visibleColumnOrder.length} />
           ) : paginatedLeads.length === 0 ? (
-            <EmptyRow columnCount={columnOrder.length} />
+            <EmptyRow columnCount={visibleColumnOrder.length} />
           ) : (
             paginatedLeads.map((lead: Lead) => {
               const isSelected = selectedLead?._id === lead._id;
-              const currentParams = searchParams.toString();
-              const detailUrl = currentParams
-                ? `/dashboard/leads/${lead._id}?${currentParams}`
-                : `/dashboard/leads/${lead._id}`;
-              
-              return (
-                <TableRow
+  const currentParams = searchParams.toString();
+  const detailUrl = currentParams
+    ? `/dashboard/leads/${lead._id}?${currentParams}`
+    : `/dashboard/leads/${lead._id}`;
+
+  return (
+    <TableRow
                   key={`${lead._id}-${lead.status}`}
-                  data-state={isSelected ? "selected" : undefined}
-                  onClick={() => onLeadClick(lead)}
-                  className={`
-                    cursor-pointer transition-colors
-                    ${
-                      isSelected
-                        ? "bg-primary/20 dark:bg-primary/30 font-bold"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-700/80"
-                    }
-                  `}
-                >
-                  {columnOrder.map((columnId) =>
-                    renderUserLeadCell({
-                      columnId,
-                      lead,
-                      isSelected,
-                      statuses,
-                      statusesLoading,
-                      detailUrl,
-                    })
-                  )}
-                </TableRow>
-              );
+      data-state={isSelected ? "selected" : undefined}
+      onClick={() => onLeadClick(lead)}
+      className={`
+        cursor-pointer transition-colors
+        ${
+          isSelected
+            ? "bg-primary/20 dark:bg-primary/30 font-bold"
+            : "hover:bg-gray-100 dark:hover:bg-gray-700/80"
+        }
+      `}
+    >
+                  {visibleColumnOrder.map((columnId) => (
+                    <React.Fragment key={columnId}>
+                      {renderUserLeadCell({
+                        columnId,
+                        lead,
+                        isSelected,
+                        statuses,
+                        statusesLoading,
+                        detailUrl,
+                      })}
+                    </React.Fragment>
+                  ))}
+    </TableRow>
+  );
             })
-          )}
-        </TableBody>
-      </Table>
+        )}
+      </TableBody>
+    </Table>
     </DndContext>
   );
 }

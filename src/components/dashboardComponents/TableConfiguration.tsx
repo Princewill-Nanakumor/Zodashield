@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   ColumnOrderState,
+  VisibilityState,
 } from "@tanstack/react-table";
 import { Lead } from "@/types/leads";
 import { ColumnDef } from "@tanstack/react-table";
@@ -18,10 +19,12 @@ interface TableConfigurationProps {
   sorting: Array<{ id: string; desc: boolean }>;
   rowSelection: Record<string, boolean>;
   columnOrder: ColumnOrderState;
+  columnVisibility: VisibilityState;
   setSorting: (sorting: Array<{ id: string; desc: boolean }>) => void;
   setPageIndex: (pageIndex: number) => void;
   setPageSize: (pageSize: number) => void;
   setColumnOrder: (columnOrder: ColumnOrderState) => void;
+  setColumnVisibility: (visibility: VisibilityState | ((prev: VisibilityState) => VisibilityState)) => void;
 }
 
 export const useTableConfiguration = ({
@@ -32,10 +35,12 @@ export const useTableConfiguration = ({
   sorting,
   rowSelection,
   columnOrder,
+  columnVisibility,
   setSorting,
   setPageIndex,
   setPageSize,
   setColumnOrder,
+  setColumnVisibility,
 }: TableConfigurationProps) => {
   const table = useReactTable({
     data,
@@ -48,6 +53,7 @@ export const useTableConfiguration = ({
       sorting,
       rowSelection,
       columnOrder,
+      columnVisibility,
     },
     onColumnOrderChange: (updater) => {
       if (typeof updater === "function") {
@@ -55,6 +61,14 @@ export const useTableConfiguration = ({
         setColumnOrder(newOrder);
       } else {
         setColumnOrder(updater);
+      }
+    },
+    onColumnVisibilityChange: (updater) => {
+      if (typeof updater === "function") {
+        const newVisibility = updater(columnVisibility);
+        setColumnVisibility(newVisibility);
+      } else {
+        setColumnVisibility(updater);
       }
     },
     enableRowSelection: true,

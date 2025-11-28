@@ -142,7 +142,7 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("name")}
-            className="h-8 flex items-center gap-1"
+            className="h-8 flex items-center gap-1 justify-start w-full"
           >
             <span className={sortField === "name" ? "font-bold" : ""}>
               Name
@@ -182,7 +182,7 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("country")}
-            className="h-8 flex items-center gap-1"
+            className="h-8 flex items-center gap-1 justify-start w-full"
           >
             <span className={sortField === "country" ? "font-bold" : ""}>
               Country
@@ -204,7 +204,7 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("status")}
-            className="h-8 flex items-center gap-1"
+            className="h-8 flex items-center gap-1 justify-start w-full"
           >
             <span className={sortField === "status" ? "font-bold" : ""}>
               Status
@@ -248,7 +248,7 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("source")}
-            className="h-8 flex items-center gap-1"
+            className="h-8 flex items-center gap-1 justify-start w-full"
           >
             <span className={sortField === "source" ? "font-bold" : ""}>
               Source
@@ -270,7 +270,7 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("assignedTo")}
-            className="h-8 flex items-center gap-1"
+            className="h-8 flex items-center gap-1 justify-start w-full"
           >
             <span className={sortField === "assignedTo" ? "font-bold" : ""}>
               Assigned To
@@ -302,7 +302,7 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("createdAt")}
-            className="h-8 flex items-center gap-1"
+            className="h-8 flex items-center gap-1 justify-start w-full"
           >
             <span className={sortField === "createdAt" ? "font-bold" : ""}>
               Created
@@ -361,7 +361,9 @@ export const useTableColumns = ({
           const lead = row.original;
           if (!lead.lastCommentDate) {
             return (
-              <span className="text-gray-400 dark:text-gray-500">—</span>
+              <div className="text-left">
+                <span className="text-gray-400 dark:text-gray-500">—</span>
+              </div>
             );
           }
           const date = new Date(lead.lastCommentDate);
@@ -369,7 +371,7 @@ export const useTableColumns = ({
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           return (
-            <div className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="text-sm text-gray-700 dark:text-gray-300 text-left">
               {day}/{month}/{year}
             </div>
           );
@@ -379,7 +381,7 @@ export const useTableColumns = ({
       {
         id: "commentCount",
         header: () => (
-          <div className="text-left font-medium">Comments</div>
+          <div className="text-center font-medium">Comments Numbers</div>
         ),
         cell: ({ row }) => {
           const lead = row.original;
@@ -391,7 +393,7 @@ export const useTableColumns = ({
                   {count}
                 </span>
               ) : (
-                <span className="text-gray-400 dark:text-gray-500">—</span>
+                <span className="inline-flex items-center justify-center text-gray-400 dark:text-gray-500">—</span>
               )}
             </div>
           );

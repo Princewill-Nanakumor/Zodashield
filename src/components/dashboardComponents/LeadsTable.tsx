@@ -27,6 +27,7 @@ import { usePanelNavigation } from "./PanelNavigation";
 import { useTableColumns } from "./TableColumns";
 import { useTableConfiguration } from "./TableConfiguration";
 import { useColumnOrder } from "@/hooks/useColumnOrder";
+import { useColumnVisibility } from "@/hooks/useColumnVisibility";
 import { Loader } from "lucide-react";
 import {
   DndContext,
@@ -86,6 +87,9 @@ export default function LeadsTable({
   
   // Column ordering with localStorage persistence
   const { columnOrder, setColumnOrder } = useColumnOrder();
+  
+  // Column visibility with localStorage persistence
+  const { columnVisibility, setColumnVisibility } = useColumnVisibility("adminLeadsTable");
 
   // DnD Kit sensors for drag and drop
   const sensors = useSensors(
@@ -211,10 +215,12 @@ export default function LeadsTable({
     sorting: stableSorting,
     rowSelection,
     columnOrder,
+    columnVisibility,
     setSorting,
     setPageIndex: handlePageChange,
     setPageSize,
     setColumnOrder,
+    setColumnVisibility,
   });
 
   // Handle column drag end - defined after table is created
@@ -252,6 +258,7 @@ export default function LeadsTable({
           pageSize={pageSize}
           pageIndex={pageIndex}
           totalRows={sortedLeads.length}
+          tableId="adminLeadsTable"
         />
 
         <DndContext

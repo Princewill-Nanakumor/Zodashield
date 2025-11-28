@@ -43,17 +43,17 @@ export function DraggableColumnHeader({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 group"
+      className="relative group w-full"
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+        className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10"
         aria-label="Drag to reorder column"
       >
         <GripVertical className="w-4 h-4 text-gray-400" />
       </button>
-      <div className="flex-1">{children}</div>
+      <div className="w-full">{children}</div>
     </div>
   );
 }

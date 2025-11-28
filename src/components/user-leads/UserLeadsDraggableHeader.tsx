@@ -56,7 +56,7 @@ export function UserLeadsDraggableHeader({
     <Button
       variant="ghost"
       onClick={onSort}
-      className="h-8 flex items-center gap-1 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200"
+      className="h-8 flex items-center justify-center gap-1 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200"
     >
       {children}
       <ArrowUpDown
@@ -70,27 +70,27 @@ export function UserLeadsDraggableHeader({
       />
     </Button>
   ) : (
-    <span>{children}</span>
+    <span className="text-center w-full block">{children}</span>
   );
 
   return (
     <TableHead
       ref={setNodeRef}
       style={style}
-      className={`text-gray-900 dark:text-white ${
+      className={`text-gray-900 dark:text-white text-center ${
         columnId === "lastComment" ? "max-w-[200px]" : ""
       }`}
     >
-      <div className="flex items-center gap-2 group">
+      <div className="relative flex items-center justify-center group">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+          className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded absolute left-0 z-10"
           aria-label="Drag to reorder column"
         >
           <GripVertical className="w-4 h-4 text-gray-400" />
         </button>
-        <div className="flex-1">{headerContent}</div>
+        <div className="w-full flex justify-center">{headerContent}</div>
       </div>
     </TableHead>
   );

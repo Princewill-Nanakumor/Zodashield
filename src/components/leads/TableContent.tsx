@@ -227,11 +227,21 @@ export function TableContent({
                 const isSelectColumn = header.column.id === "select";
                 const isStatusColumn = header.column.id === "status";
                 const isLastCommentColumn = header.column.id === "lastComment";
+                const isCommentCountColumn = header.column.id === "commentCount";
+                const isActionsColumn = header.column.id === "actions";
+                
                 return (
                   <TableHead
                     key={generateUniqueKey("header", header.id)}
                     className={`
-                      text-gray-700 dark:text-gray-300 font-semibold text-left
+                      text-gray-700 dark:text-gray-300 font-semibold
+                      ${
+                        isSelectColumn || isActionsColumn
+                          ? "text-center"
+                          : isCommentCountColumn
+                            ? "text-center"
+                            : "text-left"
+                      }
                       ${
                         isSelectColumn
                           ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
@@ -295,6 +305,10 @@ export function TableContent({
                 {row.getVisibleCells().map((cell) => {
                   const isStatusCell = cell.column.id === "status";
                   const isLastCommentCell = cell.column.id === "lastComment";
+                  const isCommentCountCell = cell.column.id === "commentCount";
+                  const isActionsCell = cell.column.id === "actions";
+                  const isSelectCell = cell.column.id === "select";
+                  
                   return (
                     <TableCell
                       key={cell.id}
@@ -302,7 +316,14 @@ export function TableContent({
                         py-3.5
                         ${isSelected ? "text-gray-900 dark:text-white" : "text-gray-800 dark:text-gray-300"}
                         ${
-                          cell.column.id === "select"
+                          isSelectCell || isActionsCell
+                            ? "text-center"
+                            : isCommentCountCell
+                              ? "text-center"
+                              : "text-left"
+                        }
+                        ${
+                          isSelectCell
                             ? "px-3 border-r border-gray-200 dark:border-gray-700"
                             : isStatusCell
                               ? "w-32 min-w-[120px] px-4"
