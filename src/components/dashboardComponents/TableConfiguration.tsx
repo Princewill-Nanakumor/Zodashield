@@ -5,6 +5,7 @@ import {
   getPaginationRowModel,
   getCoreRowModel,
   getSortedRowModel,
+  ColumnOrderState,
 } from "@tanstack/react-table";
 import { Lead } from "@/types/leads";
 import { ColumnDef } from "@tanstack/react-table";
@@ -16,9 +17,11 @@ interface TableConfigurationProps {
   pageIndex: number;
   sorting: Array<{ id: string; desc: boolean }>;
   rowSelection: Record<string, boolean>;
+  columnOrder: ColumnOrderState;
   setSorting: (sorting: Array<{ id: string; desc: boolean }>) => void;
   setPageIndex: (pageIndex: number) => void;
   setPageSize: (pageSize: number) => void;
+  setColumnOrder: (columnOrder: ColumnOrderState) => void;
 }
 
 export const useTableConfiguration = ({
@@ -28,9 +31,11 @@ export const useTableConfiguration = ({
   pageIndex,
   sorting,
   rowSelection,
+  columnOrder,
   setSorting,
   setPageIndex,
   setPageSize,
+  setColumnOrder,
 }: TableConfigurationProps) => {
   const table = useReactTable({
     data,
@@ -42,6 +47,15 @@ export const useTableConfiguration = ({
       pagination: { pageSize, pageIndex },
       sorting,
       rowSelection,
+      columnOrder,
+    },
+    onColumnOrderChange: (updater) => {
+      if (typeof updater === "function") {
+        const newOrder = updater(columnOrder);
+        setColumnOrder(newOrder);
+      } else {
+        setColumnOrder(updater);
+      }
     },
     enableRowSelection: true,
     onRowSelectionChange: () => {

@@ -1,4 +1,6 @@
 // src/components/leads/TableContent.tsx
+"use client";
+
 import { Table as TanstackTable, flexRender } from "@tanstack/react-table";
 import { Lead, Status } from "@/types/leads";
 import {
@@ -11,6 +13,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { DraggableColumnHeader } from "@/components/dashboardComponents/DraggableColumnHeader";
 
 interface TableContentProps {
   table: TanstackTable<Lead>;
@@ -91,6 +98,10 @@ export function TableContent({
   selectedLead,
   isLoading = false,
 }: TableContentProps) {
+  const columnIds = table
+    .getAllColumns()
+    .filter((col) => col.id !== "select")
+    .map((col) => col.id);
   // Use React Query for consistent status caching
   const { data: statuses = [], isLoading: isStatusLoading } = useQuery({
     queryKey: ["statuses"],
@@ -208,35 +219,42 @@ export function TableContent({
       <TableHeader className="bg-gray-100 dark:bg-gray-700 border-t">
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={generateUniqueKey("header-group", headerGroup.id)}>
-            {headerGroup.headers.map((header) => {
-              const isSelectColumn = header.column.id === "select";
-              const isStatusColumn = header.column.id === "status";
-              const isLastCommentColumn = header.column.id === "lastComment";
-              return (
-                <TableHead
-                  key={generateUniqueKey("header", header.id)}
-                  className={`
-                    text-gray-700 dark:text-gray-300 font-semibold text-left
-                    ${
-                      isSelectColumn
-                        ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
-                        : isStatusColumn
-                          ? "w-32 min-w-[120px] px-4"
-                          : isLastCommentColumn
-                            ? "max-w-[200px] px-4"
-                            : "px-4"
-                    }
-                  `}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                </TableHead>
-              );
-            })}
+            <SortableContext
+              items={columnIds}
+              strategy={horizontalListSortingStrategy}
+            >
+              {headerGroup.headers.map((header) => {
+                const isSelectColumn = header.column.id === "select";
+                const isStatusColumn = header.column.id === "status";
+                const isLastCommentColumn = header.column.id === "lastComment";
+                return (
+                  <TableHead
+                    key={generateUniqueKey("header", header.id)}
+                    className={`
+                      text-gray-700 dark:text-gray-300 font-semibold text-left
+                      ${
+                        isSelectColumn
+                          ? "w-12 px-3 border-r border-gray-200 dark:border-gray-700"
+                          : isStatusColumn
+                            ? "w-32 min-w-[120px] px-4"
+                            : isLastCommentColumn
+                              ? "max-w-[200px] px-4"
+                              : "px-4"
+                      }
+                    `}
+                  >
+                    {header.isPlaceholder ? null : (
+                      <DraggableColumnHeader header={header}>
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </DraggableColumnHeader>
+                    )}
+                  </TableHead>
+                );
+              })}
+            </SortableContext>
           </TableRow>
         ))}
       </TableHeader>

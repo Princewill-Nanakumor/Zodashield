@@ -6,243 +6,30 @@ import {
   TableHeader,
   TableBody,
   TableRow,
-  TableHead,
   TableCell,
 } from "@/components/ui/Table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Loader2, ArrowUpDown, Eye } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Lead } from "@/types/leads";
-import { useStatuses } from "@/hooks/useStatuses"; // Import the new hook
-import Link from "next/link";
+import { useStatuses } from "@/hooks/useStatuses";
+import { useUserLeadsColumnOrder } from "@/hooks/useUserLeadsColumnOrder";
+import { UserLeadsDraggableHeader } from "./UserLeadsDraggableHeader";
+import { renderUserLeadCell } from "./UserLeadsColumnRenderer";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { useSearchParams } from "next/navigation";
-
-// Define the actual status format from API
-interface Status {
-  _id: string;
-  name: string;
-  color: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-function LoadingRow() {
-  return (
-    <TableRow>
-      <TableCell colSpan={10} className="h-24 text-center">
-        <div className="flex items-center justify-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading leads...
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function EmptyRow() {
-  return (
-    <TableRow>
-      <TableCell
-        colSpan={10}
-        className="h-24 text-center text-gray-500 dark:text-gray-400"
-      >
-        No leads found
-      </TableCell>
-    </TableRow>
-  );
-}
-
-interface UserLeadRowProps {
-  lead: Lead;
-  onLeadClick: (lead: Lead) => void;
-  selectedLead: Lead | null;
-  statuses: Status[];
-  statusesLoading: boolean;
-}
-
-function UserLeadRow({
-  lead,
-  onLeadClick,
-  selectedLead,
-  statuses,
-  statusesLoading,
-}: UserLeadRowProps) {
-  const isSelected = selectedLead?._id === lead._id;
-
-  // Find the current status from the passed statuses
-  const currentStatus = statuses.find((s) => s._id === lead.status) ||
-    statuses.find((s) => s._id === "NEW") || {
-      _id: "NEW",
-      name: "New",
-      color: "#3B82F6",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-  const getStatusStyle = () => {
-    return {
-      backgroundColor: `${currentStatus.color}15`,
-      color: currentStatus.color,
-      borderColor: `${currentStatus.color}30`,
-    };
-  };
-
-  const renderStatus = () => {
-    if (statusesLoading) {
-      return (
-        <Badge variant="outline" className="flex items-center gap-1.5">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Loading...
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge
-        variant="outline"
-        style={getStatusStyle()}
-        className="flex items-center gap-1.5"
-      >
-        <div
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: currentStatus.color }}
-        />
-        {currentStatus.name}
-      </Badge>
-    );
-  };
-
-  // Helper function to get assigned user name
-  const getAssignedUserName = () => {
-    if (!lead.assignedTo) return "Unassigned";
-
-    if (typeof lead.assignedTo === "string") {
-      return lead.assignedTo;
-    }
-
-    if (lead.assignedTo.firstName && lead.assignedTo.lastName) {
-      return `${lead.assignedTo.firstName} ${lead.assignedTo.lastName}`;
-    }
-
-    return "Unknown User";
-  };
-
-  // Get current URL params to preserve filters when navigating
-  const searchParams = useSearchParams();
-  const currentParams = searchParams.toString();
-
-  // Preserve current filters in the URL
-  const detailUrl = currentParams
-    ? `/dashboard/leads/${lead._id}?${currentParams}`
-    : `/dashboard/leads/${lead._id}`;
-
-  return (
-    <TableRow
-      data-state={isSelected ? "selected" : undefined}
-      onClick={() => onLeadClick(lead)}
-      className={`
-        cursor-pointer transition-colors
-        ${
-          isSelected
-            ? "bg-primary/20 dark:bg-primary/30 font-bold"
-            : "hover:bg-gray-100 dark:hover:bg-gray-700/80"
-        }
-      `}
-    >
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        <div className="flex items-center justify-center">
-          <Link
-            href={detailUrl}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:border dark:border-gray-700 transition-colors duration-200"
-            title="View Details"
-          >
-            <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </Link>
-        </div>
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        {lead.firstName} {lead.lastName}
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        <div className="flex items-center">
-          <span>{lead.email}</span>
-        </div>
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        <div className="flex items-center">
-          <span>{lead.phone || "-"}</span>
-        </div>
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        <span>{lead.country || "-"}</span>
-      </TableCell>
-      <TableCell>{renderStatus()}</TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        <span>{lead.source}</span>
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        <span
-          className={!lead.assignedTo ? "text-gray-500 dark:text-gray-400" : ""}
-        >
-          {getAssignedUserName()}
-        </span>
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        {lead.lastComment ? (
-          <div
-            className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
-            title={lead.lastComment}
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {lead.lastComment}
-          </div>
-        ) : (
-          <span className="text-gray-400 dark:text-gray-500 italic">
-            No comments
-          </span>
-        )}
-      </TableCell>
-      <TableCell
-        className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
-      >
-        {lead.lastCommentDate ? (
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            {(() => {
-              const date = new Date(lead.lastCommentDate);
-              const day = String(date.getDate()).padStart(2, "0");
-              const month = String(date.getMonth() + 1).padStart(2, "0");
-              const year = date.getFullYear();
-              return `${day}/${month}/${year}`;
-            })()}
-          </div>
-        ) : (
-          <span className="text-gray-400 dark:text-gray-500">—</span>
-        )}
-      </TableCell>
-    </TableRow>
-  );
-}
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt";
 type SortOrder = "asc" | "desc";
@@ -257,6 +44,32 @@ interface UserLeadTableProps {
   onSort: (field: SortField) => void;
 }
 
+function LoadingRow({ columnCount }: { columnCount: number }) {
+  return (
+    <TableRow>
+      <TableCell colSpan={columnCount} className="h-24 text-center">
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading leads...
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function EmptyRow({ columnCount }: { columnCount: number }) {
+  return (
+    <TableRow>
+      <TableCell
+        colSpan={columnCount}
+        className="h-24 text-center text-gray-500 dark:text-gray-400"
+      >
+        No leads found
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export function UserLeadTable({
   loading,
   paginatedLeads,
@@ -266,78 +79,127 @@ export function UserLeadTable({
   sortOrder,
   onSort,
 }: UserLeadTableProps) {
-  // Use React Query hook for statuses - this will cache the data!
   const { statuses, isLoading: statusesLoading } = useStatuses();
+  const { columnOrder, setColumnOrder } = useUserLeadsColumnOrder();
+  const searchParams = useSearchParams();
 
-  const SortableHeader = ({
-    field,
-    children,
-  }: {
-    field: SortField;
-    children: React.ReactNode;
-  }) => (
-    <TableHead className="text-gray-900 dark:text-white">
-      <Button
-        variant="ghost"
-        onClick={() => onSort(field)}
-        className="h-8 flex items-center gap-1 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200"
-      >
-        {children}
-        <ArrowUpDown
-          className={`h-4 w-4 ${
-            sortField === field
-              ? sortOrder === "asc"
-                ? "rotate-180"
-                : ""
-              : "text-muted-foreground"
-          }`}
-        />
-      </Button>
-    </TableHead>
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = columnOrder.findIndex((id) => id === active.id);
+      const newIndex = columnOrder.findIndex((id) => id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newColumnOrder = arrayMove(columnOrder, oldIndex, newIndex);
+        setColumnOrder(newColumnOrder);
+      }
+    }
+  };
+
+  const columnConfig: Record<
+    string,
+    { label: string; isSortable: boolean; sortField?: SortField }
+  > = {
+    actions: { label: "Actions", isSortable: false },
+    name: { label: "Name", isSortable: true, sortField: "name" },
+    email: { label: "Email", isSortable: false },
+    phone: { label: "Phone", isSortable: false },
+    country: { label: "Country", isSortable: true, sortField: "country" },
+    status: { label: "Status", isSortable: true, sortField: "status" },
+    source: { label: "Source", isSortable: true, sortField: "source" },
+    assignedTo: { label: "Assigned To", isSortable: false },
+    lastComment: { label: "Last Comment", isSortable: false },
+    lastCommentDate: { label: "Last Comment Date", isSortable: false },
+    commentCount: { label: "Comments", isSortable: false },
+  };
+
   return (
-    <Table>
-      <TableHeader className="bg-gray-100 dark:bg-gray-700">
-        <TableRow>
-          <TableHead className="text-center text-gray-900 dark:text-white">
-            Actions
-          </TableHead>
-          <SortableHeader field="name">Name</SortableHeader>
-          <TableHead className="text-gray-900 dark:text-white">Email</TableHead>
-          <TableHead className="text-gray-900 dark:text-white">Phone</TableHead>
-          <SortableHeader field="country">Country</SortableHeader>
-          <SortableHeader field="status">Status</SortableHeader>
-          <SortableHeader field="source">Source</SortableHeader>
-          <TableHead className="text-gray-900 dark:text-white">
-            Assigned To
-          </TableHead>
-          <TableHead className="text-gray-900 dark:text-white max-w-[200px]">
-            Last Comment
-          </TableHead>
-          <TableHead className="text-gray-900 dark:text-white">
-            Last Comment Date
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {loading ? (
-          <LoadingRow />
-        ) : paginatedLeads.length === 0 ? (
-          <EmptyRow />
-        ) : (
-          paginatedLeads.map((lead: Lead) => (
-            <UserLeadRow
-              key={`${lead._id}-${lead.status}`}
-              lead={lead}
-              onLeadClick={onLeadClick}
-              selectedLead={selectedLead}
-              statuses={statuses}
-              statusesLoading={statusesLoading}
-            />
-          ))
-        )}
-      </TableBody>
-    </Table>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <Table>
+        <TableHeader className="bg-gray-100 dark:bg-gray-700">
+          <TableRow>
+            <SortableContext
+              items={columnOrder}
+              strategy={horizontalListSortingStrategy}
+            >
+              {columnOrder.map((columnId) => {
+                const config = columnConfig[columnId];
+                if (!config) return null;
+
+                const isSortable = !!config.isSortable && !!config.sortField;
+                const isSorted = isSortable && sortField === config.sortField;
+
+                return (
+                  <UserLeadsDraggableHeader
+                    key={columnId}
+                    columnId={columnId}
+                    isSortable={isSortable}
+                    isSorted={isSorted}
+                    sortOrder={sortOrder}
+                    onSort={isSortable && config.sortField ? () => onSort(config.sortField!) : undefined}
+                  >
+                    {config.label}
+                  </UserLeadsDraggableHeader>
+                );
+              })}
+            </SortableContext>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            <LoadingRow columnCount={columnOrder.length} />
+          ) : paginatedLeads.length === 0 ? (
+            <EmptyRow columnCount={columnOrder.length} />
+          ) : (
+            paginatedLeads.map((lead: Lead) => {
+              const isSelected = selectedLead?._id === lead._id;
+              const currentParams = searchParams.toString();
+              const detailUrl = currentParams
+                ? `/dashboard/leads/${lead._id}?${currentParams}`
+                : `/dashboard/leads/${lead._id}`;
+              
+              return (
+                <TableRow
+                  key={`${lead._id}-${lead.status}`}
+                  data-state={isSelected ? "selected" : undefined}
+                  onClick={() => onLeadClick(lead)}
+                  className={`
+                    cursor-pointer transition-colors
+                    ${
+                      isSelected
+                        ? "bg-primary/20 dark:bg-primary/30 font-bold"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-700/80"
+                    }
+                  `}
+                >
+                  {columnOrder.map((columnId) =>
+                    renderUserLeadCell({
+                      columnId,
+                      lead,
+                      isSelected,
+                      statuses,
+                      statusesLoading,
+                      detailUrl,
+                    })
+                  )}
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </DndContext>
   );
 }

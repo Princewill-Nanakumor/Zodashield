@@ -1,0 +1,214 @@
+// src/components/user-leads/UserLeadsColumnRenderer.tsx
+"use client";
+
+import { Lead } from "@/types/leads";
+import { TableCell } from "@/components/ui/Table";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Eye } from "lucide-react";
+import Link from "next/link";
+import { UserLeadsColumnId } from "@/hooks/useUserLeadsColumnOrder";
+
+interface Status {
+  _id: string;
+  name: string;
+  color: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ColumnRendererProps {
+  columnId: UserLeadsColumnId;
+  lead: Lead;
+  isSelected: boolean;
+  statuses: Status[];
+  statusesLoading: boolean;
+  detailUrl: string;
+}
+
+export function renderUserLeadCell({
+  columnId,
+  lead,
+  isSelected,
+  statuses,
+  statusesLoading,
+  detailUrl,
+}: ColumnRendererProps) {
+
+  const getAssignedUserName = () => {
+    if (!lead.assignedTo) return "Unassigned";
+    if (typeof lead.assignedTo === "string") return lead.assignedTo;
+    if (lead.assignedTo.firstName && lead.assignedTo.lastName) {
+      return `${lead.assignedTo.firstName} ${lead.assignedTo.lastName}`;
+    }
+    return "Unknown User";
+  };
+
+  const currentStatus =
+    statuses.find((s) => s._id === lead.status) ||
+    statuses.find((s) => s._id === "NEW") || {
+      _id: "NEW",
+      name: "New",
+      color: "#3B82F6",
+    };
+
+  const getStatusStyle = () => ({
+    backgroundColor: `${currentStatus.color}15`,
+    color: currentStatus.color,
+    borderColor: `${currentStatus.color}30`,
+  });
+
+  const renderStatus = () => {
+    if (statusesLoading) {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1.5">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Loading...
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge variant="outline" style={getStatusStyle()} className="flex items-center gap-1.5">
+        <div
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: currentStatus.color }}
+        />
+        {currentStatus.name}
+      </Badge>
+    );
+  };
+
+  switch (columnId) {
+    case "actions":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <div className="flex items-center justify-center">
+            <Link
+              href={detailUrl}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:border dark:border-gray-700 transition-colors duration-200"
+              title="View Details"
+            >
+              <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </Link>
+          </div>
+        </TableCell>
+      );
+
+    case "name":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          {lead.firstName} {lead.lastName}
+        </TableCell>
+      );
+
+    case "email":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <div className="flex items-center">
+            <span>{lead.email}</span>
+          </div>
+        </TableCell>
+      );
+
+    case "phone":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <div className="flex items-center">
+            <span>{lead.phone || "-"}</span>
+          </div>
+        </TableCell>
+      );
+
+    case "country":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <span>{lead.country || "-"}</span>
+        </TableCell>
+      );
+
+    case "status":
+      return <TableCell>{renderStatus()}</TableCell>;
+
+    case "source":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <span>{lead.source}</span>
+        </TableCell>
+      );
+
+    case "assignedTo":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <span
+            className={!lead.assignedTo ? "text-gray-500 dark:text-gray-400" : ""}
+          >
+            {getAssignedUserName()}
+          </span>
+        </TableCell>
+      );
+
+    case "lastComment":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          {lead.lastComment ? (
+            <div
+              className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
+              title={lead.lastComment}
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {lead.lastComment}
+            </div>
+          ) : (
+            <span className="text-gray-400 dark:text-gray-500 italic">
+              No comments
+            </span>
+          )}
+        </TableCell>
+      );
+
+    case "lastCommentDate":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          {lead.lastCommentDate ? (
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              {(() => {
+                const date = new Date(lead.lastCommentDate);
+                const day = String(date.getDate()).padStart(2, "0");
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+              })()}
+            </div>
+          ) : (
+            <span className="text-gray-400 dark:text-gray-500">—</span>
+          )}
+        </TableCell>
+      );
+
+    case "commentCount":
+      return (
+        <TableCell className={isSelected ? "dark:text-white" : "dark:text-gray-300"}>
+          <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
+            {lead.commentCount && lead.commentCount > 0 ? (
+              <span className="inline-flex items-center justify-center font-medium">
+                {lead.commentCount}
+              </span>
+            ) : (
+              <span className="text-gray-400 dark:text-gray-500">—</span>
+            )}
+          </div>
+        </TableCell>
+      );
+
+    default:
+      return null;
+  }
+}
+

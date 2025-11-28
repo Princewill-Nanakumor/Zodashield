@@ -81,11 +81,12 @@ export async function GET() {
       (lead: { _id: mongoose.Types.ObjectId }) => lead._id
     );
 
-    // Fetch last comment for each lead using aggregation
+    // Fetch last comment and comment count for each lead using aggregation
     const lastCommentsMap = new Map<
       string,
       { content: string; createdAt: Date }
     >();
+    const commentCountsMap = new Map<string, number>();
 
     if (adminIdForComments && leadIds.length > 0) {
       try {
@@ -95,6 +96,12 @@ export async function GET() {
           createdAt: Date;
         }
 
+        interface CommentCountResult {
+          _id: mongoose.Types.ObjectId;
+          count: number;
+        }
+
+        // Get last comment for each lead
         const lastComments = await mongoose.connection.db
           .collection("comments")
           .aggregate<LastCommentResult>([
@@ -126,8 +133,34 @@ export async function GET() {
             createdAt: comment.createdAt,
           });
         });
+
+        // Get comment count for each lead
+        const commentCounts = await mongoose.connection.db
+          .collection("comments")
+          .aggregate<CommentCountResult>([
+            {
+              $match: {
+                leadId: { $in: leadIds },
+                $or: [
+                  { adminId: adminIdForComments },
+                  { adminId: { $exists: false } },
+                ],
+              },
+            },
+            {
+              $group: {
+                _id: "$leadId",
+                count: { $sum: 1 },
+              },
+            },
+          ])
+          .toArray();
+
+        commentCounts.forEach((countResult) => {
+          commentCountsMap.set(countResult._id.toString(), countResult.count);
+        });
       } catch (error) {
-        console.error("Error fetching last comments:", error);
+        console.error("Error fetching comments:", error);
         // Continue without comment data rather than failing completely
       }
     }
@@ -154,7 +187,7 @@ export async function GET() {
         }
       }
 
-      // Get last comment for this lead
+      // Get last comment and comment count for this lead
       const leadIdString = lead._id.toString();
       const lastComment = lastCommentsMap.get(leadIdString);
       const lastCommentContent = lastComment?.content || null;
@@ -163,6 +196,7 @@ export async function GET() {
           ? lastComment.createdAt.toISOString()
           : (lastComment.createdAt as string)
         : null;
+      const commentCount = commentCountsMap.get(leadIdString) || 0;
 
       return {
         _id: leadIdString,
@@ -177,6 +211,7 @@ export async function GET() {
         comments: lead.comments || "",
         lastComment: lastCommentContent,
         lastCommentDate: lastCommentDate,
+        commentCount: commentCount,
         assignedAt: lead.assignedAt || lead.updatedAt,
         assignedTo: assignedToUser,
         createdAt: lead.createdAt,

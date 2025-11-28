@@ -376,6 +376,28 @@ export const useTableColumns = ({
         },
         enableSorting: false,
       },
+      {
+        id: "commentCount",
+        header: () => (
+          <div className="text-left font-medium">Comments</div>
+        ),
+        cell: ({ row }) => {
+          const lead = row.original;
+          const count = lead.commentCount || 0;
+          return (
+            <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
+              {count > 0 ? (
+                <span className="inline-flex items-center justify-center font-medium">
+                  {count}
+                </span>
+              ) : (
+                <span className="text-gray-400 dark:text-gray-500">—</span>
+              )}
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
     ],
     [
       sortField,

@@ -26,7 +26,19 @@ import { useRowSelection } from "./RowSelection";
 import { usePanelNavigation } from "./PanelNavigation";
 import { useTableColumns } from "./TableColumns";
 import { useTableConfiguration } from "./TableConfiguration";
+import { useColumnOrder } from "@/hooks/useColumnOrder";
 import { Loader } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -71,6 +83,19 @@ export default function LeadsTable({
   const searchParams = useSearchParams();
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(15);
+  
+  // Column ordering with localStorage persistence
+  const { columnOrder, setColumnOrder } = useColumnOrder();
+
+  // DnD Kit sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // We'll define handleDragEnd after table is created
 
   // --- STABILIZED SORTING STATE ---
   const stableSorting = useMemo(() => {
@@ -185,10 +210,29 @@ export default function LeadsTable({
     pageIndex,
     sorting: stableSorting,
     rowSelection,
+    columnOrder,
     setSorting,
     setPageIndex: handlePageChange,
     setPageSize,
+    setColumnOrder,
   });
+
+  // Handle column drag end - defined after table is created
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = columnOrder.findIndex((id) => id === active.id);
+      const newIndex = columnOrder.findIndex((id) => id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newColumnOrder = arrayMove(columnOrder, oldIndex, newIndex);
+        setColumnOrder(newColumnOrder);
+        // Update table column order
+        table.setColumnOrder(newColumnOrder);
+      }
+    }
+  }, [columnOrder, setColumnOrder, table]);
 
   if (isLoading) {
     return (
@@ -210,30 +254,36 @@ export default function LeadsTable({
           totalRows={sortedLeads.length}
         />
 
-        <Table>
-          {showEmptyState ? (
-            <EmptyStateAdminLeadsTable
-              searchQuery={searchQuery}
-              filterByUser={filterByUser}
-              filterByCountry={filterByCountry}
-              filterByStatus={filterByStatus}
-              filterBySource={filterBySource}
-              hasFilters={
-                filterByUser !== "all" ||
-                filterByCountry !== "all" ||
-                filterByStatus !== "all" ||
-                filterBySource !== "all"
-              }
-              users={users}
-            />
-          ) : (
-            <TableContent
-              table={table}
-              onRowClick={handleRowClick}
-              selectedLead={selectedLead}
-            />
-          )}
-        </Table>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <Table>
+            {showEmptyState ? (
+              <EmptyStateAdminLeadsTable
+                searchQuery={searchQuery}
+                filterByUser={filterByUser}
+                filterByCountry={filterByCountry}
+                filterByStatus={filterByStatus}
+                filterBySource={filterBySource}
+                hasFilters={
+                  filterByUser !== "all" ||
+                  filterByCountry !== "all" ||
+                  filterByStatus !== "all" ||
+                  filterBySource !== "all"
+                }
+                users={users}
+              />
+            ) : (
+              <TableContent
+                table={table}
+                onRowClick={handleRowClick}
+                selectedLead={selectedLead}
+              />
+            )}
+          </Table>
+        </DndContext>
 
         <TablePagination
           pageIndex={pageIndex}
