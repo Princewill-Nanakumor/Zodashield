@@ -41,7 +41,7 @@ export const SourceFilter = ({
       ...new Set(
         leads
           .map((lead: Lead) => lead.source)
-          .filter((source) => source && source.trim() !== "" && source !== "-")
+          .filter((source) => source && source.trim() !== "" && source !== "-" && source !== "—")
       ),
     ].sort();
   }, [leads]);

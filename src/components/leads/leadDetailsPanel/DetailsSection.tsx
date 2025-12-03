@@ -125,7 +125,7 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="overflow-hidden bg-white border border-gray-200 dark:bg-gray-800 rounded-xl dark:border-gray-700">
       <div
         className="flex items-center justify-between p-4 cursor-pointer group"
         onClick={onToggle}
@@ -142,7 +142,7 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
                 e.stopPropagation();
                 handleEdit();
               }}
-              className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              className="h-8 px-2 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
             >
               <Edit2 className="w-4 h-4" />
             </Button>
@@ -182,9 +182,9 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
             // Edit Mode for Source
             <div className="space-y-2">
               <div className="flex items-start gap-3">
-                <Tag className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-2" />
+                <Tag className="w-5 h-5 mt-2 text-gray-400 dark:text-gray-500" />
                 <div className="flex-1">
-                  <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
+                  <label className="block mb-1 text-sm text-gray-500 dark:text-gray-400">
                     Source *
                   </label>
                   <Input

@@ -16,7 +16,7 @@ const STORAGE_KEYS = {
   FILTER_BY_STATUS: "user_leads_filter_by_status",
 } as const;
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt";
+type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 export const useUserLeadsPage = (
@@ -305,8 +305,40 @@ export const useUserLeadsPage = (
           aValue = new Date(a.createdAt || "").getTime();
           bValue = new Date(b.createdAt || "").getTime();
           break;
+        case "lastComment":
+          aValue = (a.lastComment || "").toLowerCase();
+          bValue = (b.lastComment || "").toLowerCase();
+          break;
+        case "lastCommentDate": {
+          // Leads without comments should go to the end
+          const dateA = a.lastCommentDate ? new Date(a.lastCommentDate).getTime() : 0;
+          const dateB = b.lastCommentDate ? new Date(b.lastCommentDate).getTime() : 0;
+          aValue = dateA;
+          bValue = dateB;
+          break;
+        }
+        case "commentCount":
+          aValue = a.commentCount || 0;
+          bValue = b.commentCount || 0;
+          break;
         default:
           return 0;
+      }
+
+      // Special handling for lastCommentDate - leads without dates should go to the end
+      if (uiState.sortField === "lastCommentDate") {
+        if (aValue === 0 && bValue !== 0) return uiState.sortOrder === "asc" ? 1 : -1;
+        if (aValue !== 0 && bValue === 0) return uiState.sortOrder === "asc" ? -1 : 1;
+        if (aValue === 0 && bValue === 0) return 0;
+      }
+
+      // Special handling for lastComment - leads without comments should go to the end
+      if (uiState.sortField === "lastComment") {
+        const aEmpty = !aValue || aValue === "";
+        const bEmpty = !bValue || bValue === "";
+        if (aEmpty && !bEmpty) return uiState.sortOrder === "asc" ? 1 : -1;
+        if (!aEmpty && bEmpty) return uiState.sortOrder === "asc" ? -1 : 1;
+        if (aEmpty && bEmpty) return 0;
       }
 
       if (uiState.sortOrder === "asc") {

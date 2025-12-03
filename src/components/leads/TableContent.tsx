@@ -308,6 +308,12 @@ export function TableContent({
                   const isCommentCountCell = cell.column.id === "commentCount";
                   const isActionsCell = cell.column.id === "actions";
                   const isSelectCell = cell.column.id === "select";
+                  const isSourceCell = cell.column.id === "source";
+                  const isPhoneCell = cell.column.id === "phone";
+                  const isCountryCell = cell.column.id === "country";
+                  const isAssignedToCell = cell.column.id === "assignedTo";
+                  const isCreatedAtCell = cell.column.id === "createdAt";
+                  const isLastCommentDateCell = cell.column.id === "lastCommentDate";
                   
                   return (
                     <TableCell
@@ -318,7 +324,7 @@ export function TableContent({
                         ${
                           isSelectCell || isActionsCell
                             ? "text-center"
-                            : isCommentCountCell
+                            : isCommentCountCell || isSourceCell || isPhoneCell || isCountryCell || isAssignedToCell || isCreatedAtCell || isLastCommentCell || isLastCommentDateCell
                               ? "text-center"
                               : "text-left"
                         }
@@ -336,7 +342,11 @@ export function TableContent({
                       {cell.column.id === "status"
                         ? renderStatus(lead.status)
                         : cell.column.id === "createdAt"
-                          ? formatDateDMY(lead.createdAt)
+                          ? (
+                              <div className="text-center">
+                                <span>{formatDateDMY(lead.createdAt)}</span>
+                              </div>
+                            )
                           : flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext()

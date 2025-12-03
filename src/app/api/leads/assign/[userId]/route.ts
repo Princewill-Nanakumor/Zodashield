@@ -98,7 +98,7 @@ export async function GET() {
       phone: lead.phone,
       country: lead.country,
       value: lead.value,
-      source: lead.source,
+      source: lead.source && lead.source !== "-" ? lead.source : "—",
       status: lead.status,
       comments: lead.comments,
       company: lead.company,

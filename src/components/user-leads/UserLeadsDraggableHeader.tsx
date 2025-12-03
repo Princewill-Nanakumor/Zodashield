@@ -47,7 +47,9 @@ export function UserLeadsDraggableHeader({
   if (columnId === "actions") {
     return (
       <TableHead className="text-center text-gray-900 dark:text-white">
-        {children}
+        <div className="flex justify-center items-center w-full h-8 font-medium cursor-pointer">
+          {children}
+        </div>
       </TableHead>
     );
   }
@@ -56,9 +58,9 @@ export function UserLeadsDraggableHeader({
     <Button
       variant="ghost"
       onClick={onSort}
-      className="h-8 flex items-center justify-center gap-1 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200"
+      className="flex gap-1 justify-center items-center h-8 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 hover:bg-transparent! dark:hover:bg-transparent!"
     >
-      {children}
+      <span className={isSorted ? "font-bold" : "font-medium"}>{children}</span>
       <ArrowUpDown
         className={`h-4 w-4 ${
           isSorted
@@ -70,8 +72,20 @@ export function UserLeadsDraggableHeader({
       />
     </Button>
   ) : (
-    <span className="text-center w-full block">{children}</span>
+    <span
+      className={`block w-full font-medium text-center ${columnId === "email" || columnId === "phone" ? "cursor-pointer" : ""}`}
+    >
+      {children}
+    </span>
   );
+
+  // Email, phone, lastComment, and lastCommentDate columns need extra padding to prevent drag icon overlap
+  const needsExtraPadding =
+    columnId === "email" ||
+    columnId === "phone" ||
+    columnId === "lastComment" ||
+    columnId === "lastCommentDate";
+  const paddingClass = needsExtraPadding ? "pl-10" : "pl-8";
 
   return (
     <TableHead
@@ -81,18 +95,19 @@ export function UserLeadsDraggableHeader({
         columnId === "lastComment" ? "max-w-[200px]" : ""
       }`}
     >
-      <div className="relative flex items-center justify-center group">
+      <div className="flex relative justify-center items-center group min-h-10">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded absolute left-0 z-10"
+          className="absolute left-1 top-1/2 z-10 p-1 rounded opacity-0 transition-opacity -translate-y-1/2 cursor-grab active:cursor-grabbing group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-700"
           aria-label="Drag to reorder column"
         >
           <GripVertical className="w-4 h-4 text-gray-400" />
         </button>
-        <div className="w-full flex justify-center">{headerContent}</div>
+        <div className={`flex justify-center w-full ${paddingClass}`}>
+          {headerContent}
+        </div>
       </div>
     </TableHead>
   );
 }
-

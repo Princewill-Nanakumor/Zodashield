@@ -17,7 +17,10 @@ type SortField =
   | "status"
   | "source"
   | "createdAt"
-  | "assignedTo";
+  | "assignedTo"
+  | "lastComment"
+  | "lastCommentDate"
+  | "commentCount";
 
 // Default status style for fallback
 const DEFAULT_STATUS_STYLE = {
@@ -112,7 +115,7 @@ export const useTableColumns = ({
       },
       {
         id: "actions",
-        header: () => <div className="text-center font-medium">Actions</div>,
+        header: () => <div className="h-8 flex items-center justify-center w-full font-medium cursor-pointer">Actions</div>,
         cell: ({ row }) => {
           const lead = row.original;
           // Preserve current filters in the URL
@@ -142,9 +145,9 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("name")}
-            className="h-8 flex items-center gap-1 justify-start w-full"
+            className="h-8 flex items-center gap-1 justify-start w-full hover:bg-transparent! dark:hover:bg-transparent!"
           >
-            <span className={sortField === "name" ? "font-bold" : ""}>
+            <span className={sortField === "name" ? "font-bold" : "font-medium"}>
               Name
             </span>
             <ArrowUpDown
@@ -168,13 +171,25 @@ export const useTableColumns = ({
       },
       {
         id: "email",
-        header: "Email",
+        header: () => (
+          <div className="h-8 flex items-center justify-start w-full font-medium cursor-pointer">
+            Email
+          </div>
+        ),
         cell: ({ row }) => row.original.email,
       },
       {
         id: "phone",
-        header: "Phone",
-        cell: ({ row }) => row.original.phone || "N/A",
+        header: () => (
+          <div className="h-8 flex items-center justify-center w-full font-medium cursor-pointer">
+            Phone
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="text-center">
+            <span>{row.original.phone || "—"}</span>
+          </div>
+        ),
       },
       {
         id: "country",
@@ -182,9 +197,9 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("country")}
-            className="h-8 flex items-center gap-1 justify-start w-full"
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
           >
-            <span className={sortField === "country" ? "font-bold" : ""}>
+            <span className={sortField === "country" ? "font-bold" : "font-medium"}>
               Country
             </span>
             <ArrowUpDown
@@ -196,7 +211,11 @@ export const useTableColumns = ({
             />
           </Button>
         ),
-        cell: ({ row }) => row.original.country || "N/A",
+        cell: ({ row }) => (
+          <div className="text-center">
+            <span>{row.original.country || "—"}</span>
+          </div>
+        ),
       },
       {
         id: "status",
@@ -204,9 +223,9 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("status")}
-            className="h-8 flex items-center gap-1 justify-start w-full"
+            className="h-8 flex items-center gap-1 justify-start w-full hover:bg-transparent! dark:hover:bg-transparent!"
           >
-            <span className={sortField === "status" ? "font-bold" : ""}>
+            <span className={sortField === "status" ? "font-bold" : "font-medium"}>
               Status
             </span>
             <ArrowUpDown
@@ -248,9 +267,9 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("source")}
-            className="h-8 flex items-center gap-1 justify-start w-full"
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
           >
-            <span className={sortField === "source" ? "font-bold" : ""}>
+            <span className={sortField === "source" ? "font-bold" : "font-medium"}>
               Source
             </span>
             <ArrowUpDown
@@ -262,7 +281,11 @@ export const useTableColumns = ({
             />
           </Button>
         ),
-        cell: ({ row }) => row.original.source,
+        cell: ({ row }) => (
+          <div className="text-center">
+            <span>{row.original.source || "—"}</span>
+          </div>
+        ),
       },
       {
         id: "assignedTo",
@@ -270,9 +293,9 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("assignedTo")}
-            className="h-8 flex items-center gap-1 justify-start w-full"
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
           >
-            <span className={sortField === "assignedTo" ? "font-bold" : ""}>
+            <span className={sortField === "assignedTo" ? "font-bold" : "font-medium"}>
               Assigned To
             </span>
             <ArrowUpDown
@@ -286,14 +309,24 @@ export const useTableColumns = ({
         ),
         cell: ({ row }) => {
           const lead = row.original;
-          if (!lead.assignedTo) return "Unassigned";
+          if (!lead.assignedTo) {
+            return (
+              <div className="text-center">
+                <span>Unassigned</span>
+              </div>
+            );
+          }
 
           const userId =
             typeof lead.assignedTo === "string"
               ? lead.assignedTo
               : lead.assignedTo?.id || "";
           const user = users.find((u) => u.id === userId);
-          return user ? `${user.firstName} ${user.lastName}` : "Unassigned";
+          return (
+            <div className="text-center">
+              <span>{user ? `${user.firstName} ${user.lastName}` : "Unassigned"}</span>
+            </div>
+          );
         },
       },
       {
@@ -302,9 +335,9 @@ export const useTableColumns = ({
           <Button
             variant="ghost"
             onClick={() => handleSort("createdAt")}
-            className="h-8 flex items-center gap-1 justify-start w-full"
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
           >
-            <span className={sortField === "createdAt" ? "font-bold" : ""}>
+            <span className={sortField === "createdAt" ? "font-bold" : "font-medium"}>
               Created
             </span>
             <ArrowUpDown
@@ -316,13 +349,31 @@ export const useTableColumns = ({
             />
           </Button>
         ),
-        cell: ({ row }) =>
-          new Date(row.original.createdAt).toLocaleDateString(),
+        cell: ({ row }) => (
+          <div className="text-center">
+            <span>{new Date(row.original.createdAt).toLocaleDateString()}</span>
+          </div>
+        ),
       },
       {
         id: "lastComment",
         header: () => (
-          <div className="text-left font-medium max-w-[200px]">Last Comment</div>
+          <Button
+            variant="ghost"
+            onClick={() => handleSort("lastComment")}
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
+          >
+            <span className={sortField === "lastComment" ? "font-bold" : "font-medium"}>
+              Last Comment
+            </span>
+            <ArrowUpDown
+              className={`h-4 w-4 ${
+                sortField === "lastComment"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            />
+          </Button>
         ),
         size: 200,
         maxSize: 200,
@@ -331,38 +382,54 @@ export const useTableColumns = ({
           const comment = lead.lastComment;
           if (!comment) {
             return (
-              <span className="text-gray-400 dark:text-gray-500 italic">
-                No comments
-              </span>
+              <div className="text-center">
+                <span>—</span>
+              </div>
             );
           }
           return (
-            <div
-              className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
-              title={comment}
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {comment}
+            <div className="text-center">
+              <div
+                className="text-sm max-w-[200px] truncate mx-auto"
+                title={comment}
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {comment}
+              </div>
             </div>
           );
         },
-        enableSorting: false,
       },
       {
         id: "lastCommentDate",
         header: () => (
-          <div className="text-left font-medium">Last Comment Date</div>
+          <Button
+            variant="ghost"
+            onClick={() => handleSort("lastCommentDate")}
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
+          >
+            <span className={sortField === "lastCommentDate" ? "font-bold" : "font-medium"}>
+              Last Comment Date
+            </span>
+            <ArrowUpDown
+              className={`h-4 w-4 ${
+                sortField === "lastCommentDate"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            />
+          </Button>
         ),
         cell: ({ row }) => {
           const lead = row.original;
           if (!lead.lastCommentDate) {
             return (
-              <div className="text-left">
-                <span className="text-gray-400 dark:text-gray-500">—</span>
+              <div className="text-center">
+                <span>—</span>
               </div>
             );
           }
@@ -371,34 +438,47 @@ export const useTableColumns = ({
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           return (
-            <div className="text-sm text-gray-700 dark:text-gray-300 text-left">
+            <div className="text-sm text-center">
               {day}/{month}/{year}
             </div>
           );
         },
-        enableSorting: false,
       },
       {
         id: "commentCount",
         header: () => (
-          <div className="text-center font-medium">Comments Numbers</div>
+          <Button
+            variant="ghost"
+            onClick={() => handleSort("commentCount")}
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
+          >
+            <span className={sortField === "commentCount" ? "font-bold" : "font-medium"}>
+              Comments Numbers
+            </span>
+            <ArrowUpDown
+              className={`h-4 w-4 ${
+                sortField === "commentCount"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            />
+          </Button>
         ),
         cell: ({ row }) => {
           const lead = row.original;
           const count = lead.commentCount || 0;
           return (
-            <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
+            <div className="text-sm text-center">
               {count > 0 ? (
                 <span className="inline-flex items-center justify-center font-medium">
                   {count}
                 </span>
               ) : (
-                <span className="inline-flex items-center justify-center text-gray-400 dark:text-gray-500">—</span>
+                <span className="inline-flex items-center justify-center">—</span>
               )}
             </div>
           );
         },
-        enableSorting: false,
       },
     ],
     [

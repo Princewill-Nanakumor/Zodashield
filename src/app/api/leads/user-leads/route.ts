@@ -73,7 +73,7 @@ export async function GET() {
         fullName: `${lead.firstName} ${lead.lastName}`,
         email: lead.email,
         phone: lead.phone || "",
-        source: lead.source || "",
+        source: lead.source && lead.source !== "-" ? lead.source : "—",
         country: lead.country || "",
         status: lead.status || "NEW",
         createdAt: new Date(lead.createdAt).toISOString(),

@@ -300,7 +300,7 @@ export async function GET() {
           name: `${(lead.firstName as string) || ""} ${(lead.lastName as string) || ""}`.trim(),
           email: (lead.email as string) || "",
           phone: (lead.phone as string) || "",
-          source: (lead.source as string) || "",
+          source: (lead.source as string) && (lead.source as string) !== "-" ? (lead.source as string) : "—",
           status: (lead.status as string) || "NEW",
           country: (lead.country as string) || "",
           assignedTo: assignedToUser,

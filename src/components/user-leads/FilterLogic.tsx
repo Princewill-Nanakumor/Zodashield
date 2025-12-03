@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { Lead } from "@/types/leads";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt";
+type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 interface FilterLogicProps {
@@ -73,7 +73,7 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
   const availableSources = useMemo(() => {
     if (!isDataReady || leads.length === 0) return [];
     return [...new Set(leads.map((lead) => lead.source))]
-      .filter((source): source is string => Boolean(source) && source !== "-")
+      .filter((source): source is string => Boolean(source) && source !== "-" && source !== "—")
       .sort();
   }, [leads, isDataReady]);
 

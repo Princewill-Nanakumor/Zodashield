@@ -6,7 +6,7 @@ export function useAdminLeadsTableColumns(): LeadColumn[] {
     {
       id: "name",
       accessorFn: (row: Lead) =>
-        row.name || `${row.firstName} ${row.lastName}`.trim() || "-",
+        row.name || `${row.firstName} ${row.lastName}`.trim() || "—",
       header: "Name",
       sortingFn: (a, b) => {
         const nameA =
@@ -22,37 +22,37 @@ export function useAdminLeadsTableColumns(): LeadColumn[] {
       id: "email",
       accessorKey: "email",
       header: "Email",
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => info.getValue() || "—",
       sortingFn: (a, b) =>
-        (a.original.email || "-").localeCompare(b.original.email || "-"),
+        (a.original.email || "—").localeCompare(b.original.email || "—"),
     },
     {
       id: "phone",
-      accessorFn: (row: Lead) => row.phone || "-",
+      accessorFn: (row: Lead) => row.phone || "—",
       header: "Phone",
       sortingFn: (a, b) =>
-        (a.original.phone || "-").localeCompare(b.original.phone || "-"),
+        (a.original.phone || "—").localeCompare(b.original.phone || "—"),
     },
     {
       id: "country",
-      accessorFn: (row: Lead) => row.country || "-",
+      accessorFn: (row: Lead) => row.country || "—",
       header: "Country",
       sortingFn: (a, b) =>
-        (a.original.country || "-").localeCompare(b.original.country || "-"),
+        (a.original.country || "—").localeCompare(b.original.country || "—"),
     },
     {
       id: "status",
-      accessorFn: (row: Lead) => row.status || "-",
+      accessorFn: (row: Lead) => row.status || "—",
       header: "Status",
       sortingFn: (a, b) =>
-        (a.original.status || "-").localeCompare(b.original.status || "-"),
+        (a.original.status || "—").localeCompare(b.original.status || "—"),
     },
     {
       id: "source",
-      accessorFn: (row: Lead) => row.source || "-",
+      accessorFn: (row: Lead) => row.source || "—",
       header: "Source",
       sortingFn: (a, b) =>
-        (a.original.source || "-").localeCompare(b.original.source || "-"),
+        (a.original.source || "—").localeCompare(b.original.source || "—"),
     },
     {
       id: "assignedTo",

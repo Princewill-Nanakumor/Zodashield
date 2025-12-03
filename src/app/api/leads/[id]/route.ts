@@ -95,7 +95,7 @@ export async function GET(
       name: `${lead.firstName} ${lead.lastName}`,
       email: lead.email,
       phone: lead.phone || "",
-      source: lead.source,
+      source: lead.source && lead.source !== "-" ? lead.source : "—",
       status: lead.status,
       country: lead.country || "",
       assignedTo: assignedToUser, // This will be { id, firstName, lastName, email } or null

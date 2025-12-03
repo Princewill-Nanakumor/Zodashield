@@ -57,7 +57,7 @@ const leadSchema = new Schema(
     source: {
       type: String,
       trim: true,
-      default: "-",
+      default: "—",
     },
     comments: {
       type: String,

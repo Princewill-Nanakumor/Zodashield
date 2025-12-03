@@ -71,7 +71,7 @@ export const processExcelFile = async (file: File): Promise<LeadRequest[]> => {
       const phone = phoneHeader ? String(row[phoneHeader] || "").trim() : "";
 
       // Only use source if header exists and is not country
-      let source = "-";
+      let source = "—";
       if (
         sourceHeader &&
         sourceHeader !== countryHeader &&
@@ -190,7 +190,7 @@ export const processTextData = async (text: string): Promise<LeadRequest[]> => {
         : "";
 
       // Only use source if header exists and is not country
-      let source = "-";
+      let source = "—";
       if (
         sourceHeader &&
         sourceHeader !== countryHeader &&

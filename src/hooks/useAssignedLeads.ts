@@ -85,19 +85,19 @@ const normalizeAssignedTo = (
 
 // Helper function to convert source string to LeadSource
 const normalizeSource = (source: string): LeadSource | string => {
-  // If source is empty, null, or undefined, return dash
+  // If source is empty, null, or undefined, return em dash
   if (
     !source ||
     source.trim() === "" ||
     source.trim() === "null" ||
     source.trim() === "undefined"
   ) {
-    return "-";
+    return "—";
   }
 
-  // If source is already a dash, keep it
-  if (source.trim() === "-") {
-    return "-";
+  // If source is already a dash (regular or em dash), keep it as em dash
+  if (source.trim() === "-" || source.trim() === "—") {
+    return "—";
   }
 
   // Clean the source

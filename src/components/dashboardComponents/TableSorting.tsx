@@ -10,7 +10,10 @@ type SortField =
   | "status"
   | "source"
   | "createdAt"
-  | "assignedTo";
+  | "assignedTo"
+  | "lastComment"
+  | "lastCommentDate"
+  | "commentCount";
 type SortOrder = "asc" | "desc";
 
 interface TableSortingProps {
@@ -98,6 +101,28 @@ export const useTableSorting = ({
               new Date(b.createdAt).getTime()) *
             multiplier
           );
+        case "lastComment": {
+          const commentA = (a.lastComment || "").toLowerCase();
+          const commentB = (b.lastComment || "").toLowerCase();
+          if (commentA === "" && commentB !== "") return -1 * multiplier;
+          if (commentA !== "" && commentB === "") return 1 * multiplier;
+          if (commentA === "" && commentB === "") return 0;
+          return commentA.localeCompare(commentB) * multiplier;
+        }
+        case "lastCommentDate": {
+          const dateA = a.lastCommentDate ? new Date(a.lastCommentDate).getTime() : 0;
+          const dateB = b.lastCommentDate ? new Date(b.lastCommentDate).getTime() : 0;
+          // Leads without comments should go to the end
+          if (dateA === 0 && dateB !== 0) return 1 * multiplier;
+          if (dateA !== 0 && dateB === 0) return -1 * multiplier;
+          if (dateA === 0 && dateB === 0) return 0;
+          return (dateA - dateB) * multiplier;
+        }
+        case "commentCount": {
+          const countA = a.commentCount || 0;
+          const countB = b.commentCount || 0;
+          return (countA - countB) * multiplier;
+        }
         default:
           return 0;
       }

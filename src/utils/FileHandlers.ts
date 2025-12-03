@@ -304,7 +304,7 @@ export const processExcelFile = async (file: File): Promise<LeadRequest[]> => {
         : undefined;
 
       // Only use source if header exists in both headers and row, and is not country
-      let source = "-";
+      let source = "—";
       if (
         sourceHeader &&
         sourceHeader !== countryHeader &&

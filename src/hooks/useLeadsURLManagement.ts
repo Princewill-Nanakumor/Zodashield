@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lead } from "@/types/leads";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt";
+type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 export const useLeadsURLManagement = () => {

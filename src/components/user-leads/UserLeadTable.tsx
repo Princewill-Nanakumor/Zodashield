@@ -33,7 +33,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useSearchParams } from "next/navigation";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt";
+type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 interface UserLeadTableProps {
@@ -130,9 +130,9 @@ export function UserLeadTable({
     status: { label: "Status", isSortable: true, sortField: "status" },
     source: { label: "Source", isSortable: true, sortField: "source" },
     assignedTo: { label: "Assigned To", isSortable: false },
-    lastComment: { label: "Last Comment", isSortable: false },
-    lastCommentDate: { label: "Last Comment Date", isSortable: false },
-    commentCount: { label: "Comments Numbers", isSortable: false },
+    lastComment: { label: "Last Comment", isSortable: true, sortField: "lastComment" },
+    lastCommentDate: { label: "Last Comment Date", isSortable: true, sortField: "lastCommentDate" },
+    commentCount: { label: "Comments Numbers", isSortable: true, sortField: "commentCount" },
   };
 
   // Filter columnOrder to only include visible columns

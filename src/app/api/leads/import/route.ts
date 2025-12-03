@@ -65,7 +65,7 @@ export async function POST(request: Request) {
           lastName: rest.join(" ") || "",
           email: lead.email,
           phone: lead.phone || "",
-          source: lead.source || "",
+          source: lead.source && lead.source !== "-" && lead.source.trim() !== "" ? lead.source : "—",
           status: "NEW",
           createdBy: new mongoose.Types.ObjectId(session.user.id),
           adminId: new mongoose.Types.ObjectId(session.user.id), // Multi-tenancy: admin owns the leads

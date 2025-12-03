@@ -163,19 +163,19 @@ export function UserLeadRow({
         className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
       >
         <div className="flex items-center">
-          <span>{lead.phone || "-"}</span>
+          <span>{lead.phone || "—"}</span>
         </div>
       </TableCell>
       <TableCell
         className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
       >
-        <span>{lead.country || "-"}</span>
+        <span>{lead.country || "—"}</span>
       </TableCell>
       <TableCell>{renderStatus()}</TableCell>
       <TableCell
         className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
       >
-        <span>{lead.source}</span>
+        <span>{lead.source || "—"}</span>
       </TableCell>
       <TableCell
         className={isSelected ? "dark:text-white" : "dark:text-gray-300"}

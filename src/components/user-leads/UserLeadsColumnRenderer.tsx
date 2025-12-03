@@ -122,7 +122,7 @@ export function renderUserLeadCell({
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <div className="flex items-center justify-center">
-            <span>{lead.phone || "-"}</span>
+            <span>{lead.phone || "—"}</span>
           </div>
         </TableCell>
       );
@@ -130,7 +130,7 @@ export function renderUserLeadCell({
     case "country":
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
-          <span>{lead.country || "-"}</span>
+          <span>{lead.country || "—"}</span>
         </TableCell>
       );
 
@@ -144,7 +144,7 @@ export function renderUserLeadCell({
     case "source":
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
-          <span>{lead.source}</span>
+          <span>{lead.source || "—"}</span>
         </TableCell>
       );
 
@@ -164,7 +164,7 @@ export function renderUserLeadCell({
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           {lead.lastComment ? (
             <div
-              className="text-sm text-gray-700 dark:text-gray-300 max-w-[200px] truncate mx-auto"
+              className="text-sm max-w-[200px] truncate mx-auto"
               title={lead.lastComment}
               style={{
                 overflow: "hidden",
@@ -175,9 +175,7 @@ export function renderUserLeadCell({
               {lead.lastComment}
             </div>
           ) : (
-            <span className="text-gray-400 dark:text-gray-500 italic">
-              No comments
-            </span>
+            <span>—</span>
           )}
         </TableCell>
       );
@@ -186,7 +184,7 @@ export function renderUserLeadCell({
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           {lead.lastCommentDate ? (
-            <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
+            <div className="text-sm text-center">
               {(() => {
                 const date = new Date(lead.lastCommentDate);
                 const day = String(date.getDate()).padStart(2, "0");
@@ -197,7 +195,7 @@ export function renderUserLeadCell({
             </div>
           ) : (
             <div className="text-center">
-              <span className="text-gray-400 dark:text-gray-500">—</span>
+              <span>—</span>
             </div>
           )}
         </TableCell>
@@ -206,13 +204,13 @@ export function renderUserLeadCell({
     case "commentCount":
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
-          <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
+          <div className="text-sm text-center">
             {lead.commentCount && lead.commentCount > 0 ? (
               <span className="inline-flex items-center justify-center font-medium">
                 {lead.commentCount}
               </span>
             ) : (
-              <span className="inline-flex items-center justify-center text-gray-400 dark:text-gray-500">—</span>
+              <span className="inline-flex items-center justify-center">—</span>
             )}
           </div>
         </TableCell>
