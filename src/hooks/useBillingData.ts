@@ -103,7 +103,15 @@ export const usePayment = (paymentId: string | null) => {
         throw new Error("Failed to fetch payment");
       }
 
-      return response.json();
+      const data = await response.json();
+
+      // The API returns { success, payment }, so normalize to Payment
+      if (data && data.payment) {
+        return data.payment as Payment;
+      }
+
+      // Fallback in case the API shape changes
+      return data as Payment;
     },
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 2 * 60 * 1000, // 2 minutes

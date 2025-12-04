@@ -3,13 +3,7 @@
 "use client";
 
 import React from "react";
-import {
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  CreditCard,
-  ExternalLink,
-} from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Payment } from "@/types/payment.types";
@@ -109,33 +103,6 @@ export default function PaymentStatusCard({
         </CardContent>
       </Card>
 
-      {/* Blockchain Explorer Link */}
-      {payment.method === "CRYPTO" &&
-        payment.walletAddress &&
-        payment.network && (
-          <Card className="backdrop-blur-lg bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">
-                Blockchain Explorer
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <a
-                href={
-                  payment.network === "TRC20"
-                    ? `https://tronscan.org/#/address/${payment.walletAddress}`
-                    : `https://etherscan.io/address/${payment.walletAddress}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-sm text-purple-600 dark:text-purple-400 hover:underline"
-              >
-                View on {payment.network === "TRC20" ? "Tronscan" : "Etherscan"}{" "}
-                <ExternalLink className="ml-1 h-4 w-4" />
-              </a>
-            </CardContent>
-          </Card>
-        )}
     </div>
   );
 }

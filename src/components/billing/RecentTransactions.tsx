@@ -31,6 +31,7 @@ export default function RecentTransactions({
   transactions = [],
   onTransactionClick,
   isLoading = false,
+  disabled = false,
 }: RecentTransactionsProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -62,9 +63,10 @@ export default function RecentTransactions({
   };
 
   const handleTransactionClick = (transactionId: string) => {
-    if (onTransactionClick) {
-      onTransactionClick(transactionId);
+    if (!onTransactionClick) {
+      return;
     }
+    onTransactionClick(transactionId);
   };
 
   return (
@@ -99,7 +101,11 @@ export default function RecentTransactions({
               <div
                 key={transaction.id}
                 onClick={() => handleTransactionClick(transaction.id)}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors duration-200 cursor-pointer"
+                className={`flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 transition-colors duration-200 ${
+                  disabled
+                    ? "opacity-70"
+                    : ""
+                } hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer`}
               >
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
