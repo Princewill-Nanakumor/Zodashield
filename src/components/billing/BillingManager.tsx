@@ -152,10 +152,15 @@ export default function BillingManager() {
 
   const handleTransactionClick = useCallback(
     (transactionId: string) => {
+      // Don't open modal if there's an unconfirmed payment
+      if (currentPayment && !paymentConfirmed) {
+        return;
+      }
+
       setCurrentPaymentId(transactionId);
       setShowPaymentModal(true);
     },
-    []
+    [currentPayment, paymentConfirmed]
   );
 
   const handleClearPayment = useCallback(() => {

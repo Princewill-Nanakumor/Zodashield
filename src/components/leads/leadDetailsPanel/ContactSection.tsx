@@ -1,22 +1,13 @@
 import { FC, useState, useCallback } from "react";
-import {
-  Mail,
-  Phone,
-  ChevronUp,
-  ChevronDown,
-  Copy,
-  Check,
-  Globe,
-  User,
-  Edit2,
-  Save,
-  X,
-} from "lucide-react";
+import { ChevronUp, ChevronDown, Edit2, Save, X } from "lucide-react";
 import { Lead } from "@/types/leads";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NameField } from "./NameField";
+import { EmailField } from "./EmailField";
+import { PhoneField } from "./PhoneField";
+import { CountryField } from "./CountryField";
 
 interface ContactSectionProps {
   lead: Lead | null;
@@ -71,6 +62,91 @@ export const ContactSection: FC<ContactSectionProps> = ({
         toast({
           variant: "destructive",
           description: "Failed to copy to clipboard",
+        });
+      }
+    },
+    [toast]
+  );
+
+  const handleCall = useCallback(
+    (phoneNumber: string) => {
+      try {
+        // Clean the phone number: remove spaces, dashes, parentheses, but keep + sign
+        let cleanedNumber = phoneNumber.replace(/[\s\-\(\)\.]/g, "").trim();
+
+        if (!cleanedNumber) {
+          toast({
+            variant: "destructive",
+            description: "Invalid phone number",
+          });
+          return;
+        }
+
+        // Ensure the number starts with + for international format
+        if (!cleanedNumber.startsWith("+")) {
+          if (cleanedNumber.startsWith("00")) {
+            cleanedNumber = "+" + cleanedNumber.substring(2);
+          } else if (
+            cleanedNumber.startsWith("1") &&
+            cleanedNumber.length === 11
+          ) {
+            cleanedNumber = "+" + cleanedNumber;
+          }
+        }
+
+        // Try Zoiper protocol first (works with Pro/Biz versions)
+        const zoiperUrl = `zoiper://${cleanedNumber}`;
+
+        // Try to open Zoiper with the number
+        try {
+          const link = document.createElement("a");
+          link.href = zoiperUrl;
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            if (document.body.contains(link)) {
+              document.body.removeChild(link);
+            }
+          }, 100);
+        } catch (err) {
+          console.error("Error with zoiper:// protocol:", err);
+        }
+
+        // For free Zoiper users: Copy to clipboard and show instructions
+        // This is a workaround since protocol handling requires Pro/Biz version
+        navigator.clipboard
+          .writeText(cleanedNumber)
+          .then(() => {
+            toast({
+              title: "Number Copied",
+              description: `Phone number copied to clipboard. ${cleanedNumber} - Paste it into Zoiper to dial.`,
+              duration: 5000,
+            });
+          })
+          .catch(() => {
+            // Fallback if clipboard fails
+            toast({
+              title: "Manual Dial Required",
+              description: `Free Zoiper doesn't support auto-dial. Number: ${cleanedNumber} - Please copy and paste into Zoiper.`,
+              duration: 5000,
+            });
+          });
+
+        console.log("Phone number:", cleanedNumber);
+        console.log(
+          "Note: Protocol handling (auto-dial) requires Zoiper Pro/Biz version."
+        );
+        console.log(
+          "Free version users need to manually paste the number into Zoiper."
+        );
+      } catch (error) {
+        console.error("Error initiating call:", error);
+        toast({
+          variant: "destructive",
+          title: "Call Failed",
+          description:
+            "Failed to initiate call. Please copy the number and paste it into Zoiper manually.",
         });
       }
     },
@@ -175,11 +251,8 @@ export const ContactSection: FC<ContactSectionProps> = ({
 
   if (!lead) return null;
 
-  // Get the full name
-  const fullName = `${lead.firstName} ${lead.lastName}`.trim();
-
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="overflow-hidden bg-white border border-gray-200 dark:bg-gray-800 rounded-xl dark:border-gray-700">
       <div
         className="flex items-center justify-between p-4 cursor-pointer group"
         onClick={onToggle}
@@ -196,7 +269,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
                 e.stopPropagation();
                 handleEdit();
               }}
-              className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              className="h-8 px-2 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
             >
               <Edit2 className="w-4 h-4" />
             </Button>
@@ -220,99 +293,46 @@ export const ContactSection: FC<ContactSectionProps> = ({
             // Edit Mode
             <>
               <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <User className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-2" />
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-                        First Name *
-                      </label>
-                      <Input
-                        value={editedData.firstName}
-                        onChange={(e) =>
-                          setEditedData({
-                            ...editedData,
-                            firstName: e.target.value,
-                          })
-                        }
-                        placeholder="Enter first name"
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-                        Last Name
-                      </label>
-                      <Input
-                        value={editedData.lastName}
-                        onChange={(e) =>
-                          setEditedData({
-                            ...editedData,
-                            lastName: e.target.value,
-                          })
-                        }
-                        placeholder="Enter last name"
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <NameField
+                  firstName={lead.firstName}
+                  lastName={lead.lastName}
+                  isEditing={true}
+                  editedFirstName={editedData.firstName}
+                  editedLastName={editedData.lastName}
+                  onFirstNameChange={(value) =>
+                    setEditedData({ ...editedData, firstName: value })
+                  }
+                  onLastNameChange={(value) =>
+                    setEditedData({ ...editedData, lastName: value })
+                  }
+                />
 
-                <div className="flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-2" />
-                  <div className="flex-1">
-                    <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-                      Email *
-                    </label>
-                    <Input
-                      type="email"
-                      value={editedData.email}
-                      onChange={(e) =>
-                        setEditedData({ ...editedData, email: e.target.value })
-                      }
-                      placeholder="Enter email"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
+                <EmailField
+                  email={lead.email}
+                  isEditing={true}
+                  editedEmail={editedData.email}
+                  onEmailChange={(value) =>
+                    setEditedData({ ...editedData, email: value })
+                  }
+                />
 
-                <div className="flex items-start gap-3">
-                  <Phone className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-2" />
-                  <div className="flex-1">
-                    <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-                      Phone
-                    </label>
-                    <Input
-                      type="tel"
-                      value={editedData.phone}
-                      onChange={(e) =>
-                        setEditedData({ ...editedData, phone: e.target.value })
-                      }
-                      placeholder="Enter phone number"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
+                <PhoneField
+                  phone={lead.phone}
+                  isEditing={true}
+                  editedPhone={editedData.phone}
+                  onPhoneChange={(value) =>
+                    setEditedData({ ...editedData, phone: value })
+                  }
+                />
 
-                <div className="flex items-start gap-3">
-                  <Globe className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-2" />
-                  <div className="flex-1">
-                    <label className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-                      Country
-                    </label>
-                    <Input
-                      value={editedData.country}
-                      onChange={(e) =>
-                        setEditedData({
-                          ...editedData,
-                          country: e.target.value,
-                        })
-                      }
-                      placeholder="Enter country"
-                      className="w-full"
-                    />
-                  </div>
-                </div>
+                <CountryField
+                  country={lead.country}
+                  isEditing={true}
+                  editedCountry={editedData.country}
+                  onCountryChange={(value) =>
+                    setEditedData({ ...editedData, country: value })
+                  }
+                />
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -340,110 +360,45 @@ export const ContactSection: FC<ContactSectionProps> = ({
           ) : (
             // View Mode
             <>
-              <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
-                <User className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Name
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p>{fullName}</p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopy(fullName, "name");
-                      }}
-                      className="ml-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                      title="Copy name"
-                    >
-                      {copiedField === "name" ? (
-                        <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
-                <Mail className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Email
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p>{lead.email}</p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopy(lead.email, "email");
-                      }}
-                      className="ml-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                      title="Copy email"
-                    >
-                      {copiedField === "email" ? (
-                        <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
-                <Phone className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Phone
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p>{lead.phone || "Not provided"}</p>
-                    {lead.phone && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopy(lead.phone!, "phone");
-                        }}
-                        className="ml-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                        title="Copy phone number"
-                      >
-                        {copiedField === "phone" ? (
-                          <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
-                        ) : (
-                          <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
-                <Globe className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Country
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p>{lead.country || "Not provided"}</p>
-                    {lead.country && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopy(lead.country!, "country");
-                        }}
-                        className="ml-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                        title="Copy country"
-                      >
-                        {copiedField === "country" ? (
-                          <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
-                        ) : (
-                          <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <NameField
+                firstName={lead.firstName}
+                lastName={lead.lastName}
+                isEditing={false}
+                editedFirstName=""
+                editedLastName=""
+                onFirstNameChange={() => {}}
+                onLastNameChange={() => {}}
+                onCopy={(text) => handleCopy(text, "name")}
+                copied={copiedField === "name"}
+              />
+
+              <EmailField
+                email={lead.email}
+                isEditing={false}
+                editedEmail=""
+                onEmailChange={() => {}}
+                onCopy={(text) => handleCopy(text, "email")}
+                copied={copiedField === "email"}
+              />
+
+              <PhoneField
+                phone={lead.phone}
+                isEditing={false}
+                editedPhone=""
+                onPhoneChange={() => {}}
+                onCopy={(text) => handleCopy(text, "phone")}
+                onCall={handleCall}
+                copied={copiedField === "phone"}
+              />
+
+              <CountryField
+                country={lead.country}
+                isEditing={false}
+                editedCountry=""
+                onCountryChange={() => {}}
+                onCopy={(text) => handleCopy(text, "country")}
+                copied={copiedField === "country"}
+              />
             </>
           )}
         </div>
