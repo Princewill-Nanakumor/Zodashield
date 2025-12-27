@@ -11,6 +11,7 @@ import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { PasswordInput } from "./PasswordInput";
 import { DateTimeSettingsSection } from "./DateTimeSettingsSection";
+import { DialerSettingsSection } from "./DialerSettingsSection";
 
 export function SettingsContent() {
   const { data: session } = useSession();
@@ -154,6 +155,7 @@ export function SettingsContent() {
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8 rounded-lg border">
           <DateTimeSettingsSection />
+          <DialerSettingsSection />
         </div>
       </div>
     );
@@ -239,6 +241,7 @@ export function SettingsContent() {
           <div>
             <SettingsSidebar />
             <DateTimeSettingsSection />
+            <DialerSettingsSection />
           </div>
         </div>
 

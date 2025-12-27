@@ -19,7 +19,7 @@ function ModernSelect({
       <select
         value={value}
         onChange={onChange}
-        className="appearance-none w-full px-3 py-2 pr-10 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all"
+        className="appearance-none w-full px-3 py-2 pr-10 rounded-lg bg-white dark:bg-input/30 border border-input text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all"
         {...props}
       >
         {children}
@@ -63,7 +63,7 @@ export function DateTimeSettingsSection() {
   };
 
   return (
-    <section className="dark:backdrop-blur-lg dark:bg-white/5 mt-4 rounded-2xl p-6 shadow-lg dark:border dark:border-white/10 bg-white border border-gray-200">
+    <section className="dark:backdrop-blur-lg dark:bg-white/5 mt-4 rounded-2xl p-6 shadow-lg border border-border bg-white dark:bg-transparent">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
           <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -78,7 +78,7 @@ export function DateTimeSettingsSection() {
         </div>
       </div>
 
-      <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg">
+      <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-border rounded-lg">
         <div className="mb-2">
           <label className="block text-sm mb-1">Date Format</label>
           <ModernSelect value={dateFormat} onChange={handleDateFormatChange}>

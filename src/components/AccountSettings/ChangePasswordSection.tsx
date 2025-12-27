@@ -46,7 +46,7 @@ export function ChangePasswordSection({
   handlePasswordReset: () => void;
 }) {
   return (
-    <section className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg dark:border dark:border-white/10 bg-white border border-gray-200">
+    <section className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg border border-border bg-white dark:bg-transparent">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
           <Key className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />

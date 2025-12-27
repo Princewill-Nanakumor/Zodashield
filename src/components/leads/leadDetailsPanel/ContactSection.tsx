@@ -8,6 +8,7 @@ import { NameField } from "./NameField";
 import { EmailField } from "./EmailField";
 import { PhoneField } from "./PhoneField";
 import { CountryField } from "./CountryField";
+import { useDialerSettings } from "@/context/DialerSettingsContext";
 
 interface ContactSectionProps {
   lead: Lead | null;
@@ -24,6 +25,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
 }) => {
   const { toast } = useToast();
   const { data: session } = useSession();
+  const { dialer } = useDialerSettings();
   const isAdmin = session?.user?.role === "ADMIN";
 
   const [isEditing, setIsEditing] = useState(false);
@@ -75,10 +77,6 @@ export const ContactSection: FC<ContactSectionProps> = ({
         let cleanedNumber = phoneNumber.replace(/[\s\-\(\)\.]/g, "").trim();
 
         if (!cleanedNumber) {
-          toast({
-            variant: "destructive",
-            description: "Invalid phone number",
-          });
           return;
         }
 
@@ -94,13 +92,29 @@ export const ContactSection: FC<ContactSectionProps> = ({
           }
         }
 
-        // Try Zoiper protocol first (works with Pro/Biz versions)
-        const zoiperUrl = `zoiper://${cleanedNumber}`;
+        // Check if dialer is set
+        if (!dialer) {
+          return;
+        }
 
-        // Try to open Zoiper with the number
+        // Get the dialer URL based on user's preference
+        let dialerUrl: string;
+        let dialerName: string;
+        
+        if (dialer === "microsip") {
+          // MicroSIP uses sip: protocol
+          dialerUrl = `sip:${cleanedNumber}`;
+          dialerName = "MicroSIP";
+        } else {
+          // Zoiper uses zoiper:// protocol
+          dialerUrl = `zoiper://${cleanedNumber}`;
+          dialerName = "Zoiper";
+        }
+
+        // Try to open the selected dialer with the number
         try {
           const link = document.createElement("a");
-          link.href = zoiperUrl;
+          link.href = dialerUrl;
           link.style.display = "none";
           document.body.appendChild(link);
           link.click();
@@ -110,47 +124,22 @@ export const ContactSection: FC<ContactSectionProps> = ({
             }
           }, 100);
         } catch (err) {
-          console.error("Error with zoiper:// protocol:", err);
+          console.error(`Error with ${dialer}:// protocol:`, err);
         }
 
-        // For free Zoiper users: Copy to clipboard and show instructions
-        // This is a workaround since protocol handling requires Pro/Biz version
-        navigator.clipboard
-          .writeText(cleanedNumber)
-          .then(() => {
-            toast({
-              title: "Number Copied",
-              description: `Phone number copied to clipboard. ${cleanedNumber} - Paste it into Zoiper to dial.`,
-              duration: 5000,
-            });
-          })
-          .catch(() => {
-            // Fallback if clipboard fails
-            toast({
-              title: "Manual Dial Required",
-              description: `Free Zoiper doesn't support auto-dial. Number: ${cleanedNumber} - Please copy and paste into Zoiper.`,
-              duration: 5000,
-            });
-          });
+        // Copy to clipboard as fallback (works for all dialers, especially free versions)
+        navigator.clipboard.writeText(cleanedNumber).catch(() => {
+          // Silently fail if clipboard fails
+        });
 
+        console.log(`Using ${dialerName} (${dialer})`);
         console.log("Phone number:", cleanedNumber);
-        console.log(
-          "Note: Protocol handling (auto-dial) requires Zoiper Pro/Biz version."
-        );
-        console.log(
-          "Free version users need to manually paste the number into Zoiper."
-        );
+        console.log("Dialer URL:", dialerUrl);
       } catch (error) {
         console.error("Error initiating call:", error);
-        toast({
-          variant: "destructive",
-          title: "Call Failed",
-          description:
-            "Failed to initiate call. Please copy the number and paste it into Zoiper manually.",
-        });
       }
     },
-    [toast]
+    [dialer]
   );
 
   const handleEdit = useCallback(() => {
@@ -387,7 +376,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
                 editedPhone=""
                 onPhoneChange={() => {}}
                 onCopy={(text) => handleCopy(text, "phone")}
-                onCall={handleCall}
+                onCall={dialer ? handleCall : undefined}
                 copied={copiedField === "phone"}
               />
 

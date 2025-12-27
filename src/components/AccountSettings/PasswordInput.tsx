@@ -44,8 +44,8 @@ export function PasswordInput({
           className={`pl-4 pr-10 h-12 w-full rounded-lg border text-base ${
             error
               ? "border-red-500 focus:ring-red-500"
-              : "border-gray-300 dark:border-gray-600 focus:ring-indigo-500"
-          } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:border-transparent transition-colors`}
+              : "border-input focus:ring-purple-500 focus:border-purple-500"
+          } placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 bg-white dark:bg-input/30 focus:outline-none focus:ring-1 transition-all`}
         />
         <Button
           type="button"

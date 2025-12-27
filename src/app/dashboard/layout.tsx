@@ -13,9 +13,11 @@ import { SearchProvider, useSearchContext } from "@/context/SearchContext";
 import { Shield } from "lucide-react";
 import Footer from "@/components/dashboardComponents/Footer";
 import { DateTimeSettingsProvider } from "@/context/DateTimeSettingsContext";
+import { DialerSettingsProvider } from "@/context/DialerSettingsContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { ToggleProvider } from "@/context/ToggleContext";
 import ReminderNotifications from "@/components/notifications/ReminderNotifications";
+import { Toaster } from "@/components/ui/toaster";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { searchQuery, setSearchQuery, isLoading } = useSearchContext();
@@ -94,6 +96,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           </main>
           <Footer />
           <ReminderNotifications />
+          <Toaster />
         </div>
       </div>
     </ToggleProvider>
@@ -125,7 +128,9 @@ export default function DashboardLayout({
           <StatusProvider>
             <SearchProvider>
               <DateTimeSettingsProvider>
-                <DashboardContent>{children}</DashboardContent>
+                <DialerSettingsProvider>
+                  <DashboardContent>{children}</DashboardContent>
+                </DialerSettingsProvider>
               </DateTimeSettingsProvider>
             </SearchProvider>
           </StatusProvider>

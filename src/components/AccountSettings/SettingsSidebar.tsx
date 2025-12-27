@@ -4,7 +4,7 @@ import { Lock } from "lucide-react";
 
 export function SettingsSidebar() {
   return (
-    <section className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg dark:border dark:border-white/10 bg-white border border-gray-200">
+    <section className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg border border-border bg-white dark:bg-transparent">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
           <Lock className="h-5 w-5 text-green-600 dark:text-green-400" />
