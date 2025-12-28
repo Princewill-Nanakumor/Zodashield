@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Eye } from "lucide-react";
 import Link from "next/link";
 import { UserLeadsColumnId } from "@/hooks/useUserLeadsColumnOrder";
+import { maskPhoneNumber } from "@/utils/phoneMask";
 
 interface Status {
   _id: string;
@@ -24,6 +25,7 @@ interface ColumnRendererProps {
   statuses: Status[];
   statusesLoading: boolean;
   detailUrl: string;
+  canViewPhoneNumbers?: boolean;
 }
 
 export function renderUserLeadCell({
@@ -33,6 +35,7 @@ export function renderUserLeadCell({
   statuses,
   statusesLoading,
   detailUrl,
+  canViewPhoneNumbers = false,
 }: ColumnRendererProps): React.ReactElement | null {
 
   const getAssignedUserName = () => {
@@ -119,10 +122,15 @@ export function renderUserLeadCell({
       );
 
     case "phone":
+      const displayPhone = canViewPhoneNumbers
+        ? lead.phone || "—"
+        : lead.phone
+          ? maskPhoneNumber(lead.phone)
+          : "—";
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <div className="flex items-center justify-center">
-            <span>{lead.phone || "—"}</span>
+            <span>{displayPhone}</span>
           </div>
         </TableCell>
       );

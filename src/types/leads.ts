@@ -30,7 +30,12 @@ export type ActivityType =
   | "REMINDER_SNOOZED"
   | "REMINDER_DISMISSED"
   | "REMINDER_MUTED"
-  | "REMINDER_UNMUTED";
+  | "REMINDER_UNMUTED"
+  | "CALL_INITIATED"
+  | "CALL_CONNECTED"
+  | "CALL_ENDED"
+  | "CALL_FAILED"
+  | "CALL_MISSED";
 
 export interface Activity {
   _id: string;
@@ -108,6 +113,12 @@ export interface Activity {
     snoozedUntil?: string;
     completedAt?: string;
     soundEnabled?: boolean;
+    // Call-specific metadata
+    phoneNumber?: string;
+    callDuration?: number;
+    callStartTime?: string;
+    callEndTime?: string;
+    callStatus?: "connected" | "missed" | "busy" | "failed" | "cancelled";
   };
 }
 

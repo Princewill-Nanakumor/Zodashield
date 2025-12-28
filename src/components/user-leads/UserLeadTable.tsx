@@ -32,6 +32,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useSearchParams } from "next/navigation";
+import { useCurrentUserPermission } from "@/hooks/useCurrentUserPermission";
 
 type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
@@ -81,6 +82,7 @@ export function UserLeadTable({
   sortOrder,
   onSort,
 }: UserLeadTableProps) {
+  const { canViewPhoneNumbers } = useCurrentUserPermission();
   const { statuses, isLoading: statusesLoading } = useStatuses();
   const { columnOrder, setColumnOrder } = useUserLeadsColumnOrder();
   const { isColumnVisible } = useUserLeadsColumnVisibility();
@@ -215,6 +217,7 @@ export function UserLeadTable({
                         statuses,
                         statusesLoading,
                         detailUrl,
+                        canViewPhoneNumbers,
                       })}
                     </React.Fragment>
                   ))}

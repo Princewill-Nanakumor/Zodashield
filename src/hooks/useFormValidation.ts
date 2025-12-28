@@ -5,8 +5,8 @@ import { useState, useCallback } from "react";
 import { z } from "zod";
 
 interface UseFormValidationProps<T> {
-  createSchema: z.ZodSchema<T>;
-  editSchema: z.ZodSchema<T>;
+  createSchema: z.ZodType<T, z.ZodTypeDef, unknown>;
+  editSchema: z.ZodType<T, z.ZodTypeDef, unknown>;
   mode: "create" | "edit";
 }
 

@@ -13,12 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Pencil,
   Trash,
   KeyRound,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Eye,
 } from "lucide-react";
 import { UserTableSkeleton } from "../dashboardComponents/CreateUserTableSkeleton";
 
@@ -45,9 +45,9 @@ interface UserTableDisplayProps {
   loading: boolean;
   filterActiveOnly: boolean;
   showActions: boolean;
-  onEditUser: (user: User) => void;
   onDeleteUser: (userId: string) => void;
   onResetPassword: (userId: string) => void;
+  onViewDetails?: (user: User) => void;
 }
 
 export function UserTableDisplay({
@@ -55,9 +55,9 @@ export function UserTableDisplay({
   loading,
   filterActiveOnly,
   showActions,
-  onEditUser,
   onDeleteUser,
   onResetPassword,
+  onViewDetails,
 }: UserTableDisplayProps) {
   // Load sorting state from localStorage on component mount
   const [sortField, setSortField] = useState<SortField>(() => {
@@ -264,19 +264,23 @@ export function UserTableDisplay({
                 </TableCell>
                 {showActions && (
                   <TableCell className="space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEditUser(user)}
-                      className="hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    {onViewDetails && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onViewDetails(user)}
+                        className="hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => onResetPassword(user.id)}
                       className="hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"
+                      title="Reset Password"
                     >
                       <KeyRound className="h-4 w-4" />
                     </Button>
@@ -285,6 +289,7 @@ export function UserTableDisplay({
                       size="sm"
                       onClick={() => onDeleteUser(user.id)}
                       className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:border-gray-600"
+                      title="Delete User"
                     >
                       <Trash className="h-4 w-4" />
                     </Button>

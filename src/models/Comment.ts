@@ -29,7 +29,7 @@ const CommentSchema = new Schema<IComment>(
     adminId: {
       type: Schema.Types.ObjectId,
       required: true,
-      index: true, // Add index for better query performance
+      // Index is created via compound index below
     },
     createdBy: {
       _id: {

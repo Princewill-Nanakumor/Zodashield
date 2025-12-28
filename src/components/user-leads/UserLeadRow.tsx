@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { Lead, Status } from "@/types/leads";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useCurrentUserPermission } from "@/hooks/useCurrentUserPermission";
+import { maskPhoneNumber } from "@/utils/phoneMask";
 
 interface UserLeadRowProps {
   lead: Lead;
@@ -20,6 +22,7 @@ export function UserLeadRow({
   onLeadClick,
   selectedLead,
 }: UserLeadRowProps) {
+  const { canViewPhoneNumbers } = useCurrentUserPermission();
   // Use React Query for consistent status caching
   const { data: statuses = [], isLoading } = useQuery({
     queryKey: ["statuses"],
@@ -163,7 +166,13 @@ export function UserLeadRow({
         className={isSelected ? "dark:text-white" : "dark:text-gray-300"}
       >
         <div className="flex items-center">
-          <span>{lead.phone || "—"}</span>
+          <span>
+            {canViewPhoneNumbers
+              ? lead.phone || "—"
+              : lead.phone
+                ? maskPhoneNumber(lead.phone)
+                : "—"}
+          </span>
         </div>
       </TableCell>
       <TableCell

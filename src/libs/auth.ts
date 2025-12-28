@@ -18,6 +18,7 @@ declare module "next-auth" {
     phoneNumber: string;
     country: string;
     adminId?: string;
+    canViewPhoneNumbers?: boolean;
   }
 
   interface Session {
@@ -32,6 +33,7 @@ declare module "next-auth" {
       phoneNumber: string;
       country: string;
       adminId?: string;
+      canViewPhoneNumbers?: boolean;
     };
   }
 }
@@ -48,6 +50,7 @@ declare module "next-auth/jwt" {
     phoneNumber: string;
     country: string;
     adminId?: string;
+    canViewPhoneNumbers?: boolean;
   }
 }
 
@@ -134,6 +137,7 @@ export const authOptions: NextAuthOptions = {
             phoneNumber: user.phoneNumber || "",
             country: user.country || "",
             adminId: user.adminId?.toString(),
+            canViewPhoneNumbers: user.canViewPhoneNumbers ?? false,
           };
         } catch (error) {
           console.error("Auth error:", error);
@@ -166,6 +170,7 @@ export const authOptions: NextAuthOptions = {
         token.phoneNumber = user.phoneNumber;
         token.country = user.country;
         token.adminId = user.adminId;
+        token.canViewPhoneNumbers = user.canViewPhoneNumbers;
       }
 
       // Handle session updates
@@ -186,6 +191,7 @@ export const authOptions: NextAuthOptions = {
         session.user.phoneNumber = token.phoneNumber;
         session.user.country = token.country;
         session.user.adminId = token.adminId;
+        session.user.canViewPhoneNumbers = token.canViewPhoneNumbers;
       }
       return session;
     },

@@ -70,7 +70,7 @@ const reminderSchema = new Schema<IReminder>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
+      // Index is created via compound indexes below
     },
     snoozedUntil: {
       type: Date,

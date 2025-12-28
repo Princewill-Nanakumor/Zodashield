@@ -30,7 +30,13 @@ export type ActivityType =
   | "REMINDER_SNOOZED"
   | "REMINDER_DISMISSED"
   | "REMINDER_MUTED"
-  | "REMINDER_UNMUTED";
+  | "REMINDER_UNMUTED"
+  // Add call-specific activity types
+  | "CALL_INITIATED"
+  | "CALL_CONNECTED"
+  | "CALL_ENDED"
+  | "CALL_FAILED"
+  | "CALL_MISSED";
 
 export interface IActivity {
   type: ActivityType;
@@ -95,6 +101,12 @@ export interface IActivity {
     snoozedUntil?: string;
     completedAt?: string;
     soundEnabled?: boolean;
+    // Call-specific metadata
+    phoneNumber?: string;
+    callDuration?: number; // Duration in seconds
+    callStartTime?: string;
+    callEndTime?: string;
+    callStatus?: "connected" | "missed" | "busy" | "failed" | "cancelled";
   };
 }
 
@@ -133,6 +145,11 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
         "REMINDER_DISMISSED",
         "REMINDER_MUTED",
         "REMINDER_UNMUTED",
+        "CALL_INITIATED",
+        "CALL_CONNECTED",
+        "CALL_ENDED",
+        "CALL_FAILED",
+        "CALL_MISSED",
       ],
     },
     userId: {
@@ -156,7 +173,7 @@ const activitySchema = new mongoose.Schema<IActivityDocument>(
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       required: false,
-      index: true,
+      // Index is created via compound indexes below
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,

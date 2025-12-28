@@ -1,6 +1,7 @@
 import { FC } from "react";
-import { Phone, PhoneCall, Copy, Check } from "lucide-react";
+import { Phone, PhoneCall, Copy, Check, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { maskPhoneNumber } from "@/utils/phoneMask";
 
 interface PhoneFieldProps {
   phone: string | null | undefined;
@@ -10,6 +11,7 @@ interface PhoneFieldProps {
   onCopy?: (text: string) => void;
   onCall?: (phoneNumber: string) => void;
   copied?: boolean;
+  canViewPhoneNumbers?: boolean; // Whether user can see full phone number
 }
 
 export const PhoneField: FC<PhoneFieldProps> = ({
@@ -20,6 +22,7 @@ export const PhoneField: FC<PhoneFieldProps> = ({
   onCopy,
   onCall,
   copied = false,
+  canViewPhoneNumbers = false,
 }) => {
   if (isEditing) {
     return (
@@ -41,14 +44,28 @@ export const PhoneField: FC<PhoneFieldProps> = ({
     );
   }
 
+  // Determine what to display
+  const displayPhone = canViewPhoneNumbers
+    ? phone || "Not provided"
+    : phone
+      ? maskPhoneNumber(phone)
+      : "Not provided";
+
+  const isMasked = !canViewPhoneNumbers && phone;
+
   return (
     <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
       <Phone className="w-5 h-5 text-gray-400 dark:text-gray-500" />
       <div className="flex-1">
         <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
         <div className="flex items-center justify-between">
-          <p>{phone || "Not provided"}</p>
-          {phone && (
+          <div className="flex items-center gap-2">
+            <p>{displayPhone}</p>
+            {isMasked && (
+              <EyeOff className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            )}
+          </div>
+          {phone && canViewPhoneNumbers && (
             <div className="flex items-center gap-1 ml-2">
               {onCall && (
                 <button

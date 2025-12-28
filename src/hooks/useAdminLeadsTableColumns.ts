@@ -1,7 +1,12 @@
+"use client";
+
 import { Lead } from "@/types/leads";
 import { LeadColumn } from "@/components/leads/LeadsTableColumns.tsx/TableColumns";
+import { useCurrentUserPermission } from "./useCurrentUserPermission";
+import { maskPhoneNumber } from "@/utils/phoneMask";
 
 export function useAdminLeadsTableColumns(): LeadColumn[] {
+  const { canViewPhoneNumbers } = useCurrentUserPermission();
   return [
     {
       id: "name",
@@ -30,6 +35,14 @@ export function useAdminLeadsTableColumns(): LeadColumn[] {
       id: "phone",
       accessorFn: (row: Lead) => row.phone || "—",
       header: "Phone",
+      cell: (info) => {
+        const phone = info.row.original.phone;
+        return canViewPhoneNumbers
+          ? phone || "—"
+          : phone
+            ? maskPhoneNumber(phone)
+            : "—";
+      },
       sortingFn: (a, b) =>
         (a.original.phone || "—").localeCompare(b.original.phone || "—"),
     },

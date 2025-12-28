@@ -15,6 +15,7 @@ type UserUpdateFields = {
   role?: string;
   permissions?: string[];
   status?: string;
+  canViewPhoneNumbers?: boolean;
 };
 
 // Define interfaces for better type safety
@@ -41,6 +42,7 @@ interface UserDocument {
   subscriptionStatus?: "active" | "inactive" | "trial" | "expired";
   maxLeads?: number;
   maxUsers?: number;
+  canViewPhoneNumbers?: boolean;
 }
 
 interface LeadDocument {
@@ -255,6 +257,7 @@ export async function GET() {
             permissions: 1,
             createdAt: 1,
             lastLogin: 1,
+            canViewPhoneNumbers: 1,
           },
         })
         .sort({ firstName: 1, lastName: 1 })
@@ -271,6 +274,7 @@ export async function GET() {
         role: user.role,
         status: user.status,
         permissions: user.permissions,
+        canViewPhoneNumbers: user.canViewPhoneNumbers ?? false,
         createdAt: user.createdAt ? user.createdAt.toISOString() : undefined,
         lastLogin: user.lastLogin ? user.lastLogin.toISOString() : undefined,
       }));
@@ -314,6 +318,7 @@ export async function PUT(request: Request) {
       role?: string;
       permissions?: string[];
       status?: string;
+      canViewPhoneNumbers?: boolean;
     };
 
     console.log("[PUT /api/users] Request data:", requestData);
@@ -354,6 +359,8 @@ export async function PUT(request: Request) {
       updateFields.permissions = requestData.permissions;
     if (requestData.status !== undefined)
       updateFields.status = requestData.status;
+    if (requestData.canViewPhoneNumbers !== undefined)
+      updateFields.canViewPhoneNumbers = requestData.canViewPhoneNumbers;
 
     console.log("[PUT /api/users] Update fields:", updateFields);
 
@@ -521,6 +528,7 @@ export async function PUT(request: Request) {
       role: updatedUser.role,
       status: updatedUser.status,
       permissions: updatedUser.permissions ?? [],
+      canViewPhoneNumbers: updatedUser.canViewPhoneNumbers ?? false,
       createdBy: updatedUser.createdBy?.toString?.() ?? "",
       createdAt: updatedUser.createdAt.toISOString(),
       lastLogin: updatedUser.lastLogin?.toISOString() ?? null,

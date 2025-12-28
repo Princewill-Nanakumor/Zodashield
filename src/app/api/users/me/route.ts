@@ -65,6 +65,7 @@ export async function GET() {
       lastLogin: user.lastLogin
         ? new Date(user.lastLogin).toISOString()
         : undefined,
+      canViewPhoneNumbers: user.canViewPhoneNumbers ?? false,
     };
 
     return NextResponse.json(userProfile);

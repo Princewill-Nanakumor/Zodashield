@@ -12,6 +12,7 @@ import { AuthGuard } from "@/components/user-management/AuthGuard";
 import UsageLimitsDisplay from "./UsageLimitsDisplay";
 import { useUserUsageData } from "@/hooks/useUserUsageData";
 import { useUsersData } from "@/hooks/useUsersData";
+import { UserDetailsModal } from "./UserDetailsModal";
 
 interface User {
   id: string;
@@ -26,6 +27,7 @@ interface User {
   createdBy: string;
   createdAt: string;
   lastLogin?: string;
+  canViewPhoneNumbers?: boolean;
 }
 
 interface UsersManagementProps {
@@ -48,8 +50,10 @@ export default function UsersManagement({
   const { status } = useSession();
   const [showModal, setShowModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUserForPassword, setSelectedUserForPassword] =
+    useState<User | null>(null);
+  const [selectedUserForDetails, setSelectedUserForDetails] =
     useState<User | null>(null);
   const [showUsageLimit, setShowUsageLimit] = useState(false);
 
@@ -73,7 +77,6 @@ export default function UsersManagement({
       refetchUsers(); // Refetch users after creation
       refreshUserUsageData(); // Refetch usage immediately
       setShowModal(false);
-      setSelectedUser(null);
     },
     [onUserCreated, refetchUsers, refreshUserUsageData]
   );
@@ -83,8 +86,6 @@ export default function UsersManagement({
       onUserUpdated?.(user);
       refetchUsers(); // Refetch users after update
       refreshUserUsageData(); // Keep usage in sync if role/status changes matter
-      setShowModal(false);
-      setSelectedUser(null);
     },
     [onUserUpdated, refetchUsers, refreshUserUsageData]
   );
@@ -103,7 +104,6 @@ export default function UsersManagement({
       setShowUsageLimit(true);
       return;
     }
-    setSelectedUser(null);
     setShowModal(true);
   }, [userUsageData]);
 
@@ -179,9 +179,9 @@ export default function UsersManagement({
               loading={usersLoading}
               filterActiveOnly={filterActiveOnly}
               showActions={showActions}
-              onEditUser={(user) => {
-                setSelectedUser(user);
-                setShowModal(true);
+              onViewDetails={(user) => {
+                setSelectedUserForDetails(user);
+                setShowDetailsModal(true);
               }}
               onDeleteUser={handleDeleteUser}
               onResetPassword={(userId) => {
@@ -197,35 +197,17 @@ export default function UsersManagement({
               isOpen={showModal}
               onClose={() => {
                 setShowModal(false);
-                setSelectedUser(null);
               }}
               onSubmit={async (userData) => {
                 try {
-                  if (selectedUser) {
-                    await handleUpdateUser(userData, selectedUser.id);
-                  } else {
-                    await handleCreateUser(userData);
-                  }
+                  await handleCreateUser(userData);
                 } catch (error) {
                   console.error("Error in form submission:", error);
                   throw error;
                 }
               }}
-              initialData={
-                selectedUser
-                  ? {
-                      firstName: selectedUser.firstName,
-                      lastName: selectedUser.lastName,
-                      email: selectedUser.email,
-                      phoneNumber: selectedUser.phoneNumber,
-                      country: selectedUser.country,
-                      role: selectedUser.role,
-                      status: selectedUser.status,
-                      permissions: selectedUser.permissions,
-                    }
-                  : undefined
-              }
-              mode={selectedUser ? "edit" : "create"}
+              initialData={undefined}
+              mode="create"
               usageData={userUsageData}
             />
 
@@ -246,6 +228,27 @@ export default function UsersManagement({
                 }
               }}
               userEmail={selectedUserForPassword?.email || ""}
+            />
+
+            <UserDetailsModal
+              isOpen={showDetailsModal}
+              onClose={() => {
+                setShowDetailsModal(false);
+                setSelectedUserForDetails(null);
+              }}
+              user={selectedUserForDetails}
+              onUpdate={async (userData, userId) => {
+                try {
+                  const updatedUser = await handleUpdateUser(userData, userId);
+                  // Update the selected user in the modal to reflect changes immediately
+                  if (updatedUser) {
+                    setSelectedUserForDetails(updatedUser as User);
+                  }
+                } catch (error) {
+                  console.error("Error updating user:", error);
+                  throw error;
+                }
+              }}
             />
           </div>
         )}

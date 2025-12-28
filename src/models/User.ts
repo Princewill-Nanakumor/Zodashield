@@ -35,6 +35,7 @@ export interface IUser extends Document {
   subscriptionEndDate?: Date;
   maxLeads?: number;
   maxUsers?: number;
+  canViewPhoneNumbers?: boolean; // Whether user can view phone numbers in leads
 
   createdAt: Date;
   updatedAt: Date;
@@ -159,6 +160,10 @@ const userSchema = new Schema<IUser>(
     maxUsers: {
       type: Number,
       default: 1, // Default trial limit
+    },
+    canViewPhoneNumbers: {
+      type: Boolean,
+      default: false, // Default to false - phone numbers are masked by default
     },
   },
   {

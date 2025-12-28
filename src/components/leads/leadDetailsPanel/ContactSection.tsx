@@ -9,6 +9,7 @@ import { EmailField } from "./EmailField";
 import { PhoneField } from "./PhoneField";
 import { CountryField } from "./CountryField";
 import { useDialerSettings } from "@/context/DialerSettingsContext";
+import { useCurrentUserPermission } from "@/hooks/useCurrentUserPermission";
 
 interface ContactSectionProps {
   lead: Lead | null;
@@ -27,6 +28,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
   const { data: session } = useSession();
   const { dialer } = useDialerSettings();
   const isAdmin = session?.user?.role === "ADMIN";
+  const { canViewPhoneNumbers } = useCurrentUserPermission();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -312,6 +314,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
                   onPhoneChange={(value) =>
                     setEditedData({ ...editedData, phone: value })
                   }
+                  canViewPhoneNumbers={canViewPhoneNumbers}
                 />
 
                 <CountryField
@@ -378,6 +381,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
                 onCopy={(text) => handleCopy(text, "phone")}
                 onCall={dialer ? handleCall : undefined}
                 copied={copiedField === "phone"}
+                canViewPhoneNumbers={canViewPhoneNumbers}
               />
 
               <CountryField

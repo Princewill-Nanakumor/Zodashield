@@ -19,6 +19,7 @@ interface User {
   createdBy: string;
   createdAt: string;
   lastLogin?: string;
+  canViewPhoneNumbers?: boolean;
 }
 
 interface UserFormData {
@@ -155,6 +156,9 @@ export function UserCRUDOperations({
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["users"] }),
           queryClient.invalidateQueries({ queryKey: ["user-usage-data"] }),
+          queryClient.invalidateQueries({
+            queryKey: ["current-user-permission"],
+          }), // Invalidate current user permission cache
           queryClient.refetchQueries({ queryKey: ["users"] }),
         ]);
 

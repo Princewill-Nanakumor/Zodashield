@@ -1,6 +1,8 @@
 // next.config.js - SIMPLIFIED VERSION
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Set output file tracing root to silence multiple lockfiles warning
+  outputFileTracingRoot: require("path").join(__dirname),
   images: {
     remotePatterns: [
       {
@@ -77,21 +79,21 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(self), geolocation=()",
           },
-          {
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.cloudinary.com https://flagcdn.com",
-              "media-src 'self' blob:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.cloudinary.com",
-              "frame-src 'self'",
-            ].join("; "),
-          },
+                  {
+                    key: "Content-Security-Policy",
+                    value: [
+                      "default-src 'self'",
+                      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+                      "style-src 'self' 'unsafe-inline'",
+                      "img-src 'self' data: blob: https://*.cloudinary.com https://flagcdn.com",
+                      "media-src 'self' blob:",
+                      "font-src 'self' data:",
+                      "connect-src 'self' https://*.cloudinary.com",
+                      "frame-src 'self'",
+                    ].join("; "),
+                  },
         ],
       },
     ];

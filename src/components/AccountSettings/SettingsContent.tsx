@@ -153,7 +153,7 @@ export function SettingsContent() {
   if (userRole !== "ADMIN") {
     return (
       <div className="min-h-screen">
-        <div className="container mx-auto px-4 py-8 rounded-lg border">
+        <div className="container px-4 py-8 mx-auto border rounded-lg">
           <DateTimeSettingsSection />
           <DialerSettingsSection />
         </div>
@@ -163,23 +163,23 @@ export function SettingsContent() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8 rounded-lg border">
+      <div className="container px-4 py-8 mx-auto border rounded-lg">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row items-start md:items-center mb-8">
+        <div className="flex flex-col items-start mb-8 md:flex-row md:items-center">
           <div>
-            <h1 className="text-3xl font-bold dark:text-white text-gray-900 mb-2">
+            <h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">
               Account Settings
             </h1>
-            <p className="dark:text-gray-300 text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Manage your password and account security
             </p>
           </div>
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Password and Danger Zone */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Password Change Section */}
             <ChangePasswordSection
               currentPassword={currentPassword}
@@ -199,12 +199,11 @@ export function SettingsContent() {
               fieldErrors={fieldErrors}
               handlePasswordReset={handlePasswordReset}
             />
-
             {/* Danger Zone Section */}
-            <section className="dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl p-6 shadow-lg dark:border dark:border-white/10 bg-white border border-red-200">
+            <section className="p-6 bg-white border border-red-200 shadow-lg dark:backdrop-blur-lg dark:bg-white/5 rounded-2xl dark:border dark:border-white/10">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <div className="p-2 bg-red-100 rounded-lg dark:bg-red-900/30">
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">
@@ -217,7 +216,7 @@ export function SettingsContent() {
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div className="p-4 border border-red-200 rounded-lg bg-red-50 dark:bg-red-900/20 dark:border-red-800">
                   <p className="text-sm text-red-700 dark:text-red-300">
                     <strong>Warning:</strong> Once you delete your account,
                     there is no going back. This action will permanently remove
@@ -230,7 +229,7 @@ export function SettingsContent() {
                   onClick={() => setShowDeleteDialog(true)}
                   className="flex items-center gap-2"
                 >
-                  <UserX className="h-4 w-4" />
+                  <UserX className="w-4 h-4" />
                   Delete Account
                 </Button>
               </div>

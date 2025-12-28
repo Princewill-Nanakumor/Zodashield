@@ -12,7 +12,7 @@ export default withAuth(
     const isAdminPage = path.startsWith("/admin");
     const isDashboardPage = path.startsWith("/dashboard");
     const isResetPasswordPage = path.startsWith("/reset-password");
-    const isVerifyEmailPage = path.startsWith("/verify-email"); // Add this line
+    const isVerifyEmailPage = path.startsWith("/verify-email");
     const isAdminManagementPage = path.startsWith(
       "/dashboard/admin-management"
     );
@@ -27,8 +27,7 @@ export default withAuth(
       "/verify-email",
     ];
 
-    const isPublicPage = publicPages.includes(path) || isVerifyEmailPage; // Modified this line
-
+    const isPublicPage = publicPages.includes(path) || isVerifyEmailPage;
     // ✅ Allow access to public pages
     if (isPublicPage) {
       return NextResponse.next();
