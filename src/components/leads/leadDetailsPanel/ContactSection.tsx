@@ -105,7 +105,19 @@ export const ContactSection: FC<ContactSectionProps> = ({
         
         if (dialer === "microsip") {
           // MicroSIP uses sip: protocol
-          dialerUrl = `sip:${cleanedNumber}`;
+          // For call centers with PBX configurations that hide numbers:
+          // Use a format that may work with PBX settings to hide number display
+          // Note: Actual hiding depends on PBX/server configuration
+          if (!canViewPhoneNumbers) {
+            // Try using a format that some PBX systems use to hide numbers
+            // Format: sip:number@pbx or sip:number;user=phone@pbx
+            // The PBX configuration should handle hiding the number from the agent
+            // If your PBX supports it, configure it to not display numbers in this format
+            dialerUrl = `sip:${cleanedNumber};user=phone`;
+          } else {
+            // Standard format when user can view numbers
+            dialerUrl = `sip:${cleanedNumber}`;
+          }
           dialerName = "MicroSIP";
         } else {
           // Zoiper uses zoiper:// protocol
@@ -130,18 +142,21 @@ export const ContactSection: FC<ContactSectionProps> = ({
         }
 
         // Copy to clipboard as fallback (works for all dialers, especially free versions)
-        navigator.clipboard.writeText(cleanedNumber).catch(() => {
-          // Silently fail if clipboard fails
-        });
+        // Note: We don't copy the number to clipboard if user can't view it
+        // The dialer will receive the number via protocol, but we avoid exposing it in clipboard
+        if (canViewPhoneNumbers) {
+          navigator.clipboard.writeText(cleanedNumber).catch(() => {
+            // Silently fail if clipboard fails
+          });
+        }
 
+        // Log dialer usage without exposing the phone number
         console.log(`Using ${dialerName} (${dialer})`);
-        console.log("Phone number:", cleanedNumber);
-        console.log("Dialer URL:", dialerUrl);
       } catch (error) {
         console.error("Error initiating call:", error);
       }
     },
-    [dialer]
+    [dialer, canViewPhoneNumbers]
   );
 
   const handleEdit = useCallback(() => {
