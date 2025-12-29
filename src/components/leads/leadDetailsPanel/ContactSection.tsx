@@ -105,19 +105,9 @@ export const ContactSection: FC<ContactSectionProps> = ({
         
         if (dialer === "microsip") {
           // MicroSIP uses sip: protocol
-          // For call centers with PBX configurations that hide numbers:
-          // Use a format that may work with PBX settings to hide number display
-          // Note: Actual hiding depends on PBX/server configuration
-          if (!canViewPhoneNumbers) {
-            // Try using a format that some PBX systems use to hide numbers
-            // Format: sip:number@pbx or sip:number;user=phone@pbx
-            // The PBX configuration should handle hiding the number from the agent
-            // If your PBX supports it, configure it to not display numbers in this format
-            dialerUrl = `sip:${cleanedNumber};user=phone`;
-          } else {
-            // Standard format when user can view numbers
-            dialerUrl = `sip:${cleanedNumber}`;
-          }
+          // Standard SIP URI format: sip:number or sip:number@domain
+          // Always use standard format - PBX configuration handles number hiding
+          dialerUrl = `sip:${cleanedNumber}`;
           dialerName = "MicroSIP";
         } else {
           // Zoiper uses zoiper:// protocol
