@@ -63,8 +63,12 @@ export const useCurrentUserPermission = () => {
     refetchOnMount: true,
   });
 
+  // Admins should always be able to view phone numbers
+  const canViewPhoneNumbers = 
+    currentUser?.role === "ADMIN" || (currentUser?.canViewPhoneNumbers ?? false);
+
   return {
-    canViewPhoneNumbers: currentUser?.canViewPhoneNumbers ?? false,
+    canViewPhoneNumbers,
     isLoading,
     error,
     currentUser,

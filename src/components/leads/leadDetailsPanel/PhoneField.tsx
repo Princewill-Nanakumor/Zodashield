@@ -1,6 +1,7 @@
 import { FC } from "react";
-import { Phone, PhoneCall, Copy, Check, EyeOff } from "lucide-react";
+import { Phone, PhoneCall, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { maskPhoneNumber } from "@/utils/phoneMask";
 
 interface PhoneFieldProps {
@@ -12,6 +13,7 @@ interface PhoneFieldProps {
   onCall?: (phoneNumber: string) => void;
   copied?: boolean;
   canViewPhoneNumbers?: boolean; // Whether user can see full phone number
+  isLoadingPermission?: boolean; // Whether permission is being loaded
 }
 
 export const PhoneField: FC<PhoneFieldProps> = ({
@@ -23,6 +25,7 @@ export const PhoneField: FC<PhoneFieldProps> = ({
   onCall,
   copied = false,
   canViewPhoneNumbers = false,
+  isLoadingPermission = false,
 }) => {
   if (isEditing) {
     return (
@@ -51,23 +54,20 @@ export const PhoneField: FC<PhoneFieldProps> = ({
       ? maskPhoneNumber(phone)
       : "Not provided";
 
-  const isMasked = !canViewPhoneNumbers && phone;
-
   return (
     <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
       <Phone className="w-5 h-5 text-gray-400 dark:text-gray-500" />
       <div className="flex-1">
         <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {isLoadingPermission ? (
+            <Skeleton className="h-5 w-32" />
+          ) : (
             <p>{displayPhone}</p>
-            {isMasked && (
-              <EyeOff className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            )}
-          </div>
-          {phone && canViewPhoneNumbers && (
+          )}
+          {phone && !isLoadingPermission && (
             <div className="flex items-center gap-1 ml-2">
-              {onCall && (
+              {onCall ? (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -78,8 +78,22 @@ export const PhoneField: FC<PhoneFieldProps> = ({
                 >
                   <PhoneCall className="w-4 h-4" />
                 </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Fallback: try to initiate call even if onCall handler not provided
+                    if (phone) {
+                      window.location.href = `tel:${phone}`;
+                    }
+                  }}
+                  className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors text-blue-600 dark:text-blue-400"
+                  title="Call phone number"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                </button>
               )}
-              {onCopy && (
+              {onCopy && canViewPhoneNumbers && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -102,4 +116,3 @@ export const PhoneField: FC<PhoneFieldProps> = ({
     </div>
   );
 };
-

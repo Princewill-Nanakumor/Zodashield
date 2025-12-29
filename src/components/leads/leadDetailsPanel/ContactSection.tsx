@@ -28,7 +28,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
   const { data: session } = useSession();
   const { dialer } = useDialerSettings();
   const isAdmin = session?.user?.role === "ADMIN";
-  const { canViewPhoneNumbers } = useCurrentUserPermission();
+  const { canViewPhoneNumbers, isLoading: isLoadingPermission } = useCurrentUserPermission();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -315,6 +315,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
                     setEditedData({ ...editedData, phone: value })
                   }
                   canViewPhoneNumbers={canViewPhoneNumbers}
+                  isLoadingPermission={isLoadingPermission}
                 />
 
                 <CountryField
@@ -382,6 +383,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
                 onCall={dialer ? handleCall : undefined}
                 copied={copiedField === "phone"}
                 canViewPhoneNumbers={canViewPhoneNumbers}
+                isLoadingPermission={isLoadingPermission}
               />
 
               <CountryField
