@@ -643,8 +643,13 @@ export const useLeadsPage = (
       filtered = searchLeads(filtered, uiState.searchQuery);
     }
 
-    // User filter - handle both string (backward compat) and array
-    const userFilter = Array.isArray(filterByUser) ? filterByUser : filterByUser === "all" ? [] : [filterByUser];
+    // User filter - handle string (comma-separated) and convert to array
+    const userFilter = 
+      filterByUser === "all" || !filterByUser
+        ? []
+        : filterByUser.includes(",")
+          ? filterByUser.split(",")
+          : [filterByUser];
     if (userFilter.length > 0) {
       filtered = filterLeadsByUser(filtered, userFilter);
     }
@@ -879,8 +884,8 @@ export const useLeadsPage = (
 
   const handleFilterChange = useCallback(
     (values: string[]) => {
-      // Convert array to string for backward compatibility with store
-      // If empty array, set to "all", otherwise use first value or join
+      // Store as comma-separated string for backward compatibility with store
+      // The store expects a string, but we'll parse it back as array when needed
       const value = values.length === 0 ? "all" : values.join(",");
       setFilterByUser(value);
 

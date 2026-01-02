@@ -68,10 +68,13 @@ export const MultiSelectFilter = ({
       return;
     }
 
-    if (checked) {
+    // Prevent duplicate values
+    const isAlreadySelected = value.includes(optionValue);
+
+    if (checked && !isAlreadySelected) {
       // Add to selection
       onChange([...value, optionValue]);
-    } else {
+    } else if (!checked && isAlreadySelected) {
       // Remove from selection
       onChange(value.filter((v) => v !== optionValue));
     }
@@ -199,15 +202,38 @@ export const MultiSelectFilter = ({
               .map((option) => {
                 const checked = isSelected(option.value);
                 return (
-                  <label
+                  <div
                     key={option.value}
                     className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 focus-within:bg-gray-100 dark:focus-within:bg-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Only toggle if click is not on the checkbox itself
+                      const target = e.target as HTMLElement;
+                      if (!target.closest('[data-slot="checkbox"]')) {
+                        handleOptionToggle(option.value, !checked);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleOptionToggle(option.value, !checked);
+                      }
+                    }}
+                    role="checkbox"
+                    tabIndex={0}
+                    aria-checked={checked}
                   >
                     <Checkbox
                       checked={checked}
-                      onCheckedChange={(checked) =>
-                        handleOptionToggle(option.value, checked as boolean)
-                      }
+                      onCheckedChange={(checkedValue) => {
+                        // This will be called when checkbox is clicked directly
+                        handleOptionToggle(option.value, checkedValue === true);
+                      }}
+                      onClick={(e) => {
+                        // Stop propagation to prevent double-triggering from parent div
+                        e.stopPropagation();
+                      }}
                       aria-label={option.label}
                     />
                     <span
@@ -219,7 +245,7 @@ export const MultiSelectFilter = ({
                     >
                       {option.label}
                     </span>
-                  </label>
+                  </div>
                 );
               })}
           </div>

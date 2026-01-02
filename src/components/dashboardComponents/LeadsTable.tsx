@@ -74,7 +74,10 @@ export default function LeadsTable({
   const normalizeFilter = (filter: string | string[] | undefined): string[] => {
     if (!filter) return [];
     if (Array.isArray(filter)) return filter;
-    return filter === "all" ? [] : [filter];
+    if (filter === "all") return [];
+    // Handle comma-separated string (for user filter)
+    if (filter.includes(",")) return filter.split(",");
+    return [filter];
   };
 
   const userFilter = normalizeFilter(filterByUser);

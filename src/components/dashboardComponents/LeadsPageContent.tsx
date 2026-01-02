@@ -231,10 +231,10 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             onSourceFilterChange={handleSourceFilterChange}
             isLoading={shouldShowLoading}
             filterByUser={
-              Array.isArray(filterByUser)
-                ? filterByUser
-                : filterByUser === "all" || !filterByUser
-                  ? []
+              filterByUser === "all" || !filterByUser
+                ? []
+                : filterByUser.includes(",")
+                  ? filterByUser.split(",")
                   : [filterByUser]
             }
             onFilterChange={handleFilterChange}
@@ -265,10 +265,10 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <EmptyState
                     filterByUser={
-                      Array.isArray(filterByUser)
-                        ? filterByUser
-                        : filterByUser === "all" || !filterByUser
-                          ? []
+                      filterByUser === "all" || !filterByUser
+                        ? []
+                        : filterByUser.includes(",")
+                          ? filterByUser.split(",")
                           : [filterByUser]
                     }
                     filterByCountry={uiState.filterByCountry}
