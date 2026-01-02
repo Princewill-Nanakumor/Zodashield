@@ -7,9 +7,9 @@ type SortOrder = "asc" | "desc";
 
 interface FilterLogicProps {
   leads: Lead[];
-  filterByCountry: string;
-  filterByStatus: string;
-  filterBySource: string;
+  filterByCountry: string | string[];
+  filterByStatus: string | string[];
+  filterBySource: string | string[];
   sortField: SortField;
   sortOrder: SortOrder;
   isDataReady: boolean;

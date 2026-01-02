@@ -4,17 +4,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
-import { FilterSelect } from "./FilterSelect";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 
 interface CountryFilterProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[]; // Changed to array
+  onChange: (values: string[]) => void; // Changed to array
   disabled: boolean;
   isLoading?: boolean;
 }
 
 export const CountryFilter = ({
-  value,
+  value = [],
   onChange,
   disabled,
   isLoading = false,
@@ -36,24 +36,22 @@ export const CountryFilter = ({
   });
 
   const countries = useMemo(() => {
-    return [...new Set(leads.map((lead: Lead) => lead.country))].filter(
-      (country): country is string => Boolean(country)
-    );
+    return [...new Set(leads.map((lead: Lead) => lead.country))]
+      .filter((country): country is string => Boolean(country))
+      .sort((a, b) => a.localeCompare(b));
   }, [leads]);
 
   const options = useMemo(
-    () => [
-      { value: "all", label: "All Countries" },
-      ...countries.map((country: string) => ({
+    () =>
+      countries.map((country: string) => ({
         value: country,
         label: country,
       })),
-    ],
     [countries]
   );
 
   return (
-    <FilterSelect
+    <MultiSelectFilter
       value={value}
       onChange={onChange}
       options={options}

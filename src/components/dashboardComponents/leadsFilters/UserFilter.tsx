@@ -4,17 +4,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@/types/user.types";
-import { FilterSelect } from "./FilterSelect";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 
 interface UserFilterProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[]; // Changed to array
+  onChange: (values: string[]) => void; // Changed to array
   disabled: boolean;
   isLoading?: boolean;
 }
 
 export const UserFilter = ({
-  value,
+  value = [],
   onChange,
   disabled,
   isLoading = false,
@@ -38,18 +38,22 @@ export const UserFilter = ({
   const options = useMemo(() => {
     const dropdownUsers = users.filter((user) => user.status === "ACTIVE");
 
-    return [
-      { value: "all", label: "All Leads" },
-      { value: "unassigned", label: "Unassigned Leads" },
-      ...dropdownUsers.map((user) => ({
+    // Create user options and sort alphabetically by name
+    const userOptions = dropdownUsers
+      .map((user) => ({
         value: user.id,
         label: `${user.firstName} ${user.lastName}`,
-      })),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return [
+      { value: "unassigned", label: "Unassigned Leads" },
+      ...userOptions,
     ];
   }, [users]);
 
   return (
-    <FilterSelect
+    <MultiSelectFilter
       value={value}
       onChange={onChange}
       options={options}

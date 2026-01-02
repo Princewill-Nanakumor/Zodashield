@@ -69,15 +69,15 @@ interface LeadsFilterControlsProps {
   onUnassign: () => void;
   onStatusChange?: (statusId: string) => Promise<void>;
   onDelete?: () => Promise<void>;
-  filterByCountry: string;
-  onCountryFilterChange: (country: string) => void;
-  filterByStatus: string;
-  onStatusFilterChange: (status: string) => void;
-  filterBySource: string;
-  onSourceFilterChange: (source: string) => void;
+  filterByCountry: string[]; // Changed to array
+  onCountryFilterChange: (countries: string[]) => void; // Changed to array
+  filterByStatus: string[]; // Changed to array
+  onStatusFilterChange: (statuses: string[]) => void; // Changed to array
+  filterBySource: string[]; // Changed to array
+  onSourceFilterChange: (sources: string[]) => void; // Changed to array
   isLoading: boolean;
-  filterByUser: string;
-  onFilterChange: (value: string) => void;
+  filterByUser: string[]; // Changed to array
+  onFilterChange: (values: string[]) => void; // Changed to array
   users: User[];
   statuses?: Array<{ id: string; name: string; color?: string; _id?: string }>;
   isLoadingStatuses?: boolean;

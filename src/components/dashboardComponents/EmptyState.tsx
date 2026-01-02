@@ -4,10 +4,10 @@ import { RefreshCw, Users, Globe } from "lucide-react";
 import { User } from "@/types/user.types";
 
 interface EmptyStateProps {
-  filterByUser: string;
-  filterByCountry: string;
-  filterByStatus: string;
-  filterBySource: string;
+  filterByUser: string | string[]; // Support both for backward compat
+  filterByCountry: string | string[];
+  filterByStatus: string | string[];
+  filterBySource: string | string[];
   users: User[];
 }
 
@@ -18,32 +18,63 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   filterBySource,
   users,
 }) => {
+  // Helper to normalize filter values to arrays
+  const normalizeFilter = (filter: string | string[]): string[] => {
+    if (Array.isArray(filter)) return filter;
+    return filter === "all" || !filter ? [] : [filter];
+  };
+
   const getFilterDescription = () => {
     const filters = [];
 
-    if (filterByUser !== "all") {
-      if (filterByUser === "unassigned") {
+    const userFilter = normalizeFilter(filterByUser);
+    if (userFilter.length > 0) {
+      if (userFilter.includes("unassigned")) {
         filters.push("unassigned leads");
-      } else {
-        const user = users.find((u) => u.id === filterByUser);
-        if (user) {
-          filters.push(`leads assigned to ${user.firstName} ${user.lastName}`);
-        } else {
-          filters.push("leads assigned to selected user");
+      }
+      const userIds = userFilter.filter((id) => id !== "unassigned");
+      if (userIds.length > 0) {
+        const userNames = userIds
+          .map((id) => {
+            const user = users.find((u) => u.id === id);
+            return user ? `${user.firstName} ${user.lastName}` : null;
+          })
+          .filter(Boolean);
+        if (userNames.length > 0) {
+          if (userNames.length === 1) {
+            filters.push(`leads assigned to ${userNames[0]}`);
+          } else {
+            filters.push(`leads assigned to ${userNames.slice(0, 2).join(", ")}${userNames.length > 2 ? ` and ${userNames.length - 2} more` : ""}`);
+          }
         }
       }
     }
 
-    if (filterByCountry !== "all") {
-      filters.push(`leads from ${filterByCountry}`);
+    const countryFilter = normalizeFilter(filterByCountry);
+    if (countryFilter.length > 0) {
+      if (countryFilter.length === 1) {
+        filters.push(`leads from ${countryFilter[0]}`);
+      } else {
+        filters.push(`leads from ${countryFilter.slice(0, 2).join(", ")}${countryFilter.length > 2 ? ` and ${countryFilter.length - 2} more` : ""}`);
+      }
     }
 
-    if (filterByStatus !== "all") {
-      filters.push(`leads with status "${filterByStatus}"`);
+    const statusFilter = normalizeFilter(filterByStatus);
+    if (statusFilter.length > 0) {
+      if (statusFilter.length === 1) {
+        filters.push(`leads with status "${statusFilter[0]}"`);
+      } else {
+        filters.push(`leads with ${statusFilter.length} selected statuses`);
+      }
     }
 
-    if (filterBySource !== "all") {
-      filters.push(`leads from source "${filterBySource}"`);
+    const sourceFilter = normalizeFilter(filterBySource);
+    if (sourceFilter.length > 0) {
+      if (sourceFilter.length === 1) {
+        filters.push(`leads from source "${sourceFilter[0]}"`);
+      } else {
+        filters.push(`leads from ${sourceFilter.slice(0, 2).join(", ")}${sourceFilter.length > 2 ? ` and ${sourceFilter.length - 2} more` : ""}`);
+      }
     }
 
     if (filters.length === 0) {
@@ -57,10 +88,16 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     window.location.reload();
   };
 
+  const userFilter = normalizeFilter(filterByUser);
+  const countryFilter = normalizeFilter(filterByCountry);
+  const statusFilter = normalizeFilter(filterByStatus);
+  const sourceFilter = normalizeFilter(filterBySource);
+
   const hasAnyFilters =
-    filterByUser !== "all" ||
-    filterByCountry !== "all" ||
-    filterByStatus !== "all";
+    userFilter.length > 0 ||
+    countryFilter.length > 0 ||
+    statusFilter.length > 0 ||
+    sourceFilter.length > 0;
 
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6">

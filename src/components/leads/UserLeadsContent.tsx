@@ -137,28 +137,30 @@ export default function UserLeadsContent() {
   );
 
   // Country filter handler
+  // Filter change handlers - convert arrays to strings for state/URL compatibility
   const handleCountryFilterChange = useCallback(
-    (country: string) => {
+    (countries: string[]) => {
+      const country = countries.length === 0 ? "all" : countries.join(",");
       setFilterByCountry(country);
-      handleURLCountryChange(country);
+      handleURLCountryChange(countries.length === 0 ? "all" : countries[0]);
     },
     [handleURLCountryChange]
   );
 
-  // Status filter handler
   const handleStatusFilterChange = useCallback(
-    (status: string) => {
+    (statuses: string[]) => {
+      const status = statuses.length === 0 ? "all" : statuses.join(",");
       setFilterByStatus(status);
-      handleURLStatusChange(status);
+      handleURLStatusChange(statuses.length === 0 ? "all" : statuses[0]);
     },
     [handleURLStatusChange]
   );
 
-  // Source filter handler
   const handleSourceFilterChange = useCallback(
-    (source: string) => {
+    (sources: string[]) => {
+      const source = sources.length === 0 ? "all" : sources.join(",");
       setFilterBySource(source);
-      handleURLSourceChange(source);
+      handleURLSourceChange(sources.length === 0 ? "all" : sources[0]);
     },
     [handleURLSourceChange]
   );
@@ -289,9 +291,9 @@ interface UserLeadsMainContentProps {
   showControls: boolean;
   currentIndex: number;
   totalLeads: number;
-  handleCountryFilterChange: (country: string) => void;
-  handleStatusFilterChange: (status: string) => void;
-  handleSourceFilterChange: (source: string) => void;
+  handleCountryFilterChange: (countries: string[]) => void;
+  handleStatusFilterChange: (statuses: string[]) => void;
+  handleSourceFilterChange: (sources: string[]) => void;
   handleLeadClick: (lead: Lead) => void;
   handleSort: (field: SortField) => void;
   handlePanelClose: () => void;
@@ -393,9 +395,27 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
       >
         <UserLeadsFilterControls
           shouldShowLoading={shouldShowLoading}
-          filterByCountry={filterByCountry}
-          filterByStatus={filterByStatus}
-          filterBySource={filterBySource}
+          filterByCountry={
+            filterByCountry === "all" || !filterByCountry
+              ? []
+              : filterByCountry.includes(",")
+                ? filterByCountry.split(",")
+                : [filterByCountry]
+          }
+          filterByStatus={
+            filterByStatus === "all" || !filterByStatus
+              ? []
+              : filterByStatus.includes(",")
+                ? filterByStatus.split(",")
+                : [filterByStatus]
+          }
+          filterBySource={
+            filterBySource === "all" || !filterBySource
+              ? []
+              : filterBySource.includes(",")
+                ? filterBySource.split(",")
+                : [filterBySource]
+          }
           onCountryFilterChange={handleCountryFilterChange}
           onStatusFilterChange={handleStatusFilterChange}
           onSourceFilterChange={handleSourceFilterChange}

@@ -9,6 +9,7 @@ import {
   getAssignedUserId,
   filterLeadsByUser,
   filterLeadsByCountry,
+  filterLeadsByStatus,
   searchLeads,
   getAssignedLeadsCount,
   getAvailableCountries,
@@ -459,12 +460,38 @@ export const useLeadsPage = (
   const getInitialFilterValue = (
     key: string,
     urlValue: string | null,
-    defaultValue: string
-  ) => {
+    defaultValue: string[]
+  ): string[] => {
     if (typeof window !== "undefined") {
-      return urlValue || localStorage.getItem(key) || defaultValue;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) return parsed;
+          // Backward compatibility: if it's a string, convert to array
+          if (typeof parsed === "string" && parsed !== "all") {
+            return [parsed];
+          }
+        } catch {
+          // If parsing fails, check if it's a simple string
+          if (stored && stored !== "all") {
+            return [stored];
+          }
+        }
+      }
+      // Handle URL params
+      if (urlValue) {
+        try {
+          const parsed = JSON.parse(urlValue);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          if (urlValue !== "all") {
+            return [urlValue];
+          }
+        }
+      }
     }
-    return urlValue || defaultValue;
+    return defaultValue;
   };
 
   // ===== INITIAL FILTER VALUES =====
@@ -480,17 +507,17 @@ export const useLeadsPage = (
     filterByCountry: getInitialFilterValue(
       STORAGE_KEYS.FILTER_BY_COUNTRY,
       initialCountry,
-      "all"
+      [] // Empty array = "all"
     ),
     filterByStatus: getInitialFilterValue(
       STORAGE_KEYS.FILTER_BY_STATUS,
       initialStatus,
-      "all"
+      [] // Empty array = "all"
     ),
     filterBySource: getInitialFilterValue(
       STORAGE_KEYS.FILTER_BY_SOURCE,
       initialSource,
-      "all"
+      [] // Empty array = "all"
     ),
     searchQuery: searchQuery,
   });
@@ -509,7 +536,7 @@ export const useLeadsPage = (
     if (isInitialized) {
       localStorage.setItem(
         STORAGE_KEYS.FILTER_BY_COUNTRY,
-        uiState.filterByCountry
+        JSON.stringify(uiState.filterByCountry)
       );
     }
   }, [uiState.filterByCountry, isInitialized]);
@@ -518,7 +545,7 @@ export const useLeadsPage = (
     if (isInitialized) {
       localStorage.setItem(
         STORAGE_KEYS.FILTER_BY_STATUS,
-        uiState.filterByStatus
+        JSON.stringify(uiState.filterByStatus)
       );
     }
   }, [uiState.filterByStatus, isInitialized]);
@@ -527,14 +554,20 @@ export const useLeadsPage = (
     if (isInitialized) {
       localStorage.setItem(
         STORAGE_KEYS.FILTER_BY_SOURCE,
-        uiState.filterBySource
+        JSON.stringify(uiState.filterBySource)
       );
     }
   }, [uiState.filterBySource, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem(STORAGE_KEYS.FILTER_BY_USER, filterByUser);
+      // Handle filterByUser - convert to array if needed
+      const userFilter = Array.isArray(filterByUser) 
+        ? filterByUser 
+        : filterByUser === "all" || !filterByUser 
+          ? [] 
+          : [filterByUser];
+      localStorage.setItem(STORAGE_KEYS.FILTER_BY_USER, JSON.stringify(userFilter));
     }
   }, [filterByUser, isInitialized]);
 
@@ -548,18 +581,29 @@ export const useLeadsPage = (
     const urlStatus = searchParams.get("status");
     const urlSource = searchParams.get("source");
 
-    const targetCountry = urlCountry || "all";
-    if (targetCountry !== uiState.filterByCountry) {
+    // Parse URL params as arrays
+    const parseUrlParam = (param: string | null): string[] => {
+      if (!param) return [];
+      try {
+        const parsed = JSON.parse(param);
+        return Array.isArray(parsed) ? parsed : param !== "all" ? [param] : [];
+      } catch {
+        return param !== "all" ? [param] : [];
+      }
+    };
+
+    const targetCountry = parseUrlParam(urlCountry);
+    if (JSON.stringify(targetCountry) !== JSON.stringify(uiState.filterByCountry)) {
       setUiState((prev) => ({ ...prev, filterByCountry: targetCountry }));
     }
 
-    const targetStatus = urlStatus || "all";
-    if (targetStatus !== uiState.filterByStatus) {
+    const targetStatus = parseUrlParam(urlStatus);
+    if (JSON.stringify(targetStatus) !== JSON.stringify(uiState.filterByStatus)) {
       setUiState((prev) => ({ ...prev, filterByStatus: targetStatus }));
     }
 
-    const targetSource = urlSource || "all";
-    if (targetSource !== uiState.filterBySource) {
+    const targetSource = parseUrlParam(urlSource);
+    if (JSON.stringify(targetSource) !== JSON.stringify(uiState.filterBySource)) {
       setUiState((prev) => ({ ...prev, filterBySource: targetSource }));
     }
   }, [
@@ -599,77 +643,28 @@ export const useLeadsPage = (
       filtered = searchLeads(filtered, uiState.searchQuery);
     }
 
-    if (filterByUser !== "all") {
-      filtered = filterLeadsByUser(filtered, filterByUser);
+    // User filter - handle both string (backward compat) and array
+    const userFilter = Array.isArray(filterByUser) ? filterByUser : filterByUser === "all" ? [] : [filterByUser];
+    if (userFilter.length > 0) {
+      filtered = filterLeadsByUser(filtered, userFilter);
     }
 
-    if (uiState.filterByCountry !== "all") {
+    // Country filter - now array
+    if (uiState.filterByCountry.length > 0) {
       filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
     }
 
-    if (uiState.filterByStatus !== "all") {
-      // ✅ FIX: Build comprehensive mapping for status filtering
-      const statusIdToName = statuses.reduce(
-        (acc, status) => {
-          if (status.id && status.name) {
-            acc[status.id] = status.name;
-          }
-          return acc;
-        },
-        {} as Record<string, string>
-      );
-
-      const statusNameToId = statuses.reduce(
-        (acc, status) => {
-          if (status.id && status.name) {
-            acc[status.name] = status.id;
-            acc[status.name.toUpperCase()] = status.id;
-            acc[status.name.toLowerCase()] = status.id;
-          }
-          return acc;
-        },
-        {} as Record<string, string>
-      );
-
-      // 🔍 DEBUG: Log status filtering
-      console.log("🔍 Status Filter Debug:", {
-        filterValue: uiState.filterByStatus,
-        statusIdToName,
-        statusNameToId,
-        sampleLeadStatuses: filtered
-          .slice(0, 3)
-          .map((l) => ({ email: l.email, status: l.status })),
-      });
-
-      filtered = filtered.filter((lead) => {
-        // Direct match (exact comparison)
-        if (lead.status === uiState.filterByStatus) return true;
-
-        // Case-insensitive match for status names
-        if (lead.status?.toUpperCase() === uiState.filterByStatus.toUpperCase())
-          return true;
-
-        // Match if lead.status is an ID and maps to the filter name
-        if (statusIdToName[lead.status] === uiState.filterByStatus) return true;
-
-        // Match if filter is a name and maps to lead.status ID
-        if (statusNameToId[uiState.filterByStatus] === lead.status) return true;
-
-        // Also check case-insensitive mapping
-        const filterUpper = uiState.filterByStatus.toUpperCase();
-        const filterLower = uiState.filterByStatus.toLowerCase();
-        if (statusNameToId[filterUpper] === lead.status) return true;
-        if (statusNameToId[filterLower] === lead.status) return true;
-
-        return false;
-      });
-
-      console.log("🔍 After status filter:", filtered.length, "leads match");
+    // Status filter - now array
+    if (uiState.filterByStatus.length > 0) {
+      // Convert status array to format expected by filterLeadsByStatus
+      const statusIds = statuses.map((s) => ({ _id: s.id, name: s.name }));
+      filtered = filterLeadsByStatus(filtered, uiState.filterByStatus, statusIds);
     }
 
-    if (uiState.filterBySource !== "all") {
-      filtered = filtered.filter(
-        (lead) => lead.source === uiState.filterBySource
+    // Source filter - now array
+    if (uiState.filterBySource.length > 0) {
+      filtered = filtered.filter((lead) =>
+        uiState.filterBySource.includes(lead.source || "")
       );
     }
 
@@ -824,19 +819,19 @@ export const useLeadsPage = (
   );
 
   const handleCountryFilterChange = useCallback(
-    (country: string) => {
+    (countries: string[]) => {
       setUiState((prev) => ({
         ...prev,
-        filterByCountry: country,
+        filterByCountry: countries,
       }));
 
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
 
-      if (country === "all") {
+      if (countries.length === 0) {
         params.delete("country");
       } else {
-        params.set("country", country);
+        params.set("country", JSON.stringify(countries));
       }
 
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
@@ -845,18 +840,18 @@ export const useLeadsPage = (
   );
 
   const handleStatusFilterChange = useCallback(
-    (status: string) => {
+    (statuses: string[]) => {
       setUiState((prev) => ({
         ...prev,
-        filterByStatus: status,
+        filterByStatus: statuses,
       }));
 
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
-      if (status === "all") {
+      if (statuses.length === 0) {
         params.delete("status");
       } else {
-        params.set("status", status);
+        params.set("status", JSON.stringify(statuses));
       }
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
     },
@@ -864,18 +859,18 @@ export const useLeadsPage = (
   );
 
   const handleSourceFilterChange = useCallback(
-    (source: string) => {
+    (sources: string[]) => {
       setUiState((prev) => ({
         ...prev,
-        filterBySource: source,
+        filterBySource: sources,
       }));
 
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
-      if (source === "all") {
+      if (sources.length === 0) {
         params.delete("source");
       } else {
-        params.set("source", source);
+        params.set("source", JSON.stringify(sources));
       }
       window.history.replaceState({}, "", `${pathname}?${params.toString()}`);
     },
@@ -883,7 +878,10 @@ export const useLeadsPage = (
   );
 
   const handleFilterChange = useCallback(
-    (value: string) => {
+    (values: string[]) => {
+      // Convert array to string for backward compatibility with store
+      // If empty array, set to "all", otherwise use first value or join
+      const value = values.length === 0 ? "all" : values.join(",");
       setFilterByUser(value);
 
       const params = new URLSearchParams(window.location.search);

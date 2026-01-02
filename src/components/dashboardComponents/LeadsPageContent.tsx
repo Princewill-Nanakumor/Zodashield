@@ -230,7 +230,13 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             filterBySource={uiState.filterBySource}
             onSourceFilterChange={handleSourceFilterChange}
             isLoading={shouldShowLoading}
-            filterByUser={filterByUser}
+            filterByUser={
+              Array.isArray(filterByUser)
+                ? filterByUser
+                : filterByUser === "all" || !filterByUser
+                  ? []
+                  : [filterByUser]
+            }
             onFilterChange={handleFilterChange}
             users={users}
             statuses={statuses}
@@ -258,7 +264,13 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
               ) : showEmptyState ? (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <EmptyState
-                    filterByUser={filterByUser}
+                    filterByUser={
+                      Array.isArray(filterByUser)
+                        ? filterByUser
+                        : filterByUser === "all" || !filterByUser
+                          ? []
+                          : [filterByUser]
+                    }
                     filterByCountry={uiState.filterByCountry}
                     filterByStatus={uiState.filterByStatus}
                     filterBySource={uiState.filterBySource}

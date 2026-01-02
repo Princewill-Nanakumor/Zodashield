@@ -36,12 +36,59 @@ export const getAssignedUserName = (
   return null;
 };
 
-// Updated filterLeadsByStatus function to handle both string and ObjectID statuses
+// Updated filterLeadsByStatus function to handle both string and ObjectID statuses, and arrays
 export const filterLeadsByStatus = (
   leads: Lead[],
-  statusFilter: string,
+  statusFilter: string | string[],
   statuses: Array<{ _id: string; name: string }> = []
 ): Lead[] => {
+  // Handle array (multi-select)
+  if (Array.isArray(statusFilter)) {
+    if (statusFilter.length === 0) return leads; // Empty array means "all"
+    
+    // Create mappings
+    const statusIdToName: Record<string, string> = {};
+    const statusNameToId: Record<string, string> = {};
+    statuses.forEach((status) => {
+      statusIdToName[status._id] = status.name;
+      statusNameToId[status.name] = status._id;
+      statusNameToId[status.name.toUpperCase()] = status._id;
+      statusNameToId[status.name.toLowerCase()] = status._id;
+    });
+    
+    return leads.filter((lead) => {
+      const leadStatus = lead.status;
+      let leadStatusId: string | null = null;
+      
+      // Convert lead status to ID if needed
+      if (typeof leadStatus === "string") {
+        if (leadStatus.length === 24) {
+          // ObjectID
+          leadStatusId = leadStatus;
+        } else {
+          // Status name - convert to ID
+          leadStatusId = statusNameToId[leadStatus] || leadStatus;
+        }
+      }
+      
+      // Check if lead status matches any selected filter
+      return statusFilter.some((filterValue) => {
+        // Direct match
+        if (leadStatus === filterValue || leadStatusId === filterValue) return true;
+        // Case-insensitive match
+        if (leadStatus?.toUpperCase() === filterValue.toUpperCase()) return true;
+        // ID to name mapping
+        if (statusIdToName[leadStatus] === filterValue) return true;
+        if (statusIdToName[leadStatusId || ""] === filterValue) return true;
+        // Name to ID mapping
+        if (statusNameToId[filterValue] === leadStatus) return true;
+        if (statusNameToId[filterValue] === leadStatusId) return true;
+        return false;
+      });
+    });
+  }
+  
+  // Handle string (single-select - backward compatibility)
   console.log("🔍 filterLeadsByStatus called:", {
     statusFilter,
     totalLeads: leads.length,
@@ -124,8 +171,24 @@ export const filterLeadsByStatus = (
 
 export const filterLeadsByUser = (
   leads: Lead[],
-  filterByUser: string
+  filterByUser: string | string[]
 ): Lead[] => {
+  // Handle array (multi-select)
+  if (Array.isArray(filterByUser)) {
+    if (filterByUser.length === 0) return leads; // Empty array means "all"
+    
+    const hasUnassigned = filterByUser.includes("unassigned");
+    const userIds = filterByUser.filter((id) => id !== "unassigned");
+    
+    return leads.filter((lead) => {
+      const assignedUserId = getAssignedUserId(lead.assignedTo);
+      if (hasUnassigned && !assignedUserId) return true;
+      if (userIds.length > 0 && assignedUserId && userIds.includes(assignedUserId)) return true;
+      return false;
+    });
+  }
+  
+  // Handle string (single-select - backward compatibility)
   if (filterByUser === "all") return leads;
   if (filterByUser === "unassigned") {
     return leads.filter((lead) => !getAssignedUserId(lead.assignedTo));
@@ -137,8 +200,20 @@ export const filterLeadsByUser = (
 
 export const filterLeadsByCountry = (
   leads: Lead[],
-  filterByCountry: string
+  filterByCountry: string | string[]
 ): Lead[] => {
+  // Handle array (multi-select)
+  if (Array.isArray(filterByCountry)) {
+    if (filterByCountry.length === 0) return leads; // Empty array means "all"
+    return leads.filter((lead) =>
+      filterByCountry.some(
+        (country) =>
+          lead.country?.toLowerCase() === country.toLowerCase()
+      )
+    );
+  }
+  
+  // Handle string (single-select - backward compatibility)
   if (!filterByCountry || filterByCountry === "all") return leads;
   return leads.filter(
     (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()

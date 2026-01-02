@@ -1,0 +1,240 @@
+// src/components/dashboardComponents/leadsFilters/MultiSelectFilter.tsx
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { ChevronDown, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+
+interface Option {
+  value: string;
+  label: string;
+}
+
+interface MultiSelectFilterProps {
+  value: string[]; // Array of selected values
+  onChange: (values: string[]) => void;
+  options: Option[];
+  placeholder: string;
+  disabled: boolean;
+  isLoading?: boolean;
+  maxDisplayItems?: number; // Max items to show in button before showing count
+}
+
+export const MultiSelectFilter = ({
+  value = [],
+  onChange,
+  options,
+  placeholder,
+  disabled,
+  isLoading = false,
+  maxDisplayItems = 2,
+}: MultiSelectFilterProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Handle "All" option - clears all selections
+  const handleAllToggle = (checked: boolean) => {
+    if (checked) {
+      onChange([]); // Empty array means "all"
+    } else {
+      onChange([]); // Keep empty for "all"
+    }
+  };
+
+  // Handle individual option toggle
+  const handleOptionToggle = (optionValue: string, checked: boolean) => {
+    if (optionValue === "all") {
+      handleAllToggle(checked);
+      return;
+    }
+
+    if (checked) {
+      // Add to selection
+      onChange([...value, optionValue]);
+    } else {
+      // Remove from selection
+      onChange(value.filter((v) => v !== optionValue));
+    }
+  };
+
+  // Check if option is selected
+  const isSelected = (optionValue: string) => {
+    if (optionValue === "all") {
+      return value.length === 0; // "All" is selected when no specific items are selected
+    }
+    return value.includes(optionValue);
+  };
+
+  // Get display text for button
+  const getDisplayText = () => {
+    if (value.length === 0) {
+      return placeholder;
+    }
+
+    if (value.length === 1) {
+      const selectedOption = options.find((opt) => opt.value === value[0]);
+      return selectedOption?.label || placeholder;
+    }
+
+    // Show first N items + count
+    const selectedOptions = value
+      .slice(0, maxDisplayItems)
+      .map((val) => options.find((opt) => opt.value === val)?.label)
+      .filter(Boolean)
+      .join(", ");
+
+    const remaining = value.length - maxDisplayItems;
+    if (remaining > 0) {
+      return `${selectedOptions} +${remaining} more`;
+    }
+
+    return selectedOptions;
+  };
+
+  // Clear all selections
+  const handleClearAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange([]);
+  };
+
+  const isActiveFilter = value.length > 0;
+  const allSelected = value.length === 0;
+
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="w-[180px] h-10 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse">
+        <div className="sr-only">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`w-[180px] min-h-[40px] px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-between gap-2 ${
+          isActiveFilter
+            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+            : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+        }`}
+      >
+        <span
+          className={`flex-1 text-left truncate ${
+            isActiveFilter
+              ? "text-blue-600 dark:text-blue-400 font-medium"
+              : "text-gray-900 dark:text-white"
+          }`}
+        >
+          {getDisplayText()}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {isActiveFilter && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={handleClearAll}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleClearAll(e as unknown as React.MouseEvent);
+                }
+              }}
+              className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Clear selection"
+            >
+              <X className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+            </div>
+          )}
+          <ChevronDown
+            className={`h-4 w-4 text-gray-500 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </div>
+      </button>
+
+      {isOpen && !disabled && (
+        <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-50 min-w-[200px] max-w-[300px] max-h-60 overflow-y-auto">
+          {/* Select All / Clear All option */}
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-3 px-3 py-1.5 rounded">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={handleAllToggle}
+                aria-label="Select all"
+              />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                All {placeholder.replace("All ", "")}
+              </span>
+            </label>
+          </div>
+
+          {/* Individual options */}
+          <div className="py-1">
+            {options
+              .filter((opt) => opt.value !== "all") // Exclude "all" from list since we have it at top
+              .map((option) => {
+                const checked = isSelected(option.value);
+                return (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 focus-within:bg-gray-100 dark:focus-within:bg-gray-700"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(checked) =>
+                        handleOptionToggle(option.value, checked as boolean)
+                      }
+                      aria-label={option.label}
+                    />
+                    <span
+                      className={`text-sm flex-1 ${
+                        checked
+                          ? "text-blue-600 dark:text-blue-400 font-medium"
+                          : "text-gray-900 dark:text-white"
+                      }`}
+                    >
+                      {option.label}
+                    </span>
+                  </label>
+                );
+              })}
+          </div>
+
+          {/* Selected count footer */}
+          {isActiveFilter && (
+            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {value.length} {value.length === 1 ? "item" : "items"} selected
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+

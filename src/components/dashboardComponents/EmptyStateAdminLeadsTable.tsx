@@ -9,10 +9,10 @@ interface User {
 
 interface EmptyStateAdminLeadsTableProps {
   searchQuery?: string;
-  filterByUser?: string;
-  filterByCountry?: string;
-  filterByStatus?: string;
-  filterBySource?: string;
+  filterByUser?: string | string[];
+  filterByCountry?: string | string[];
+  filterByStatus?: string | string[];
+  filterBySource?: string | string[];
   hasFilters?: boolean;
   users?: User[];
 }
@@ -55,27 +55,47 @@ export const EmptyStateAdminLeadsTable: React.FC<
 
     // Filter-specific empty state
     if (hasFilters) {
+      // Helper to normalize filter values to arrays
+      const normalizeFilter = (filter: string | string[] | undefined): string[] => {
+        if (!filter) return [];
+        if (Array.isArray(filter)) return filter;
+        return filter === "all" ? [] : [filter];
+      };
+
       const filters: string[] = [];
-      if (filterByUser !== "all") {
-        if (filterByUser === "unassigned") {
+      const userFilter = normalizeFilter(filterByUser);
+      if (userFilter.length > 0) {
+        if (userFilter.includes("unassigned")) {
           filters.push("unassigned leads");
-        } else {
-          const user = users?.find((u) => u.id === filterByUser);
-          filters.push(
-            user
-              ? `leads assigned to user ${user.firstName} ${user.lastName}`
-              : `leads assigned to user ${filterByUser}`
-          );
+        }
+        const userIds = userFilter.filter((id) => id !== "unassigned");
+        if (userIds.length > 0) {
+          const userNames = userIds
+            .map((id) => {
+              const user = users?.find((u) => u.id === id);
+              return user ? `${user.firstName} ${user.lastName}` : null;
+            })
+            .filter(Boolean);
+          if (userNames.length > 0) {
+            filters.push(`leads assigned to ${userNames.join(", ")}`);
+          }
         }
       }
-      if (filterByCountry !== "all") {
-        filters.push(`leads from ${filterByCountry}`);
+      const countryFilter = normalizeFilter(filterByCountry);
+      if (countryFilter.length > 0) {
+        filters.push(`leads from ${countryFilter.join(", ")}`);
       }
-      if (filterByStatus !== "all") {
-        filters.push(`leads with status "${filterByStatus}"`);
+      const statusFilter = normalizeFilter(filterByStatus);
+      if (statusFilter.length > 0) {
+        if (statusFilter.length === 1) {
+          filters.push(`leads with status "${statusFilter[0]}"`);
+        } else {
+          filters.push(`leads with ${statusFilter.length} selected statuses`);
+        }
       }
-      if (filterBySource !== "all") {
-        filters.push(`leads from source "${filterBySource}"`);
+      const sourceFilter = normalizeFilter(filterBySource);
+      if (sourceFilter.length > 0) {
+        filters.push(`leads from source "${sourceFilter.join(", ")}"`);
       }
 
       return {

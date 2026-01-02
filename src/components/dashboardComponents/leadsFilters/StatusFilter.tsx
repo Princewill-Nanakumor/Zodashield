@@ -3,17 +3,17 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FilterSelect } from "./FilterSelect";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 
 interface StatusFilterProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[]; // Changed to array
+  onChange: (values: string[]) => void; // Changed to array
   disabled: boolean;
   isLoading?: boolean;
 }
 
 export const StatusFilter = ({
-  value,
+  value = [],
   onChange,
   disabled,
   isLoading = false,
@@ -37,19 +37,18 @@ export const StatusFilter = ({
   });
 
   const options = useMemo(() => {
-    return [
-      { value: "all", label: "All Statuses" },
-      ...statuses.map((status) => ({
+    return statuses
+      .map((status) => ({
         value: status.id,
         label:
           status.name.charAt(0).toUpperCase() +
           status.name.slice(1).toLowerCase(),
-      })),
-    ];
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [statuses]);
 
   return (
-    <FilterSelect
+    <MultiSelectFilter
       value={value}
       onChange={onChange}
       options={options}

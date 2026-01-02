@@ -4,17 +4,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Lead } from "@/types/leads";
-import { FilterSelect } from "./FilterSelect";
+import { MultiSelectFilter } from "./MultiSelectFilter";
 
 interface SourceFilterProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[]; // Changed to array
+  onChange: (values: string[]) => void; // Changed to array
   disabled: boolean;
   isLoading?: boolean;
 }
 
 export const SourceFilter = ({
-  value,
+  value = [],
   onChange,
   disabled,
   isLoading = false,
@@ -47,18 +47,16 @@ export const SourceFilter = ({
   }, [leads]);
 
   const options = useMemo(
-    () => [
-      { value: "all", label: "All Sources" },
-      ...sources.map((source: string) => ({
+    () =>
+      sources.map((source: string) => ({
         value: source,
         label: source,
       })),
-    ],
     [sources]
   );
 
   return (
-    <FilterSelect
+    <MultiSelectFilter
       value={value}
       onChange={onChange}
       options={options}

@@ -50,10 +50,10 @@ interface LeadsTableProps {
   selectedLeads?: Lead[];
   onSelectionChange?: (leads: Lead[]) => void;
   searchQuery?: string;
-  filterByUser?: string;
-  filterByCountry?: string;
-  filterByStatus?: string;
-  filterBySource?: string;
+  filterByUser?: string | string[];
+  filterByCountry?: string | string[];
+  filterByStatus?: string | string[];
+  filterBySource?: string | string[];
 }
 
 export default function LeadsTable({
@@ -70,6 +70,17 @@ export default function LeadsTable({
   filterByStatus = "all",
   filterBySource = "all",
 }: LeadsTableProps) {
+  // Normalize filters to arrays for consistent handling
+  const normalizeFilter = (filter: string | string[] | undefined): string[] => {
+    if (!filter) return [];
+    if (Array.isArray(filter)) return filter;
+    return filter === "all" ? [] : [filter];
+  };
+
+  const userFilter = normalizeFilter(filterByUser);
+  const countryFilter = normalizeFilter(filterByCountry);
+  const statusFilter = normalizeFilter(filterByStatus);
+  const sourceFilter = normalizeFilter(filterBySource);
   // Store hooks (NOT for pagination)
   const selectedLead = useSelectedLead();
   const setSelectedLead = useSetSelectedLead();
@@ -272,10 +283,10 @@ export default function LeadsTable({
             {showEmptyState ? (
               <EmptyStateAdminLeadsTable
                 searchQuery={searchQuery}
-                filterByUser={filterByUser}
-                filterByCountry={filterByCountry}
-                filterByStatus={filterByStatus}
-                filterBySource={filterBySource}
+                filterByUser={userFilter}
+                filterByCountry={countryFilter}
+                filterByStatus={statusFilter}
+                filterBySource={sourceFilter}
                 hasFilters={
                   filterByUser !== "all" ||
                   filterByCountry !== "all" ||
