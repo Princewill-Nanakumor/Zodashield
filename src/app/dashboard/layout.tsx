@@ -36,16 +36,20 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   );
 
   // Check if we're on any leads page (admin or user)
-  const isAdminLeadsPage = pathname?.includes("/all-leads");
-  const isUserLeadsPage = pathname?.includes("/leads");
+  // Use exact path matching to avoid false positives
+  const isAdminLeadsPage = pathname === "/dashboard/all-leads" || pathname?.startsWith("/dashboard/all-leads/");
+  const isUserLeadsPage = pathname === "/dashboard/leads" || pathname?.startsWith("/dashboard/leads/");
 
   const isAdmin = session?.user?.role === "ADMIN";
 
   // Show toggle buttons for:
   // - Admin users on admin leads pages (/all-leads)
-  // - Regular users on user leads pages (/user-leads)
+  // - Regular users on user leads pages (/leads)
   const showLeadsToggles =
     (isAdminLeadsPage && isAdmin) || (isUserLeadsPage && !isAdmin);
+
+  // Show search bar only on leads pages
+  const showSearch = isAdminLeadsPage || isUserLeadsPage;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -90,6 +94,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             showControls={showControls}
             onToggleHeader={handleToggleHeader}
             onToggleControls={handleToggleControls}
+            showSearch={showSearch}
           />
           <main className="flex-1 overflow-auto p-8 bg-background text-foreground">
             {children}

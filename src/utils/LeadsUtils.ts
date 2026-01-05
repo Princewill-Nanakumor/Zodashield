@@ -200,24 +200,45 @@ export const filterLeadsByUser = (
 
 export const filterLeadsByCountry = (
   leads: Lead[],
-  filterByCountry: string | string[]
+  filterByCountry: string | string[],
+  mode: "include" | "exclude" = "include"
 ): Lead[] => {
   // Handle array (multi-select)
   if (Array.isArray(filterByCountry)) {
     if (filterByCountry.length === 0) return leads; // Empty array means "all"
-    return leads.filter((lead) =>
-      filterByCountry.some(
-        (country) =>
-          lead.country?.toLowerCase() === country.toLowerCase()
-      )
-    );
+    
+    if (mode === "exclude") {
+      // EXCLUSION MODE: selected countries are EXCLUDED
+      return leads.filter(
+        (lead) =>
+          !filterByCountry.some(
+            (country) =>
+              lead.country?.toLowerCase() === country.toLowerCase()
+          )
+      );
+    } else {
+      // INCLUSION MODE: only show selected countries
+      return leads.filter((lead) =>
+        filterByCountry.some(
+          (country) =>
+            lead.country?.toLowerCase() === country.toLowerCase()
+        )
+      );
+    }
   }
   
   // Handle string (single-select - backward compatibility)
   if (!filterByCountry || filterByCountry === "all") return leads;
-  return leads.filter(
-    (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
-  );
+  
+  if (mode === "exclude") {
+    return leads.filter(
+      (lead) => lead.country?.toLowerCase() !== filterByCountry.toLowerCase()
+    );
+  } else {
+    return leads.filter(
+      (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
+    );
+  }
 };
 
 export const searchLeads = (leads: Lead[], searchQuery: string): Lead[] => {

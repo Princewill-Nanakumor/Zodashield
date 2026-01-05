@@ -27,6 +27,8 @@ interface DashboardNavbarProps {
   onToggleControls?: () => void;
   // Only show these buttons on leads pages
   showLeadsToggles?: boolean;
+  // Only show search bar on leads pages
+  showSearch?: boolean;
 }
 
 export default function DashboardNavbar({
@@ -38,6 +40,7 @@ export default function DashboardNavbar({
   onToggleHeader,
   onToggleControls,
   showLeadsToggles = false,
+  showSearch = false,
 }: DashboardNavbarProps) {
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
@@ -86,18 +89,21 @@ export default function DashboardNavbar({
     return (
       <nav className="flex items-center justify-between px-8 py-4 shadow-lg bg-gradient-to-r from-purple-300 to-purple-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 dark:border-1">
         <div className="flex-shrink-0 w-32" />
-        <div className="flex justify-center flex-1">
-          <div className="relative w-full max-w-md">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="w-5 h-5 text-purple-300" />
+        {showSearch && (
+          <div className="flex justify-center flex-1">
+            <div className="relative w-full max-w-md">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="w-5 h-5 text-purple-300" />
+              </div>
+              <input
+                type="text"
+                className="block w-full py-2 pl-10 pr-3 border border-purple-200 rounded-lg bg-white/90"
+                disabled
+              />
             </div>
-            <input
-              type="text"
-              className="block w-full py-2 pl-10 pr-3 border border-purple-200 rounded-lg bg-white/90"
-              disabled
-            />
           </div>
-        </div>
+        )}
+        {!showSearch && <div className="flex-1" />}
         <div className="flex items-center flex-shrink-0 w-32 space-x-4">
           <UserDropdownMenu
             session={session}
@@ -152,17 +158,20 @@ export default function DashboardNavbar({
         )}
       </div>
 
-      {/* Center - Search bar */}
-      <div className="flex justify-center flex-1 mx-4">
-        <div className="w-full max-w-md">
-          <DashboardSearchBar
-            onSearch={handleSearch}
-            searchQuery={searchQuery}
-            isLoading={isLoading}
-            placeholder="Search by name, email, or phone..."
-          />
+      {/* Center - Search bar (only on leads pages) */}
+      {showSearch && (
+        <div className="flex justify-center flex-1 mx-4">
+          <div className="w-full max-w-md">
+            <DashboardSearchBar
+              onSearch={handleSearch}
+              searchQuery={searchQuery}
+              isLoading={isLoading}
+              placeholder="Search by name, email, or phone..."
+            />
+          </div>
         </div>
-      </div>
+      )}
+      {!showSearch && <div className="flex-1" />}
 
       {/* Right side - Other controls */}
       <div className="flex items-center flex-shrink-0 space-x-4">

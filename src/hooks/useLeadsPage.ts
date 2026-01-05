@@ -509,6 +509,13 @@ export const useLeadsPage = (
       initialCountry,
       [] // Empty array = "all"
     ),
+    countryFilterMode: (() => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("countryFilterMode");
+        return (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+      }
+      return "include" as const;
+    })(),
     filterByStatus: getInitialFilterValue(
       STORAGE_KEYS.FILTER_BY_STATUS,
       initialStatus,
@@ -654,9 +661,13 @@ export const useLeadsPage = (
       filtered = filterLeadsByUser(filtered, userFilter);
     }
 
-    // Country filter - now array
+    // Country filter - now array with mode support
     if (uiState.filterByCountry.length > 0) {
-      filtered = filterLeadsByCountry(filtered, uiState.filterByCountry);
+      filtered = filterLeadsByCountry(
+        filtered,
+        uiState.filterByCountry,
+        uiState.countryFilterMode
+      );
     }
 
     // Status filter - now array
@@ -679,6 +690,7 @@ export const useLeadsPage = (
     uiState.searchQuery,
     filterByUser,
     uiState.filterByCountry,
+    uiState.countryFilterMode,
     uiState.filterByStatus,
     uiState.filterBySource,
     statuses,
@@ -844,6 +856,16 @@ export const useLeadsPage = (
     [pathname, searchParams]
   );
 
+  const handleCountryFilterModeChange = useCallback(
+    (mode: "include" | "exclude") => {
+      setUiState((prev) => ({
+        ...prev,
+        countryFilterMode: mode,
+      }));
+    },
+    []
+  );
+
   const handleStatusFilterChange = useCallback(
     (statuses: string[]) => {
       setUiState((prev) => ({
@@ -935,6 +957,7 @@ export const useLeadsPage = (
     handleBulkDelete,
     handleSelectionChange,
     handleCountryFilterChange,
+    handleCountryFilterModeChange,
     handleStatusFilterChange,
     handleSourceFilterChange,
     handleFilterChange,

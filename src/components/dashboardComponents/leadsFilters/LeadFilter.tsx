@@ -71,6 +71,8 @@ interface LeadsFilterControlsProps {
   onDelete?: () => Promise<void>;
   filterByCountry: string[]; // Changed to array
   onCountryFilterChange: (countries: string[]) => void; // Changed to array
+  countryFilterMode?: "include" | "exclude"; // Filter mode
+  onCountryFilterModeChange?: (mode: "include" | "exclude") => void; // Mode change handler
   filterByStatus: string[]; // Changed to array
   onStatusFilterChange: (statuses: string[]) => void; // Changed to array
   filterBySource: string[]; // Changed to array
@@ -95,6 +97,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   onDelete,
   filterByCountry,
   onCountryFilterChange,
+  countryFilterMode,
+  onCountryFilterModeChange,
   filterByStatus,
   onStatusFilterChange,
   filterBySource,
@@ -186,6 +190,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
               <CountryFilter
                 value={filterByCountry}
                 onChange={onCountryFilterChange}
+                mode={countryFilterMode}
+                onModeChange={onCountryFilterModeChange}
                 disabled={isLoading}
                 isLoading={showFilterSkeletons}
               />

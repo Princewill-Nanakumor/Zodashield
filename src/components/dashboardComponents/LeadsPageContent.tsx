@@ -68,6 +68,7 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleBulkDelete,
     handleSelectionChange,
     handleCountryFilterChange,
+    handleCountryFilterModeChange,
     handleStatusFilterChange,
     handleSourceFilterChange,
     handleFilterChange,
@@ -225,6 +226,8 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             onDelete={handleBulkDelete}
             filterByCountry={uiState.filterByCountry}
             onCountryFilterChange={handleCountryFilterChange}
+            countryFilterMode={uiState.countryFilterMode}
+            onCountryFilterModeChange={handleCountryFilterModeChange}
             filterByStatus={uiState.filterByStatus}
             onStatusFilterChange={handleStatusFilterChange}
             filterBySource={uiState.filterBySource}

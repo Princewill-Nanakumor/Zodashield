@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Option {
@@ -18,6 +18,8 @@ interface MultiSelectFilterProps {
   disabled: boolean;
   isLoading?: boolean;
   maxDisplayItems?: number; // Max items to show in button before showing count
+  mode?: "include" | "exclude"; // Filter mode (for country filter)
+  onModeChange?: () => void; // Mode toggle handler
 }
 
 export const MultiSelectFilter = ({
@@ -28,6 +30,8 @@ export const MultiSelectFilter = ({
   disabled,
   isLoading = false,
   maxDisplayItems = 2,
+  mode,
+  onModeChange,
 }: MultiSelectFilterProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -88,7 +92,7 @@ export const MultiSelectFilter = ({
     return value.includes(optionValue);
   };
 
-  // Get display text for button
+  // Get display text for button (with exclusion mode support)
   const getDisplayText = () => {
     if (value.length === 0) {
       return placeholder;
@@ -181,6 +185,27 @@ export const MultiSelectFilter = ({
 
       {isOpen && !disabled && (
         <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-50 min-w-[200px] max-w-[300px] max-h-60 overflow-y-auto">
+          {/* Mode Toggle Button (only show if mode and onModeChange are provided) */}
+          {mode !== undefined && onModeChange && (
+            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onModeChange();
+                }}
+                className="flex items-center justify-center w-full px-2 py-1.5 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
+                title={mode === "include" ? "Switch to hide mode (currently showing selected)" : "Switch to show mode (currently hiding selected)"}
+              >
+                {mode === "include" ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          )}
+          
           {/* Select All / Clear All option */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
             <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 -mx-3 px-3 py-1.5 rounded">
@@ -190,7 +215,9 @@ export const MultiSelectFilter = ({
                 aria-label="Select all"
               />
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                All {placeholder.replace("All ", "")}
+                {placeholder.includes("Exclude") 
+                  ? "Show All Countries" 
+                  : `All ${placeholder.replace("All ", "")}`}
               </span>
             </label>
           </div>
