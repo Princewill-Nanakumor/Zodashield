@@ -87,13 +87,13 @@ export function StatusProvider({ children }: { children: React.ReactNode }) {
         const data: Status[] = await response.json();
 
         const hasNewStatus = data.some(
-          (status: Status) => status.name === "NEW"
+          (status: Status) => status.name === "New" || status.name === "NEW" || status._id === "NEW"
         );
         if (!hasNewStatus) {
           data.unshift({
             id: "NEW",
             _id: "NEW",
-            name: "NEW",
+            name: "New",
             color: "#3B82F6",
             adminId: "system",
             createdBy: "system",

@@ -86,7 +86,11 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
       if (status) {
         return status.name;
       }
-      return statusId || "Unknown";
+      // Capitalize fallback status name (e.g., "NEW" -> "New")
+      if (statusId) {
+        return statusId.charAt(0).toUpperCase() + statusId.slice(1).toLowerCase();
+      }
+      return "Unknown";
     },
     [findStatusByIdOrName]
   );
