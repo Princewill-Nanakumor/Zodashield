@@ -559,6 +559,12 @@ export const useLeadsPage = (
 
   useEffect(() => {
     if (isInitialized) {
+      localStorage.setItem("countryFilterMode", uiState.countryFilterMode);
+    }
+  }, [uiState.countryFilterMode, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
       localStorage.setItem(
         STORAGE_KEYS.FILTER_BY_SOURCE,
         JSON.stringify(uiState.filterBySource)
@@ -639,7 +645,15 @@ export const useLeadsPage = (
     if (!leads || leads.length === 0) {
       return [];
     }
-    return [...leads].sort((a, b) => a._id.localeCompare(b._id));
+    // Sort leads alphabetically by name (firstName + lastName)
+    return [...leads].sort((a, b) => {
+      const nameA = `${a.firstName || ""} ${a.lastName || ""}`.trim().toLowerCase();
+      const nameB = `${b.firstName || ""} ${b.lastName || ""}`.trim().toLowerCase();
+      if (nameA === "" && nameB === "") return 0;
+      if (nameA === "") return 1;
+      if (nameB === "") return -1;
+      return nameA.localeCompare(nameB);
+    });
   }, [leads]);
 
   // ⚡ OPTIMIZED FILTERING - Reduced console.logs for performance
@@ -842,6 +856,14 @@ export const useLeadsPage = (
         filterByCountry: countries,
       }));
 
+      // Save to localStorage immediately
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          STORAGE_KEYS.FILTER_BY_COUNTRY,
+          JSON.stringify(countries)
+        );
+      }
+
       const params = new URLSearchParams(Array.from(searchParams.entries()));
       params.set("page", "1");
 
@@ -862,6 +884,11 @@ export const useLeadsPage = (
         ...prev,
         countryFilterMode: mode,
       }));
+
+      // Save to localStorage immediately
+      if (typeof window !== "undefined") {
+        localStorage.setItem("countryFilterMode", mode);
+      }
     },
     []
   );

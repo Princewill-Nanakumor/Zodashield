@@ -350,35 +350,37 @@ const LeadStatus: React.FC<LeadStatusProps> = ({ lead, onLeadUpdated }) => {
                 scrollBehavior: "smooth",
               }}
             >
-              {statuses.map((status) => {
-                const statusColor = status.color || "#3b82f6";
-                const itemBg = isDark
-                  ? hexWithAlpha(statusColor, darkAlpha)
-                  : statusColor;
-                const textColor = "#fff";
-                return (
-                  <SelectItem
-                    key={status._id || status.id || `status-${status.name}`}
-                    value={status._id || status.id || ""}
-                    className="status-item my-1 rounded-md transition-all duration-200 ease-in-out font-medium cursor-pointer"
-                    style={{
-                      backgroundColor: itemBg,
-                      color: textColor,
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full transition-all duration-200 ease-in-out"
-                        style={{
-                          backgroundColor: "#fff",
-                          border: `2px solid ${statusColor}`,
-                        }}
-                      />
-                      <span style={{ color: textColor }}>{status.name}</span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
+              {[...statuses]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((status) => {
+                  const statusColor = status.color || "#3b82f6";
+                  const itemBg = isDark
+                    ? hexWithAlpha(statusColor, darkAlpha)
+                    : statusColor;
+                  const textColor = "#fff";
+                  return (
+                    <SelectItem
+                      key={status._id || status.id || `status-${status.name}`}
+                      value={status._id || status.id || ""}
+                      className="status-item my-1 rounded-md transition-all duration-200 ease-in-out font-medium cursor-pointer"
+                      style={{
+                        backgroundColor: itemBg,
+                        color: textColor,
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 rounded-full transition-all duration-200 ease-in-out"
+                          style={{
+                            backgroundColor: "#fff",
+                            border: `2px solid ${statusColor}`,
+                          }}
+                        />
+                        <span style={{ color: textColor }}>{status.name}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
             </SelectContent>
           </Select>
         )}
