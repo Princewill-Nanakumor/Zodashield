@@ -9,6 +9,7 @@ const COLUMN_ORDER_STORAGE_KEY = "all-leads-table-column-order";
 const DEFAULT_COLUMN_ORDER: ColumnOrderState = [
   "select",
   "actions",
+  "leadId",
   "name",
   "email",
   "phone",

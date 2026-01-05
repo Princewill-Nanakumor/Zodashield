@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { Lead } from "@/types/leads";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
+type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 interface FilterLogicProps {
@@ -94,8 +94,13 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
       let searchMatch = true;
       if (searchQuery && searchQuery.trim() !== "") {
         const query = searchQuery.toLowerCase().trim();
+        const isNumericIdSearch = /^\d{5,6}$/.test(query);
+        const numericId = isNumericIdSearch ? parseInt(query, 10) : null;
 
-        if (isPhoneNumber(query)) {
+        // Search by leadId if query is numeric (5-6 digits)
+        if (numericId && lead.leadId === numericId) {
+          searchMatch = true;
+        } else if (isPhoneNumber(query)) {
           const normalizedQuery = normalizePhoneNumber(query);
           const leadPhone = normalizePhoneNumber(lead.phone || "");
           searchMatch = leadPhone.includes(normalizedQuery);

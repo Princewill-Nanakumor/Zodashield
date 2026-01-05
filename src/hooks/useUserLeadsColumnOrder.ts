@@ -8,6 +8,7 @@ const USER_LEADS_COLUMN_ORDER_STORAGE_KEY = "user-leads-table-column-order";
 // Default column order for user leads table
 export const DEFAULT_USER_LEADS_COLUMN_ORDER = [
   "actions",
+  "leadId",
   "name",
   "email",
   "phone",

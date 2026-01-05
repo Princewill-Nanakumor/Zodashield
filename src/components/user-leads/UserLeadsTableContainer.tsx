@@ -6,7 +6,7 @@ import UserLeadTableControls from "./UserLeadTableControls";
 import { TablePagination } from "@/components/leads/TablePagination";
 import { useUserLeadsColumnOrder } from "@/hooks/useUserLeadsColumnOrder";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
+type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 interface UserLeadsTableContainerProps {

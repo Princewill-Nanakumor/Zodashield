@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 
 interface LeadDocument {
   _id: mongoose.Types.ObjectId;
+  leadId?: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -24,6 +25,7 @@ interface LeadDocument {
 
 interface TransformedLead {
   _id: string;
+  leadId?: number;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -60,7 +62,7 @@ export async function GET() {
 
     const leads = await Lead.find(query)
       .select(
-        "firstName lastName email phone country source status createdAt updatedAt"
+        "leadId firstName lastName email phone country source status createdAt updatedAt"
       )
       .sort({ createdAt: -1 })
       .lean<LeadDocument[]>();
@@ -68,6 +70,7 @@ export async function GET() {
     const transformedLeads: TransformedLead[] = leads.map(
       (lead: LeadDocument) => ({
         _id: lead._id.toString(),
+        leadId: lead.leadId || undefined,
         firstName: lead.firstName,
         lastName: lead.lastName,
         fullName: `${lead.firstName} ${lead.lastName}`,

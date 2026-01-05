@@ -9,17 +9,46 @@ export function useAdminLeadsTableColumns(): LeadColumn[] {
   const { canViewPhoneNumbers } = useCurrentUserPermission();
   return [
     {
-      id: "name",
-      accessorFn: (row: Lead) =>
-        row.name || `${row.firstName} ${row.lastName}`.trim() || "—",
-      header: "Name",
+      id: "leadId",
+      accessorKey: "leadId",
+      header: "ID",
+      cell: (info) => {
+        const leadId = info.getValue() as number | undefined;
+        return leadId ? leadId.toString() : "—";
+      },
       sortingFn: (a, b) => {
+        const idA = a.original.leadId || 0;
+        const idB = b.original.leadId || 0;
+        return idA - idB;
+      },
+    },
+    {
+      id: "name",
+      accessorFn: (row: Lead) => {
+        const capitalizeName = (name: string) => {
+          if (!name) return "";
+          return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+        };
+        const firstName = capitalizeName(row.firstName || "");
+        const lastName = capitalizeName(row.lastName || "");
+        return row.name || `${firstName} ${lastName}`.trim() || "—";
+      },
+      header: "Name",
+      cell: (info) => {
+        const value = info.getValue() as string;
+        return value || "—";
+      },
+      sortingFn: (a, b) => {
+        const capitalizeName = (name: string) => {
+          if (!name) return "";
+          return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+        };
         const nameA =
           a.original.name ||
-          `${a.original.firstName} ${a.original.lastName}`.trim();
+          `${capitalizeName(a.original.firstName || "")} ${capitalizeName(a.original.lastName || "")}`.trim();
         const nameB =
           b.original.name ||
-          `${b.original.firstName} ${b.original.lastName}`.trim();
+          `${capitalizeName(b.original.firstName || "")} ${capitalizeName(b.original.lastName || "")}`.trim();
         return nameA.localeCompare(nameB);
       },
     },
@@ -27,7 +56,14 @@ export function useAdminLeadsTableColumns(): LeadColumn[] {
       id: "email",
       accessorKey: "email",
       header: "Email",
-      cell: (info) => info.getValue() || "—",
+      cell: (info) => {
+        const email = (info.getValue() as string) || "—";
+        // Capitalize first letter of email
+        if (email !== "—" && email.length > 0) {
+          return email.charAt(0).toUpperCase() + email.slice(1);
+        }
+        return email;
+      },
       sortingFn: (a, b) =>
         (a.original.email || "—").localeCompare(b.original.email || "—"),
     },

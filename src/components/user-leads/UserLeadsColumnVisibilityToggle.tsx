@@ -16,6 +16,7 @@ import { DEFAULT_USER_LEADS_COLUMN_ORDER, UserLeadsColumnId } from "@/hooks/useU
 
 const COLUMN_LABELS: Record<UserLeadsColumnId, string> = {
   actions: "Actions",
+  leadId: "ID",
   name: "Name",
   email: "Email",
   phone: "Phone",

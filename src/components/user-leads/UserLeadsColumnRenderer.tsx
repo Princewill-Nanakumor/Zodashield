@@ -105,18 +105,35 @@ export function renderUserLeadCell({
         </TableCell>
       );
 
-    case "name":
+    case "leadId":
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
-          {lead.firstName} {lead.lastName}
+          <span className="font-medium">{lead.leadId ? lead.leadId.toString() : "—"}</span>
+        </TableCell>
+      );
+
+    case "name":
+      const capitalizeName = (name: string) => {
+        if (!name) return "";
+        return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+      };
+      const firstName = capitalizeName(lead.firstName || "");
+      const lastName = capitalizeName(lead.lastName || "");
+      return (
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
+          {firstName} {lastName}
         </TableCell>
       );
 
     case "email":
+      const email = lead.email || "";
+      const capitalizedEmail = email.length > 0 
+        ? email.charAt(0).toUpperCase() + email.slice(1)
+        : email;
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
           <div className="flex items-center justify-center">
-            <span>{lead.email}</span>
+            <span>{capitalizedEmail}</span>
           </div>
         </TableCell>
       );

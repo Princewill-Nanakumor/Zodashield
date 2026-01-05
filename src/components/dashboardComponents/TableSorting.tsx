@@ -5,6 +5,7 @@ import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
 
 type SortField =
+  | "leadId"
   | "name"
   | "country"
   | "status"
@@ -37,9 +38,25 @@ export const useTableSorting = ({
   const searchLeads = (leads: Lead[], query: string): Lead[] => {
     if (!query.trim()) return leads;
 
-    const searchTerm = query.toLowerCase().trim();
+    const trimmedQuery = query.trim();
+    const searchTerm = trimmedQuery.toLowerCase();
 
+    // Check if query is a numeric ID (5-6 digits) - check original trimmed query
+    const isNumericIdSearch = /^\d{5,6}$/.test(trimmedQuery);
+    const numericId = isNumericIdSearch ? parseInt(trimmedQuery, 10) : null;
+    
     return leads.filter((lead) => {
+      // Search by leadId if query is numeric (exact match)
+      if (numericId !== null && lead.leadId === numericId) {
+        return true;
+      }
+
+      // If query is numeric but doesn't match leadId, don't search in other fields
+      if (isNumericIdSearch) {
+        return false;
+      }
+
+      // Search in name, email, phone for non-numeric queries
       const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
       const email = lead.email.toLowerCase();
       const phone = (lead.phone || "").toLowerCase();
@@ -64,6 +81,11 @@ export const useTableSorting = ({
       const multiplier = sortOrder === "asc" ? 1 : -1;
 
       switch (sortField) {
+        case "leadId": {
+          const idA = a.leadId || 0;
+          const idB = b.leadId || 0;
+          return (idA - idB) * multiplier;
+        }
         case "name": {
           const getDisplayName = (lead: Lead) =>
             lead.name?.trim() ||

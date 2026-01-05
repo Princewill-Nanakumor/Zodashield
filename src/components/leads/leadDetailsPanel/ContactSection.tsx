@@ -1,5 +1,5 @@
 import { FC, useState, useCallback } from "react";
-import { ChevronUp, ChevronDown, Edit2, Save, X } from "lucide-react";
+import { ChevronUp, ChevronDown, Edit2, Save, X, Hash, Copy, Check } from "lucide-react";
 import { Lead } from "@/types/leads";
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
@@ -28,12 +28,13 @@ export const ContactSection: FC<ContactSectionProps> = ({
   const { data: session } = useSession();
   const { dialer } = useDialerSettings();
   const isAdmin = session?.user?.role === "ADMIN";
-  const { canViewPhoneNumbers, isLoading: isLoadingPermission } = useCurrentUserPermission();
+  const { canViewPhoneNumbers, isLoading: isLoadingPermission } =
+    useCurrentUserPermission();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [copiedField, setCopiedField] = useState<
-    "name" | "email" | "phone" | "country" | null
+    "leadId" | "name" | "email" | "phone" | "country" | null
   >(null);
 
   // Edit form state
@@ -46,19 +47,21 @@ export const ContactSection: FC<ContactSectionProps> = ({
   });
 
   const handleCopy = useCallback(
-    async (text: string, field: "name" | "email" | "phone" | "country") => {
+    async (text: string, field: "leadId" | "name" | "email" | "phone" | "country") => {
       try {
         await navigator.clipboard.writeText(text);
         setCopiedField(field);
         toast({
           description: `${
-            field === "name"
-              ? "Name"
-              : field === "email"
-                ? "Email"
-                : field === "phone"
-                  ? "Phone number"
-                  : "Country"
+            field === "leadId"
+              ? "Lead ID"
+              : field === "name"
+                ? "Name"
+                : field === "email"
+                  ? "Email"
+                  : field === "phone"
+                    ? "Phone number"
+                    : "Country"
           } copied to clipboard`,
         });
         setTimeout(() => setCopiedField(null), 2000);
@@ -102,7 +105,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
         // Get the dialer URL based on user's preference
         let dialerUrl: string;
         let dialerName: string;
-        
+
         if (dialer === "microsip") {
           // MicroSIP uses sip: protocol
           // Standard SIP URI format: sip:number or sip:number@domain
@@ -358,6 +361,33 @@ export const ContactSection: FC<ContactSectionProps> = ({
           ) : (
             // View Mode
             <>
+              {lead.leadId && (
+                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                  <Hash className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Lead ID
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{lead.leadId}</p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(lead.leadId!.toString(), "leadId");
+                        }}
+                        className="ml-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                        title="Copy Lead ID"
+                      >
+                        {copiedField === "leadId" ? (
+                          <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <NameField
                 firstName={lead.firstName}
                 lastName={lead.lastName}

@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lead } from "@/types/leads";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
+type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 export const useLeadsURLManagement = () => {
@@ -26,7 +26,9 @@ export const useLeadsURLManagement = () => {
   const handleLeadClick = useCallback(
     (lead: Lead) => {
       const params = new URLSearchParams(searchParams);
-      params.set("lead", lead._id);
+      // Use leadId if available, otherwise fall back to _id
+      const idToUse = lead.leadId ? lead.leadId.toString() : lead._id;
+      params.set("lead", idToUse);
       params.set("name", `${lead.firstName}-${lead.lastName}`);
       router.push(`?${params.toString()}`, { scroll: false });
     },
@@ -93,7 +95,9 @@ export const useLeadsURLManagement = () => {
       if (newIndex >= 0 && newIndex < sortedLeads.length) {
         const newLead = sortedLeads[newIndex];
         const params = new URLSearchParams(searchParams);
-        params.set("lead", newLead._id);
+        // Use leadId if available, otherwise fall back to _id
+        const idToUse = newLead.leadId ? newLead.leadId.toString() : newLead._id;
+        params.set("lead", idToUse);
         params.set("name", `${newLead.firstName}-${newLead.lastName}`);
         router.push(`?${params.toString()}`, { scroll: false });
       }

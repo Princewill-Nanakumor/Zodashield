@@ -24,6 +24,7 @@ const getColumnLabels = (tableId: "adminLeadsTable" | "userLeadsTable"): Record<
   const baseLabels: Record<string, string> = {
     select: "Select",
     actions: "Actions",
+    leadId: "ID",
     name: "Name",
     email: "Email",
     phone: "Phone",

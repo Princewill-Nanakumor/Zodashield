@@ -26,8 +26,10 @@ export const usePanelNavigation = ({
     (lead: Lead | null) => {
       const params = new URLSearchParams(searchParams);
 
-      if (lead?._id) {
-        params.set("lead", lead._id);
+      if (lead) {
+        // Use leadId if available, otherwise fall back to _id
+        const idToUse = lead.leadId ? lead.leadId.toString() : lead._id;
+        params.set("lead", idToUse);
         params.set("name", `${lead.firstName || ""}-${lead.lastName || ""}`);
       } else {
         params.delete("lead");

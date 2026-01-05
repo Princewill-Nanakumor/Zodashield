@@ -295,6 +295,7 @@ export async function GET() {
         const transformedLead = {
           _id: leadIdString,
           id: leadIdString,
+          leadId: (lead.leadId as number) || undefined,
           firstName: (lead.firstName as string) || "",
           lastName: (lead.lastName as string) || "",
           name: `${(lead.firstName as string) || ""} ${(lead.lastName as string) || ""}`.trim(),

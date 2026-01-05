@@ -52,16 +52,26 @@ export async function GET(
     await connectMongoDB();
     const { id } = await params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
-    }
-
     const db = mongoose.connection.db;
     if (!db) throw new Error("Database connection not available");
 
-    // Build query with multi-tenancy filter
-    const query: { _id: ObjectId; adminId?: ObjectId } = {
-      _id: new ObjectId(id),
+    // Check if id is a numeric leadId (5-6 digits) or MongoDB ObjectId
+    const isNumericId = /^\d{5,6}$/.test(id);
+    const baseQuery: { _id?: ObjectId; leadId?: number } = {};
+
+    if (isNumericId) {
+      // Search by leadId (5-6 digit display ID)
+      const numericId = parseInt(id, 10);
+      baseQuery.leadId = numericId;
+    } else if (mongoose.Types.ObjectId.isValid(id)) {
+      // Search by MongoDB _id
+      baseQuery._id = new ObjectId(id);
+    } else {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+    }
+
+    const query: { _id?: ObjectId; leadId?: number; adminId?: ObjectId } = {
+      ...baseQuery,
     };
 
     if (session.user.role === "ADMIN") {
@@ -90,6 +100,7 @@ export async function GET(
     const transformedLead = {
       _id: lead._id.toString(),
       id: lead._id.toString(),
+      leadId: lead.leadId || undefined,
       firstName: lead.firstName,
       lastName: lead.lastName,
       name: `${lead.firstName} ${lead.lastName}`,
@@ -135,18 +146,28 @@ export async function PUT(
     await connectMongoDB();
     const { id } = await params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
-    }
-
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error("Database connection not available");
     }
 
-    // Build query with multi-tenancy filter
-    const query: { _id: ObjectId; adminId?: ObjectId } = {
-      _id: new ObjectId(id),
+    // Check if id is a numeric leadId (5-6 digits) or MongoDB ObjectId
+    const isNumericId = /^\d{5,6}$/.test(id);
+    const baseQuery: { _id?: ObjectId; leadId?: number } = {};
+
+    if (isNumericId) {
+      // Search by leadId (5-6 digit display ID)
+      const numericId = parseInt(id, 10);
+      baseQuery.leadId = numericId;
+    } else if (mongoose.Types.ObjectId.isValid(id)) {
+      // Search by MongoDB _id
+      baseQuery._id = new ObjectId(id);
+    } else {
+      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+    }
+
+    const query: { _id?: ObjectId; leadId?: number; adminId?: ObjectId } = {
+      ...baseQuery,
     };
 
     if (session.user.role === "ADMIN") {
@@ -263,6 +284,7 @@ export async function PUT(
     const transformedLead = {
       _id: updatedLead._id.toString(),
       id: updatedLead._id.toString(),
+      leadId: updatedLead.leadId || undefined,
       firstName: updatedLead.firstName,
       lastName: updatedLead.lastName,
       name: `${updatedLead.firstName} ${updatedLead.lastName}`,

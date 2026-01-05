@@ -247,16 +247,38 @@ export const searchLeads = (leads: Lead[], searchQuery: string): Lead[] => {
     return leads;
   }
 
-  const query = searchQuery.toLowerCase().trim();
+  const trimmedQuery = searchQuery.trim();
+  const query = trimmedQuery.toLowerCase();
   console.log(
     "searchLeads: Searching for:",
-    query,
+    trimmedQuery,
     "in",
     leads.length,
     "leads"
   );
 
+  // Check if query is a numeric ID (5-6 digits) - check original trimmed query, not lowercase
+  const isNumericId = /^\d{5,6}$/.test(trimmedQuery);
+  const numericId = isNumericId ? parseInt(trimmedQuery, 10) : null;
+
   const results = leads.filter((lead) => {
+    // Search by leadId if query is numeric (exact match)
+    if (numericId !== null && lead.leadId === numericId) {
+      console.log("searchLeads: Match found by leadId:", {
+        id: lead._id,
+        leadId: lead.leadId,
+        query: trimmedQuery,
+      });
+      return true;
+    }
+
+    // If query is numeric but doesn't match leadId, don't search in other fields
+    // (user is clearly searching for an ID)
+    if (isNumericId) {
+      return false;
+    }
+
+    // Search in name, email, phone for non-numeric queries
     const fullName = `${lead.firstName || ""} ${lead.lastName || ""}`
       .toLowerCase()
       .trim();
@@ -271,6 +293,7 @@ export const searchLeads = (leads: Lead[], searchQuery: string): Lead[] => {
     if (matches) {
       console.log("searchLeads: Match found:", {
         id: lead._id,
+        leadId: lead.leadId,
         name: fullName,
         email,
         phone,

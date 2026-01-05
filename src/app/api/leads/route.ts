@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { executeDbOperation } from "@/libs/dbConfig";
 import { authOptions } from "@/libs/auth";
 import mongoose from "mongoose";
-import Lead from "@/models/Lead";
+import Lead, { generateLeadId } from "@/models/Lead";
 import User from "@/models/User";
 
 interface MongoDocument {
@@ -14,6 +14,7 @@ interface MongoDocument {
 }
 
 interface LeadDocument extends MongoDocument {
+  leadId?: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -71,7 +72,7 @@ export async function GET(request: Request) {
       const [leads, total] = await Promise.all([
         Lead.find(query)
           .select(
-            "firstName lastName email phone country source status createdAt updatedAt"
+            "leadId firstName lastName email phone country source status createdAt updatedAt"
           )
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -83,6 +84,7 @@ export async function GET(request: Request) {
       const transformedLeads: TransformedLead[] = leads.map(
         (lead: LeadDocument) => ({
           _id: lead._id.toString(),
+          leadId: lead.leadId || undefined,
           firstName: lead.firstName,
           lastName: lead.lastName,
           fullName: `${lead.firstName} ${lead.lastName}`,
@@ -136,47 +138,120 @@ export async function POST(request: Request) {
     const leads = Array.isArray(requestData) ? requestData : [requestData];
     console.log("Received leads to import:", leads.length);
 
-    // Prepare bulk operations
-    const operations = leads.map((lead) => ({
-      updateOne: {
-        filter: {
-          email: lead.email.toLowerCase(),
+    // For single lead creation, use Mongoose create to trigger pre-save hook
+    if (leads.length === 1 && !leads[0]?.importId) {
+      const leadData = leads[0];
+      try {
+        // Check if lead already exists
+        const existingLead = await Lead.findOne({
+          email: leadData.email.toLowerCase(),
           adminId: new mongoose.Types.ObjectId(session.user.id),
-        },
-        update: {
-          $setOnInsert: {
-            firstName: lead.firstName,
-            lastName: lead.lastName,
+        });
+
+        if (existingLead) {
+          return NextResponse.json(
+            { error: "A lead with this email already exists" },
+            { status: 400 }
+          );
+        }
+
+        // Create new lead - this will trigger the pre-save hook to generate leadId
+        const newLead = await Lead.create({
+          firstName: leadData.firstName,
+          lastName: leadData.lastName,
+          email: leadData.email.toLowerCase(),
+          phone: leadData.phone || "",
+          country: leadData.country || "",
+          source: leadData.source || "Manual Entry",
+          comments: leadData.comments || "No comments yet",
+          status: leadData.status || "NEW",
+          adminId: new mongoose.Types.ObjectId(session.user.id),
+          createdBy: new mongoose.Types.ObjectId(session.user.id),
+        });
+
+        return NextResponse.json({
+          message: "Lead created successfully",
+          inserted: 1,
+          duplicates: 0,
+          errors: 0,
+          lead: {
+            _id: newLead._id.toString(),
+            leadId: newLead.leadId,
+            firstName: newLead.firstName,
+            lastName: newLead.lastName,
+            email: newLead.email,
+          },
+        });
+      } catch (error) {
+        console.error("Error creating lead:", error);
+        if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+          return NextResponse.json(
+            { error: "A lead with this email already exists" },
+            { status: 400 }
+          );
+        }
+        throw error;
+      }
+    }
+
+    // For bulk operations (imports), generate leadIds sequentially to avoid duplicates
+    // Prepare bulk operations with generated leadIds
+    const operations = [];
+    for (const lead of leads) {
+      // Generate leadId for new documents (will be set on insert)
+      // Generate sequentially to avoid race conditions
+      const leadId = await generateLeadId();
+      
+      operations.push({
+        updateOne: {
+          filter: {
             email: lead.email.toLowerCase(),
-            phone: lead.phone || "",
-            country: lead.country || "",
-            source: lead.source || "—",
-            comments: lead.comments || "No comments yet",
-            status: lead.status || "NEW",
-            importId: lead.importId,
             adminId: new mongoose.Types.ObjectId(session.user.id),
-            createdBy: new mongoose.Types.ObjectId(session.user.id),
-            createdAt: new Date(),
           },
-          $set: {
-            updatedAt: new Date(),
+          update: {
+            $setOnInsert: {
+              firstName: lead.firstName,
+              lastName: lead.lastName,
+              email: lead.email.toLowerCase(),
+              phone: lead.phone || "",
+              country: lead.country || "",
+              source: lead.source || "—",
+              comments: lead.comments || "No comments yet",
+              status: lead.status || "NEW",
+              importId: lead.importId,
+              leadId: leadId, // Add generated leadId
+              adminId: new mongoose.Types.ObjectId(session.user.id),
+              createdBy: new mongoose.Types.ObjectId(session.user.id),
+              createdAt: new Date(),
+            },
+            $set: {
+              updatedAt: new Date(),
+            },
           },
+          upsert: true,
         },
-        upsert: true,
-      },
-    }));
+      });
+    }
 
     let inserted = 0;
     let duplicates = 0;
     let errors = 0;
 
     try {
+      // The unique index on leadId will prevent duplicates at the database level
+      // If a duplicate leadId is generated, MongoDB will reject it with E11000 error
       const result = await Lead.bulkWrite(operations, { ordered: false });
       inserted = result.upsertedCount;
       duplicates = leads.length - inserted;
     } catch (error) {
       console.error("Bulk import error:", error);
-      errors = leads.length; // fallback, or parse error for more detail
+      // Check if it's a duplicate key error (E11000) - this could be duplicate leadId
+      if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+        console.error("Duplicate key error detected - this may indicate a duplicate leadId");
+        // The unique index on leadId will prevent this, but if it happens,
+        // the generateLeadId function should have prevented it
+      }
+      errors = leads.length - inserted; // fallback, or parse error for more detail
     }
 
     const importId = leads[0]?.importId;

@@ -25,7 +25,13 @@ export const NameField: FC<NameFieldProps> = ({
   onCopy,
   copied = false,
 }) => {
-  const fullName = `${firstName} ${lastName}`.trim();
+  const capitalizeName = (name: string) => {
+    if (!name) return "";
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  };
+  const capitalizedFirstName = capitalizeName(firstName);
+  const capitalizedLastName = capitalizeName(lastName);
+  const fullName = `${capitalizedFirstName} ${capitalizedLastName}`.trim();
 
   if (isEditing) {
     return (

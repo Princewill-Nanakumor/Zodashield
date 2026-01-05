@@ -12,6 +12,7 @@ import { Lead } from "@/types/leads";
 import { User } from "@/types/user.types";
 
 type SortField =
+  | "leadId"
   | "name"
   | "country"
   | "status"
@@ -140,6 +141,35 @@ export const useTableColumns = ({
         enableHiding: false,
       },
       {
+        id: "leadId",
+        header: () => (
+          <Button
+            variant="ghost"
+            onClick={() => handleSort("leadId")}
+            className="h-8 flex items-center gap-1 justify-center w-full hover:bg-transparent! dark:hover:bg-transparent!"
+          >
+            <span className={sortField === "leadId" ? "font-bold" : "font-medium"}>
+              ID
+            </span>
+            <ArrowUpDown
+              className={`h-4 w-4 ${
+                sortField === "leadId"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const leadId = row.original.leadId;
+          return (
+            <div className="text-center font-medium">
+              {leadId ? leadId.toString() : "—"}
+            </div>
+          );
+        },
+      },
+      {
         id: "name",
         header: () => (
           <Button
@@ -161,10 +191,16 @@ export const useTableColumns = ({
         ),
         cell: ({ row }) => {
           const lead = row.original;
+          const capitalizeName = (name: string) => {
+            if (!name) return "";
+            return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+          };
+          const firstName = capitalizeName(lead.firstName || "");
+          const lastName = capitalizeName(lead.lastName || "");
+          const fullName = lead.name || `${firstName} ${lastName}`.trim();
           return (
             <div className="font-medium">
-              {lead.name ||
-                `${lead.firstName || ""} ${lead.lastName || ""}`.trim()}
+              {fullName || "—"}
             </div>
           );
         },
@@ -176,7 +212,14 @@ export const useTableColumns = ({
             Email
           </div>
         ),
-        cell: ({ row }) => row.original.email,
+        cell: ({ row }) => {
+          const email = row.original.email || "";
+          // Capitalize first letter of email
+          if (email.length > 0) {
+            return email.charAt(0).toUpperCase() + email.slice(1);
+          }
+          return email;
+        },
       },
       {
         id: "phone",

@@ -16,7 +16,7 @@ const STORAGE_KEYS = {
   FILTER_BY_STATUS: "user_leads_filter_by_status",
 } as const;
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
+type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 export const useUserLeadsPage = (
@@ -203,9 +203,19 @@ export const useUserLeadsPage = (
 
   // ===== LEAD SELECTION EFFECTS =====
   useEffect(() => {
-    const leadId = searchParams.get("lead");
-    if (leadId && safeLeads.length > 0) {
-      const lead = safeLeads.find((l) => l._id === leadId);
+    const leadIdParam = searchParams.get("lead");
+    if (leadIdParam && safeLeads.length > 0) {
+      // Check if it's a numeric leadId (5-6 digits) or MongoDB _id
+      const isNumericId = /^\d{5,6}$/.test(leadIdParam);
+      let lead: Lead | undefined;
+
+      if (isNumericId) {
+        const numericId = parseInt(leadIdParam, 10);
+        lead = safeLeads.find((l) => l.leadId === numericId);
+      } else {
+        lead = safeLeads.find((l) => l._id === leadIdParam);
+      }
+
       if (lead) {
         setSelectedLead(lead);
         setIsPanelOpen(true);
@@ -238,7 +248,15 @@ export const useUserLeadsPage = (
     // Search filter
     if (uiState.searchQuery.trim()) {
       const searchTerm = uiState.searchQuery.toLowerCase().trim();
+      const isNumericIdSearch = /^\d{5,6}$/.test(searchTerm);
+      const numericId = isNumericIdSearch ? parseInt(searchTerm, 10) : null;
+      
       filtered = filtered.filter((lead) => {
+        // Search by leadId if query is numeric (5-6 digits)
+        if (numericId && lead.leadId === numericId) {
+          return true;
+        }
+        
         const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
         const email = lead.email.toLowerCase();
         const phone = (lead.phone || "").toLowerCase();
@@ -285,6 +303,10 @@ export const useUserLeadsPage = (
       let bValue: string | number = "";
 
       switch (uiState.sortField) {
+        case "leadId":
+          aValue = a.leadId || 0;
+          bValue = b.leadId || 0;
+          break;
         case "name":
           aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
           bValue = `${b.firstName} ${b.lastName}`.toLowerCase();

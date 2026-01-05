@@ -34,7 +34,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useCurrentUserPermission } from "@/hooks/useCurrentUserPermission";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
+type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 interface UserLeadTableProps {
@@ -125,6 +125,7 @@ export function UserLeadTable({
     { label: string; isSortable: boolean; sortField?: SortField }
   > = {
     actions: { label: "Actions", isSortable: false },
+    leadId: { label: "ID", isSortable: true, sortField: "leadId" },
     name: { label: "Name", isSortable: true, sortField: "name" },
     email: { label: "Email", isSortable: false },
     phone: { label: "Phone", isSortable: false },

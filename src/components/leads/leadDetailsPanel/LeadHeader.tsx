@@ -23,8 +23,14 @@ export const LeadHeader: FC<LeadHeaderProps> = ({
   hideNavigation = false,
   hideClose = false,
 }) => {
-  const fullName = `${lead.firstName} ${lead.lastName}`;
-  const initials = `${lead.firstName.charAt(0)}${lead.lastName.charAt(0)}`;
+  const capitalizeName = (name: string) => {
+    if (!name) return "";
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  };
+  const capitalizedFirstName = capitalizeName(lead.firstName || "");
+  const capitalizedLastName = capitalizeName(lead.lastName || "");
+  const fullName = `${capitalizedFirstName} ${capitalizedLastName}`;
+  const initials = `${capitalizedFirstName.charAt(0)}${capitalizedLastName.charAt(0)}`;
 
   return (
     <div className="p-4 border-b-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-50">

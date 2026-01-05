@@ -25,7 +25,7 @@ import { useToggleContext } from "@/context/ToggleContext";
 import { useAssignedLeads } from "@/hooks/useAssignedLeads";
 import { RefetchIndicator } from "@/components/ui/RefetchIndicator";
 
-type SortField = "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
+type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
 
 export default function UserLeadsContent() {
@@ -90,9 +90,19 @@ export default function UserLeadsContent() {
 
   // Lead selection effect
   useEffect(() => {
-    const leadId = searchParams.get("lead");
-    if (leadId && leads.length > 0) {
-      const lead = leads.find((l) => l._id === leadId);
+    const leadIdParam = searchParams.get("lead");
+    if (leadIdParam && leads.length > 0) {
+      // Check if it's a numeric leadId (5-6 digits) or MongoDB _id
+      const isNumericId = /^\d{5,6}$/.test(leadIdParam);
+      let lead: Lead | undefined;
+
+      if (isNumericId) {
+        const numericId = parseInt(leadIdParam, 10);
+        lead = leads.find((l) => l.leadId === numericId);
+      } else {
+        lead = leads.find((l) => l._id === leadIdParam);
+      }
+
       if (lead) {
         setSelectedLead(lead);
         setIsPanelOpen(true);

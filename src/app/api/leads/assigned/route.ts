@@ -200,6 +200,7 @@ export async function GET() {
 
       return {
         _id: leadIdString,
+        leadId: (lead.leadId as number) || undefined,
         firstName: lead.firstName,
         lastName: lead.lastName,
         email: lead.email,
