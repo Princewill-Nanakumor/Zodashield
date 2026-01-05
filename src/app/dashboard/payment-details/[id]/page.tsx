@@ -22,6 +22,11 @@ export default function PaymentDetailsPage({ params }: PageProps) {
     }
   }, [status, session, router]);
 
+  // Set page title
+  useEffect(() => {
+    document.title = "zodaShield - Payment Details";
+  }, []);
+
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">

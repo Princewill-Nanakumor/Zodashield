@@ -41,6 +41,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
   const [currentLead, setCurrentLead] = useState<Lead | null>(lead);
   const previousStatusRef = useRef<string | undefined>(undefined);
   const previousLeadRef = useRef<Lead | null>(null);
+  const originalTitleRef = useRef<string>("");
 
   useEffect(() => {
     if (lead) {
@@ -164,13 +165,74 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
     };
   }, [isOpen, onClose]);
 
+  // Update browser title when panel is open and lead changes
+  useEffect(() => {
+    if (isOpen && currentLead) {
+      // Store original title on first open (only once)
+      if (!originalTitleRef.current) {
+        originalTitleRef.current = document.title;
+      }
+
+      // Update title with lead name in format "[Name] - zodaShield"
+      const fullName =
+        `${currentLead.firstName || ""} ${currentLead.lastName || ""}`.trim();
+      const leadTitle = fullName || "Lead Details";
+      const newTitle = `${leadTitle} - zodaShield`;
+
+      // Set title immediately
+      document.title = newTitle;
+
+      // Re-apply multiple times to ensure it persists over layout updates
+      const timeout1 = setTimeout(() => {
+        document.title = newTitle;
+      }, 10);
+
+      const timeout2 = setTimeout(() => {
+        document.title = newTitle;
+      }, 50);
+
+      const timeout3 = setTimeout(() => {
+        document.title = newTitle;
+      }, 100);
+
+      return () => {
+        clearTimeout(timeout1);
+        clearTimeout(timeout2);
+        clearTimeout(timeout3);
+      };
+    } else if (!isOpen && originalTitleRef.current) {
+      // Restore original title when panel closes
+      document.title = originalTitleRef.current;
+      originalTitleRef.current = "";
+    }
+  }, [isOpen, currentLead]);
+
+  // Continuous title update while panel is open (prevents layout from overwriting)
+  useEffect(() => {
+    if (!isOpen || !currentLead) return;
+
+    const fullName =
+      `${currentLead.firstName || ""} ${currentLead.lastName || ""}`.trim();
+    const leadTitle = fullName || "Lead Details";
+    const newTitle = `${leadTitle} - zodaShield`;
+
+    // Set up an interval to continuously ensure the title stays correct
+    const intervalId = setInterval(() => {
+      if (document.title !== newTitle) {
+        document.title = newTitle;
+      }
+    }, 200); // Check every 200ms
+
+    return () => clearInterval(intervalId);
+  }, [isOpen, currentLead]);
+
   if (!currentLead?._id || !isOpen) {
     return null;
   }
 
   return (
     <div
-      className="fixed right-0 flex bg-white dark:bg-gray-800 border-l-2 z-50"
+      className="flex fixed right-0 z-50 bg-white border-l-2 dark:bg-gray-800"
       style={{
         width: "80vw",
         maxWidth: "1200px",
@@ -179,7 +241,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
         height: "calc(100vh - 160px)",
       }}
     >
-      <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800/50">
+      <div className="flex flex-col w-2/5 bg-gray-50 border-r border-gray-200 dark:border-gray-700 dark:bg-gray-800/50">
         <LeadHeader
           lead={currentLead}
           onClose={onClose}
@@ -187,7 +249,7 @@ export const LeadDetailsPanel: FC<LeadDetailsPanelProps> = ({
           hasPrevious={hasPrevious}
           hasNext={hasNext}
         />
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="overflow-y-auto flex-1 p-6 space-y-6">
           <LeadStatus lead={currentLead} onLeadUpdated={handleLeadUpdated} />
           <ContactSection
             lead={currentLead}

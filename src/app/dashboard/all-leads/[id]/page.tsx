@@ -37,9 +37,14 @@ const LeadDetailsPageContent = ({
     ads: true,
   });
 
-  // Update current lead when prop changes
+  // Update current lead when prop changes and update page title
   useEffect(() => {
     setCurrentLead(lead);
+    if (lead) {
+      const fullName = `${lead.firstName || ""} ${lead.lastName || ""}`.trim();
+      const leadTitle = fullName || "Lead Details";
+      document.title = `${leadTitle} - zodaShield`;
+    }
   }, [lead]);
 
   const toggleSection = useCallback((section: string) => {
@@ -182,11 +187,12 @@ const LeadDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => {
     router.push(backUrl);
   }, [router, searchParams]);
 
-  // Update page title when lead is loaded
+  // Update page title when lead is loaded or updated
   useEffect(() => {
     if (lead) {
-      const fullName = `${lead.firstName} ${lead.lastName}`;
-      document.title = `${fullName} - Lead Details`;
+      const fullName = `${lead.firstName || ""} ${lead.lastName || ""}`.trim();
+      const leadTitle = fullName || "Lead Details";
+      document.title = `${leadTitle} - zodaShield`;
     }
   }, [lead]);
 

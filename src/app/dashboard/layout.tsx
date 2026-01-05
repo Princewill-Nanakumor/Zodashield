@@ -51,6 +51,97 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // Show search bar only on leads pages
   const showSearch = isAdminLeadsPage || isUserLeadsPage;
 
+  // Page title mapping
+  const getPageTitle = (path: string | null): string | null => {
+    if (!path) return "zodaShield - Dashboard";
+    
+    // Don't set title for lead detail pages (they handle their own titles)
+    if (path.startsWith("/dashboard/all-leads/") && path !== "/dashboard/all-leads") {
+      return null; // Let the page handle it
+    }
+    if (path.startsWith("/dashboard/leads/") && path !== "/dashboard/leads") {
+      return null; // Let the page handle it
+    }
+    
+    // Don't set title for other dynamic routes (they should handle their own)
+    if (path.startsWith("/dashboard/payment-details/")) {
+      return null; // Let the page handle it
+    }
+    if (path.startsWith("/dashboard/admin-management/") && path !== "/dashboard/admin-management") {
+      return null; // Let the page handle it
+    }
+    
+    const titleMap: Record<string, string> = {
+      "/dashboard": "zodaShield - Dashboard",
+      "/dashboard/all-leads": "zodaShield - All Leads",
+      "/dashboard/leads": "zodaShield - My Leads",
+      "/dashboard/import": "zodaShield - Import",
+      "/dashboard/users": "zodaShield - Users",
+      "/dashboard/settings": "zodaShield - Settings",
+      "/dashboard/profile": "zodaShield - Profile",
+      "/dashboard/billing": "zodaShield - Billing",
+      "/dashboard/subscription": "zodaShield - Subscription",
+      "/dashboard/notifications": "zodaShield - Notifications",
+      "/dashboard/help": "zodaShield - Help",
+      "/dashboard/admin-management": "zodaShield - Admin Management",
+      "/dashboard/adsManager": "zodaShield - Ads Manager",
+    };
+
+    return titleMap[path] || "zodaShield - Dashboard";
+  };
+
+  // Set page title based on pathname
+  // Only set if it's not a dynamic route (those handle their own titles)
+  useEffect(() => {
+    if (status === "loading") return;
+    
+    const title = getPageTitle(pathname);
+    if (title) {
+      // Only set title if we're not on a leads page (to avoid overwriting panel titles)
+      // Or if we're on the base leads pages (not detail pages)
+      const isLeadsDetailPage = 
+        (pathname?.startsWith("/dashboard/all-leads/") && pathname !== "/dashboard/all-leads") ||
+        (pathname?.startsWith("/dashboard/leads/") && pathname !== "/dashboard/leads");
+      
+      if (!isLeadsDetailPage) {
+        // On leads pages, ALWAYS check if title is a lead name before updating
+        if (isAdminLeadsPage || isUserLeadsPage) {
+          const currentTitle = document.title;
+          
+          // Check if current title is a lead name (not a standard page title)
+          // Lead names will be "[FirstName LastName] - zodaShield" format
+          const isLeadNameTitle = 
+            currentTitle.endsWith(" - zodaShield") &&
+            currentTitle !== "zodaShield - All Leads" &&
+            currentTitle !== "zodaShield - My Leads" &&
+            currentTitle !== "zodaShield - Dashboard" &&
+            currentTitle !== "zodaShield - Import" &&
+            currentTitle !== "zodaShield - Users" &&
+            currentTitle !== "zodaShield - Settings" &&
+            currentTitle !== "zodaShield - Profile" &&
+            currentTitle !== "zodaShield - Billing" &&
+            currentTitle !== "zodaShield - Subscription" &&
+            currentTitle !== "zodaShield - Notifications" &&
+            currentTitle !== "zodaShield - Help" &&
+            currentTitle !== "zodaShield - Admin Management" &&
+            currentTitle !== "zodaShield - Ads Manager" &&
+            currentTitle !== "zodaShield - Payment Details" &&
+            !currentTitle.includes("Modern CRM Solution");
+          
+          // If it's a lead name title, don't overwrite it - panel is managing it
+          if (isLeadNameTitle) {
+            return; // Panel is managing the title, don't interfere
+          }
+        }
+        
+        // Only set title if it's different from current title
+        if (document.title !== title) {
+          document.title = title;
+        }
+      }
+    }
+  }, [pathname, status, isAdminLeadsPage, isUserLeadsPage]);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/signin");
