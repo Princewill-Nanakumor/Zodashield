@@ -1,6 +1,7 @@
 // src/components/user-leads/FilterLogic.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Lead } from "@/types/leads";
+import { filterLeadsByCountry, filterLeadsByStatus, filterLeadsBySource, searchLeads } from "@/utils/LeadsUtils";
 
 type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
@@ -23,25 +24,6 @@ interface FilterLogicProps {
   }) => React.ReactElement;
 }
 
-// Helper function to normalize phone numbers for search
-const normalizePhoneNumber = (phone: string): string => {
-  if (!phone) return "";
-  const digitsOnly = phone.replace(/\D/g, "");
-  if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
-    return digitsOnly.substring(1);
-  }
-  if (digitsOnly.length === 10) {
-    return digitsOnly;
-  }
-  return digitsOnly;
-};
-
-// Helper function to check if query looks like a phone number
-const isPhoneNumber = (query: string): boolean => {
-  const digitsOnly = query.replace(/\D/g, "");
-  return digitsOnly.length >= 7;
-};
-
 export const FilterLogic: React.FC<FilterLogicProps> = ({
   leads,
   filterByCountry,
@@ -53,6 +35,104 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
   searchQuery = "",
   children,
 }) => {
+  // Get filter modes from localStorage and sync with changes
+  const [countryFilterMode, setCountryFilterMode] = useState<"include" | "exclude">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("countryFilterMode");
+      return (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+    }
+    return "include";
+  });
+
+  const [statusFilterMode, setStatusFilterMode] = useState<"include" | "exclude">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("statusFilterMode");
+      return (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+    }
+    return "include";
+  });
+
+  const [sourceFilterMode, setSourceFilterMode] = useState<"include" | "exclude">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("sourceFilterMode");
+      return (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+    }
+    return "include";
+  });
+
+  // Listen for localStorage changes and custom events for all filter modes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "countryFilterMode") {
+        setCountryFilterMode((e.newValue === "exclude" ? "exclude" : "include") as "include" | "exclude");
+      } else if (e.key === "statusFilterMode") {
+        setStatusFilterMode((e.newValue === "exclude" ? "exclude" : "include") as "include" | "exclude");
+      } else if (e.key === "sourceFilterMode") {
+        setSourceFilterMode((e.newValue === "exclude" ? "exclude" : "include") as "include" | "exclude");
+      }
+    };
+
+    // Listen for custom events when modes change in same tab
+    const handleCountryModeChange = () => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("countryFilterMode");
+        const newMode = (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+        setCountryFilterMode(newMode);
+      }
+    };
+
+    const handleStatusModeChange = () => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("statusFilterMode");
+        const newMode = (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+        setStatusFilterMode(newMode);
+      }
+    };
+
+    const handleSourceModeChange = () => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("sourceFilterMode");
+        const newMode = (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+        setSourceFilterMode(newMode);
+      }
+    };
+
+    // Also check localStorage periodically as fallback (for cross-tab sync)
+    const interval = setInterval(() => {
+      if (typeof window !== "undefined") {
+        const countryStored = localStorage.getItem("countryFilterMode");
+        const countryNewMode = (countryStored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+        if (countryNewMode !== countryFilterMode) {
+          setCountryFilterMode(countryNewMode);
+        }
+
+        const statusStored = localStorage.getItem("statusFilterMode");
+        const statusNewMode = (statusStored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+        if (statusNewMode !== statusFilterMode) {
+          setStatusFilterMode(statusNewMode);
+        }
+
+        const sourceStored = localStorage.getItem("sourceFilterMode");
+        const sourceNewMode = (sourceStored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+        if (sourceNewMode !== sourceFilterMode) {
+          setSourceFilterMode(sourceNewMode);
+        }
+      }
+    }, 200); // Check every 200ms (reduced frequency since we have custom events)
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("countryFilterModeChanged", handleCountryModeChange);
+    window.addEventListener("statusFilterModeChanged", handleStatusModeChange);
+    window.addEventListener("sourceFilterModeChanged", handleSourceModeChange);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("countryFilterModeChanged", handleCountryModeChange);
+      window.removeEventListener("statusFilterModeChanged", handleStatusModeChange);
+      window.removeEventListener("sourceFilterModeChanged", handleSourceModeChange);
+      clearInterval(interval);
+    };
+  }, [countryFilterMode, statusFilterMode, sourceFilterMode]);
   // Get available countries - filter out undefined values and ensure string type
   const availableCountries = useMemo(() => {
     if (!isDataReady || leads.length === 0) return [];
@@ -81,43 +161,65 @@ export const FilterLogic: React.FC<FilterLogicProps> = ({
   const filteredLeads = useMemo(() => {
     if (!isDataReady) return [];
 
-    return leads.filter((lead) => {
-      const countryMatch =
-        filterByCountry === "all" || lead.country === filterByCountry;
+    let filtered = leads;
 
-      const statusMatch =
-        filterByStatus === "all" || lead.status === filterByStatus;
+    // Normalize filterByCountry to array format
+    const countryFilter = Array.isArray(filterByCountry)
+      ? filterByCountry
+      : filterByCountry === "all" || !filterByCountry
+        ? []
+        : filterByCountry.includes(",")
+          ? filterByCountry.split(",")
+          : [filterByCountry];
 
-      const sourceMatch =
-        filterBySource === "all" || lead.source === filterBySource;
+    // Apply country filter using the utility function
+    if (countryFilter.length > 0) {
+      filtered = filterLeadsByCountry(filtered, countryFilter, countryFilterMode);
+    }
 
-      let searchMatch = true;
-      if (searchQuery && searchQuery.trim() !== "") {
-        const query = searchQuery.toLowerCase().trim();
-        const isNumericIdSearch = /^\d{5,6}$/.test(query);
-        const numericId = isNumericIdSearch ? parseInt(query, 10) : null;
+    // Normalize filterByStatus to array format
+    const statusFilter = Array.isArray(filterByStatus)
+      ? filterByStatus
+      : filterByStatus === "all" || !filterByStatus
+        ? []
+        : filterByStatus.includes(",")
+          ? filterByStatus.split(",")
+          : [filterByStatus];
 
-        // Search by leadId if query is numeric (5-6 digits)
-        if (numericId && lead.leadId === numericId) {
-          searchMatch = true;
-        } else if (isPhoneNumber(query)) {
-          const normalizedQuery = normalizePhoneNumber(query);
-          const leadPhone = normalizePhoneNumber(lead.phone || "");
-          searchMatch = leadPhone.includes(normalizedQuery);
-        } else {
-          const fullName = `${lead.firstName} ${lead.lastName}`.toLowerCase();
-          const email = (lead.email || "").toLowerCase();
-          searchMatch = fullName.includes(query) || email.includes(query);
-        }
-      }
+    // Apply status filter using the utility function
+    if (statusFilter.length > 0) {
+      // Note: statuses array is empty here, but filterLeadsByStatus handles it
+      filtered = filterLeadsByStatus(filtered, statusFilter, [], statusFilterMode);
+    }
 
-      return countryMatch && statusMatch && sourceMatch && searchMatch;
-    });
+    // Normalize filterBySource to array format
+    const sourceFilter = Array.isArray(filterBySource)
+      ? filterBySource
+      : filterBySource === "all" || !filterBySource
+        ? []
+        : filterBySource.includes(",")
+          ? filterBySource.split(",")
+          : [filterBySource];
+
+    // Apply source filter using the utility function
+    if (sourceFilter.length > 0) {
+      filtered = filterLeadsBySource(filtered, sourceFilter, sourceFilterMode);
+    }
+
+    // Apply search query
+    if (searchQuery && searchQuery.trim() !== "") {
+      filtered = searchLeads(filtered, searchQuery);
+    }
+
+    return filtered;
   }, [
     leads,
     filterByCountry,
     filterByStatus,
     filterBySource,
+    countryFilterMode,
+    statusFilterMode,
+    sourceFilterMode,
     searchQuery,
     isDataReady,
   ]);

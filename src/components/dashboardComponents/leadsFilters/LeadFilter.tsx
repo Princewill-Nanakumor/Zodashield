@@ -75,8 +75,12 @@ interface LeadsFilterControlsProps {
   onCountryFilterModeChange?: (mode: "include" | "exclude") => void; // Mode change handler
   filterByStatus: string[]; // Changed to array
   onStatusFilterChange: (statuses: string[]) => void; // Changed to array
+  statusFilterMode?: "include" | "exclude"; // Filter mode
+  onStatusFilterModeChange?: (mode: "include" | "exclude") => void; // Mode change handler
   filterBySource: string[]; // Changed to array
   onSourceFilterChange: (sources: string[]) => void; // Changed to array
+  sourceFilterMode?: "include" | "exclude"; // Filter mode
+  onSourceFilterModeChange?: (mode: "include" | "exclude") => void; // Mode change handler
   isLoading: boolean;
   filterByUser: string[]; // Changed to array
   onFilterChange: (values: string[]) => void; // Changed to array
@@ -101,8 +105,12 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
   onCountryFilterModeChange,
   filterByStatus,
   onStatusFilterChange,
+  statusFilterMode,
+  onStatusFilterModeChange,
   filterBySource,
   onSourceFilterChange,
+  sourceFilterMode,
+  onSourceFilterModeChange,
   isLoading,
   filterByUser,
   onFilterChange,
@@ -176,6 +184,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
                 onChange={onStatusFilterChange}
                 disabled={isLoading}
                 isLoading={showFilterSkeletons}
+                mode={statusFilterMode}
+                onModeChange={onStatusFilterModeChange}
               />
 
               {/* Source Filter - reads from cache */}
@@ -184,6 +194,8 @@ export const LeadsFilterControls: React.FC<LeadsFilterControlsProps> = ({
                 onChange={onSourceFilterChange}
                 disabled={isLoading}
                 isLoading={showFilterSkeletons}
+                mode={sourceFilterMode}
+                onModeChange={onSourceFilterModeChange}
               />
 
               {/* Country Filter - reads from cache */}

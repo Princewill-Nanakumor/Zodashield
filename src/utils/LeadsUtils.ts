@@ -40,7 +40,8 @@ export const getAssignedUserName = (
 export const filterLeadsByStatus = (
   leads: Lead[],
   statusFilter: string | string[],
-  statuses: Array<{ _id: string; name: string }> = []
+  statuses: Array<{ _id: string; name: string }> = [],
+  mode: "include" | "exclude" = "include"
 ): Lead[] => {
   // Handle array (multi-select)
   if (Array.isArray(statusFilter)) {
@@ -56,7 +57,7 @@ export const filterLeadsByStatus = (
       statusNameToId[status.name.toLowerCase()] = status._id;
     });
     
-    return leads.filter((lead) => {
+    const checkStatusMatch = (lead: Lead): boolean => {
       const leadStatus = lead.status;
       let leadStatusId: string | null = null;
       
@@ -85,7 +86,15 @@ export const filterLeadsByStatus = (
         if (statusNameToId[filterValue] === leadStatusId) return true;
         return false;
       });
-    });
+    };
+    
+    if (mode === "exclude") {
+      // EXCLUSION MODE: selected statuses are EXCLUDED
+      return leads.filter((lead) => !checkStatusMatch(lead));
+    } else {
+      // INCLUSION MODE: only show selected statuses
+      return leads.filter((lead) => checkStatusMatch(lead));
+    }
   }
   
   // Handle string (single-select - backward compatibility)
@@ -154,11 +163,13 @@ export const filterLeadsByStatus = (
       matches: leadStatusName === statusFilter,
     });
 
-    return leadStatusName === statusFilter;
+    const matches = leadStatusName === statusFilter;
+    return mode === "exclude" ? !matches : matches;
   });
 
   console.log("🔍 filterLeadsByStatus result:", {
     statusFilter,
+    mode,
     filteredCount: filtered.length,
     sampleFiltered: filtered.slice(0, 3).map((lead) => ({
       id: lead._id,
@@ -171,7 +182,8 @@ export const filterLeadsByStatus = (
 
 export const filterLeadsByUser = (
   leads: Lead[],
-  filterByUser: string | string[]
+  filterByUser: string | string[],
+  mode: "include" | "exclude" = "include"
 ): Lead[] => {
   // Handle array (multi-select)
   if (Array.isArray(filterByUser)) {
@@ -180,22 +192,43 @@ export const filterLeadsByUser = (
     const hasUnassigned = filterByUser.includes("unassigned");
     const userIds = filterByUser.filter((id) => id !== "unassigned");
     
-    return leads.filter((lead) => {
-      const assignedUserId = getAssignedUserId(lead.assignedTo);
-      if (hasUnassigned && !assignedUserId) return true;
-      if (userIds.length > 0 && assignedUserId && userIds.includes(assignedUserId)) return true;
-      return false;
-    });
+    if (mode === "exclude") {
+      // EXCLUSION MODE: selected users are EXCLUDED
+      return leads.filter((lead) => {
+        const assignedUserId = getAssignedUserId(lead.assignedTo);
+        if (hasUnassigned && !assignedUserId) return false; // Exclude unassigned
+        if (userIds.length > 0 && assignedUserId && userIds.includes(assignedUserId)) return false; // Exclude selected users
+        return true; // Include everything else
+      });
+    } else {
+      // INCLUSION MODE: only show selected users
+      return leads.filter((lead) => {
+        const assignedUserId = getAssignedUserId(lead.assignedTo);
+        if (hasUnassigned && !assignedUserId) return true;
+        if (userIds.length > 0 && assignedUserId && userIds.includes(assignedUserId)) return true;
+        return false;
+      });
+    }
   }
   
   // Handle string (single-select - backward compatibility)
   if (filterByUser === "all") return leads;
-  if (filterByUser === "unassigned") {
-    return leads.filter((lead) => !getAssignedUserId(lead.assignedTo));
+  
+  if (mode === "exclude") {
+    if (filterByUser === "unassigned") {
+      return leads.filter((lead) => getAssignedUserId(lead.assignedTo) !== null);
+    }
+    return leads.filter(
+      (lead) => getAssignedUserId(lead.assignedTo) !== filterByUser
+    );
+  } else {
+    if (filterByUser === "unassigned") {
+      return leads.filter((lead) => !getAssignedUserId(lead.assignedTo));
+    }
+    return leads.filter(
+      (lead) => getAssignedUserId(lead.assignedTo) === filterByUser
+    );
   }
-  return leads.filter(
-    (lead) => getAssignedUserId(lead.assignedTo) === filterByUser
-  );
 };
 
 export const filterLeadsByCountry = (
@@ -237,6 +270,49 @@ export const filterLeadsByCountry = (
   } else {
     return leads.filter(
       (lead) => lead.country?.toLowerCase() === filterByCountry.toLowerCase()
+    );
+  }
+};
+
+export const filterLeadsBySource = (
+  leads: Lead[],
+  filterBySource: string | string[],
+  mode: "include" | "exclude" = "include"
+): Lead[] => {
+  // Handle array (multi-select)
+  if (Array.isArray(filterBySource)) {
+    if (filterBySource.length === 0) return leads; // Empty array means "all"
+    
+    if (mode === "exclude") {
+      // EXCLUSION MODE: selected sources are EXCLUDED
+      return leads.filter(
+        (lead) =>
+          !filterBySource.some(
+            (source) =>
+              lead.source?.toLowerCase() === source.toLowerCase()
+          )
+      );
+    } else {
+      // INCLUSION MODE: only show selected sources
+      return leads.filter((lead) =>
+        filterBySource.some(
+          (source) =>
+            lead.source?.toLowerCase() === source.toLowerCase()
+        )
+      );
+    }
+  }
+  
+  // Handle string (single-select - backward compatibility)
+  if (!filterBySource || filterBySource === "all") return leads;
+  
+  if (mode === "exclude") {
+    return leads.filter(
+      (lead) => lead.source?.toLowerCase() !== filterBySource.toLowerCase()
+    );
+  } else {
+    return leads.filter(
+      (lead) => lead.source?.toLowerCase() === filterBySource.toLowerCase()
     );
   }
 };

@@ -194,13 +194,17 @@ export const MultiSelectFilter = ({
                   e.stopPropagation();
                   onModeChange();
                 }}
-                className="flex items-center justify-center w-full px-2 py-1.5 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
+                className={`flex items-center justify-center w-full px-2 py-1.5 rounded transition-colors ${
+                  mode === "exclude"
+                    ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
                 title={mode === "include" ? "Switch to hide mode (currently showing selected)" : "Switch to show mode (currently hiding selected)"}
               >
                 {mode === "include" ? (
                   <Eye className="h-4 w-4" />
                 ) : (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4 text-red-600 dark:text-red-400" />
                 )}
               </button>
             </div>

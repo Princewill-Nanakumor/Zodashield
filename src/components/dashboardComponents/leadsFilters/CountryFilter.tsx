@@ -13,6 +13,7 @@ interface CountryFilterProps {
   isLoading?: boolean;
   mode?: "include" | "exclude"; // Filter mode
   onModeChange?: (mode: "include" | "exclude") => void; // Mode change handler
+  availableCountries?: string[]; // Optional: if provided, use these instead of fetching
 }
 
 export const CountryFilter = ({
@@ -22,6 +23,7 @@ export const CountryFilter = ({
   isLoading = false,
   mode: externalMode,
   onModeChange,
+  availableCountries: providedCountries,
 }: CountryFilterProps) => {
   // Internal mode state if not controlled externally
   const [internalMode, setInternalMode] = useState<"include" | "exclude">(() => {
@@ -34,10 +36,12 @@ export const CountryFilter = ({
 
   const mode = externalMode ?? internalMode;
 
-  // Save mode to localStorage when it changes
+  // Save mode to localStorage when it changes and dispatch custom event
   useEffect(() => {
     if (typeof window !== "undefined" && !externalMode) {
       localStorage.setItem("countryFilterMode", mode);
+      // Dispatch custom event for immediate sync (same-tab)
+      window.dispatchEvent(new CustomEvent("countryFilterModeChanged"));
     }
   }, [mode, externalMode]);
 
@@ -50,7 +54,8 @@ export const CountryFilter = ({
     }
   };
 
-  // ✅ FIX: Use useQuery to subscribe to cache updates
+  // If availableCountries are provided, use them directly (for user leads page)
+  // Otherwise, fetch from API (for admin all-leads page)
   const { data: leads = [] } = useQuery<Lead[]>({
     queryKey: ["leads"],
     queryFn: async () => {
@@ -64,13 +69,20 @@ export const CountryFilter = ({
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: 2,
+    enabled: !providedCountries, // Only fetch if countries are not provided
   });
 
   const countries = useMemo(() => {
+    // If countries are provided, use them directly
+    if (providedCountries && providedCountries.length > 0) {
+      return providedCountries.sort((a, b) => a.localeCompare(b));
+    }
+    
+    // Otherwise, extract from fetched leads
     return [...new Set(leads.map((lead: Lead) => lead.country))]
       .filter((country): country is string => Boolean(country))
       .sort((a, b) => a.localeCompare(b));
-  }, [leads]);
+  }, [leads, providedCountries]);
 
   const options = useMemo(
     () =>

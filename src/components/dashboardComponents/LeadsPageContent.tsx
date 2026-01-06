@@ -70,7 +70,9 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
     handleCountryFilterChange,
     handleCountryFilterModeChange,
     handleStatusFilterChange,
+    handleStatusFilterModeChange,
     handleSourceFilterChange,
+    handleSourceFilterModeChange,
     handleFilterChange,
     hasAssignedLeads,
     isRefetchingLeads,
@@ -230,8 +232,12 @@ const LeadsPageContent: React.FC<LeadsPageContentProps> = ({
             onCountryFilterModeChange={handleCountryFilterModeChange}
             filterByStatus={uiState.filterByStatus}
             onStatusFilterChange={handleStatusFilterChange}
+            statusFilterMode={uiState.statusFilterMode}
+            onStatusFilterModeChange={handleStatusFilterModeChange}
             filterBySource={uiState.filterBySource}
             onSourceFilterChange={handleSourceFilterChange}
+            sourceFilterMode={uiState.sourceFilterMode}
+            onSourceFilterModeChange={handleSourceFilterModeChange}
             isLoading={shouldShowLoading}
             filterByUser={
               filterByUser === "all" || !filterByUser

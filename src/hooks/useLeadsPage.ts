@@ -10,6 +10,7 @@ import {
   filterLeadsByUser,
   filterLeadsByCountry,
   filterLeadsByStatus,
+  filterLeadsBySource,
   searchLeads,
   getAssignedLeadsCount,
   getAvailableCountries,
@@ -521,11 +522,25 @@ export const useLeadsPage = (
       initialStatus,
       [] // Empty array = "all"
     ),
+    statusFilterMode: (() => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("statusFilterMode");
+        return (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+      }
+      return "include" as const;
+    })(),
     filterBySource: getInitialFilterValue(
       STORAGE_KEYS.FILTER_BY_SOURCE,
       initialSource,
       [] // Empty array = "all"
     ),
+    sourceFilterMode: (() => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("sourceFilterMode");
+        return (stored === "exclude" ? "exclude" : "include") as "include" | "exclude";
+      }
+      return "include" as const;
+    })(),
     searchQuery: searchQuery,
   });
 
@@ -560,8 +575,23 @@ export const useLeadsPage = (
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem("countryFilterMode", uiState.countryFilterMode);
+      window.dispatchEvent(new CustomEvent("countryFilterModeChanged"));
     }
   }, [uiState.countryFilterMode, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem("statusFilterMode", uiState.statusFilterMode);
+      window.dispatchEvent(new CustomEvent("statusFilterModeChanged"));
+    }
+  }, [uiState.statusFilterMode, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem("sourceFilterMode", uiState.sourceFilterMode);
+      window.dispatchEvent(new CustomEvent("sourceFilterModeChanged"));
+    }
+  }, [uiState.sourceFilterMode, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -688,14 +718,12 @@ export const useLeadsPage = (
     if (uiState.filterByStatus.length > 0) {
       // Convert status array to format expected by filterLeadsByStatus
       const statusIds = statuses.map((s) => ({ _id: s.id, name: s.name }));
-      filtered = filterLeadsByStatus(filtered, uiState.filterByStatus, statusIds);
+      filtered = filterLeadsByStatus(filtered, uiState.filterByStatus, statusIds, uiState.statusFilterMode);
     }
 
     // Source filter - now array
     if (uiState.filterBySource.length > 0) {
-      filtered = filtered.filter((lead) =>
-        uiState.filterBySource.includes(lead.source || "")
-      );
+      filtered = filterLeadsBySource(filtered, uiState.filterBySource, uiState.sourceFilterMode);
     }
 
     return filtered;
@@ -706,7 +734,9 @@ export const useLeadsPage = (
     uiState.filterByCountry,
     uiState.countryFilterMode,
     uiState.filterByStatus,
+    uiState.statusFilterMode,
     uiState.filterBySource,
+    uiState.sourceFilterMode,
     statuses,
   ]);
 
@@ -888,6 +918,39 @@ export const useLeadsPage = (
       // Save to localStorage immediately
       if (typeof window !== "undefined") {
         localStorage.setItem("countryFilterMode", mode);
+        window.dispatchEvent(new CustomEvent("countryFilterModeChanged"));
+      }
+    },
+    []
+  );
+
+  const handleStatusFilterModeChange = useCallback(
+    (mode: "include" | "exclude") => {
+      setUiState((prev) => ({
+        ...prev,
+        statusFilterMode: mode,
+      }));
+
+      // Save to localStorage immediately
+      if (typeof window !== "undefined") {
+        localStorage.setItem("statusFilterMode", mode);
+        window.dispatchEvent(new CustomEvent("statusFilterModeChanged"));
+      }
+    },
+    []
+  );
+
+  const handleSourceFilterModeChange = useCallback(
+    (mode: "include" | "exclude") => {
+      setUiState((prev) => ({
+        ...prev,
+        sourceFilterMode: mode,
+      }));
+
+      // Save to localStorage immediately
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sourceFilterMode", mode);
+        window.dispatchEvent(new CustomEvent("sourceFilterModeChanged"));
       }
     },
     []
@@ -985,6 +1048,8 @@ export const useLeadsPage = (
     handleSelectionChange,
     handleCountryFilterChange,
     handleCountryFilterModeChange,
+    handleStatusFilterModeChange,
+    handleSourceFilterModeChange,
     handleStatusFilterChange,
     handleSourceFilterChange,
     handleFilterChange,

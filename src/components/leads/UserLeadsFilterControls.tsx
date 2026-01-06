@@ -39,6 +39,7 @@ export const UserLeadsFilterControls: React.FC<
   onCountryFilterChange,
   onStatusFilterChange,
   onSourceFilterChange,
+  availableCountries,
 }) => {
   // Normalize filters to arrays
   const normalizeFilter = (filter: string | string[]): string[] => {
@@ -71,6 +72,7 @@ export const UserLeadsFilterControls: React.FC<
             onChange={onCountryFilterChange}
             disabled={shouldShowLoading}
             isLoading={false}
+            availableCountries={availableCountries}
           />
 
           {/* Status Filter - Use the same component as ADMIN */}
