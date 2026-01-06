@@ -91,7 +91,14 @@ export function ColumnVisibilityToggle({
           .getAllColumns()
           .filter((column) => {
             // Don't allow hiding required columns
+            // Include all columns except select and actions
             return column.id !== "select" && column.id !== "actions";
+          })
+          .sort((a, b) => {
+            // Sort columns to ensure consistent order: ID first, then others
+            if (a.id === "leadId") return -1;
+            if (b.id === "leadId") return 1;
+            return a.id.localeCompare(b.id);
           })
           .map((column) => {
             const label = columnLabels[column.id] || column.id;
@@ -103,7 +110,16 @@ export function ColumnVisibilityToggle({
                 className="capitalize cursor-pointer"
                 checked={isVisible}
                 onCheckedChange={(value) => {
-                  column.toggleVisibility(!!value);
+                  // Use table.setColumnVisibility to ensure immediate update
+                  const newVisibility = { ...table.getState().columnVisibility };
+                  if (value) {
+                    // Show column - remove from visibility state (undefined means visible)
+                    delete newVisibility[column.id];
+                  } else {
+                    // Hide column - set to false
+                    newVisibility[column.id] = false;
+                  }
+                  table.setColumnVisibility(newVisibility);
                 }}
                 disabled={column.id === "select" || column.id === "actions"}
               >

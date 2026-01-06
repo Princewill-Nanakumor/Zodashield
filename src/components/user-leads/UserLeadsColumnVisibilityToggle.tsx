@@ -24,6 +24,7 @@ const COLUMN_LABELS: Record<UserLeadsColumnId, string> = {
   status: "Status",
   source: "Source",
   assignedTo: "Assigned To",
+  createdAt: "Created At",
   lastComment: "Last Comment",
   lastCommentDate: "Last Comment Date",
   commentCount: "Comments Numbers",
@@ -36,11 +37,16 @@ interface UserLeadsColumnVisibilityToggleProps {
 export function UserLeadsColumnVisibilityToggle({
   columnOrder,
 }: UserLeadsColumnVisibilityToggleProps) {
-  const { isColumnVisible, toggleColumnVisibility, showAllColumns } = useUserLeadsColumnVisibility();
+  const { isColumnVisible, toggleColumnVisibility, showAllColumns, columnVisibility } = useUserLeadsColumnVisibility();
 
   // Count visible columns (excluding actions)
   const visibleColumnsCount = columnOrder.filter((col) => col !== "actions" && isColumnVisible(col)).length;
   const totalOptionalColumns = DEFAULT_USER_LEADS_COLUMN_ORDER.filter((col) => col !== "actions").length;
+  
+  // Use columnVisibility to ensure component re-renders when visibility changes
+  // This ensures the UI updates immediately when toggling columns
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = columnVisibility;
 
   return (
     <DropdownMenu>
@@ -76,7 +82,10 @@ export function UserLeadsColumnVisibilityToggle({
               key={columnId}
               className="capitalize cursor-pointer"
               checked={isVisible}
-              onCheckedChange={() => toggleColumnVisibility(columnId)}
+              onCheckedChange={() => {
+                // Immediately update visibility
+                toggleColumnVisibility(columnId);
+              }}
             >
               <div className="flex items-center gap-2 w-full">
                 {isVisible ? (

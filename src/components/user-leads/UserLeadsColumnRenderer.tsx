@@ -184,6 +184,27 @@ export function renderUserLeadCell({
         </TableCell>
       );
 
+    case "createdAt":
+      return (
+        <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>
+          {lead.createdAt ? (
+            <div className="text-sm text-center">
+              {(() => {
+                const date = new Date(lead.createdAt);
+                const day = String(date.getDate()).padStart(2, "0");
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+              })()}
+            </div>
+          ) : (
+            <div className="text-center">
+              <span>—</span>
+            </div>
+          )}
+        </TableCell>
+      );
+
     case "lastComment":
       return (
         <TableCell className={`text-center ${isSelected ? "dark:text-white" : "dark:text-gray-300"}`}>

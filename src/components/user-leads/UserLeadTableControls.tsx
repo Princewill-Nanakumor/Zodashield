@@ -6,15 +6,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserLeadsColumnVisibilityToggle } from "./UserLeadsColumnVisibilityToggle";
-import { UserLeadsColumnId } from "@/hooks/useUserLeadsColumnOrder";
+import { ColumnVisibilityToggle } from "@/components/dashboardComponents/ColumnVisibilityToggle";
+import { Table } from "@tanstack/react-table";
+import { Lead } from "@/types/leads";
 
 interface UserLeadTableControlsProps {
   pageSize: number;
   pageIndex: number;
   totalEntries: number;
   onPageSizeChange: (value: string) => void;
-  columnOrder: UserLeadsColumnId[];
+  table: Table<Lead>;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 40, 50, 100, 200];
@@ -25,7 +26,7 @@ export default function UserLeadTableControls({
   pageIndex,
   totalEntries,
   onPageSizeChange,
-  columnOrder,
+  table,
 }: UserLeadTableControlsProps) {
   return (
     <div className="p-4 flex justify-between items-center">
@@ -46,7 +47,7 @@ export default function UserLeadTableControls({
         <span className="text-sm text-gray-600 dark:text-gray-400">
           entries
         </span>
-        <UserLeadsColumnVisibilityToggle columnOrder={columnOrder} />
+        <ColumnVisibilityToggle table={table} tableId="userLeadsTable" />
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-400">
         Showing {pageIndex * pageSize + 1} to{" "}

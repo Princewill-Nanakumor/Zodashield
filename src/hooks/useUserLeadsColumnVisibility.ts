@@ -44,6 +44,10 @@ export const useUserLeadsColumnVisibility = () => {
   const isColumnVisible = useCallback((columnId: UserLeadsColumnId): boolean => {
     // Actions column is always visible
     if (columnId === "actions") return true;
+    // leadId column should be visible by default (migration for existing users)
+    if (columnId === "leadId" && !(columnId in columnVisibility)) {
+      return true;
+    }
     // If not in visibility state, default to visible
     return columnVisibility[columnId] !== false;
   }, [columnVisibility]);

@@ -16,6 +16,7 @@ export const DEFAULT_USER_LEADS_COLUMN_ORDER = [
   "status",
   "source",
   "assignedTo",
+  "createdAt",
   "lastComment",
   "lastCommentDate",
   "commentCount",

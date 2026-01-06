@@ -4,7 +4,11 @@ import { Lead } from "@/types/leads";
 import { UserLeadTable } from "@/components/user-leads/UserLeadTable";
 import UserLeadTableControls from "./UserLeadTableControls";
 import { TablePagination } from "@/components/leads/TablePagination";
-import { useUserLeadsColumnOrder } from "@/hooks/useUserLeadsColumnOrder";
+import { useUserLeadsTableColumns } from "./useUserLeadsTableColumns";
+import { useTableConfiguration } from "@/components/dashboardComponents/TableConfiguration";
+import { useColumnOrder } from "@/hooks/useColumnOrder";
+import { useColumnVisibility } from "@/hooks/useColumnVisibility";
+import { useMemo, useCallback } from "react";
 
 type SortField = "leadId" | "name" | "country" | "status" | "source" | "createdAt" | "lastComment" | "lastCommentDate" | "commentCount";
 type SortOrder = "asc" | "desc";
@@ -42,8 +46,60 @@ export const UserLeadsTableContainer: React.FC<
   onPageSizeChange,
   onPageChange,
 }) => {
-  // Get column order for column visibility toggle
-  const { columnOrder } = useUserLeadsColumnOrder();
+  // Column ordering with localStorage persistence
+  const { columnOrder, setColumnOrder } = useColumnOrder();
+  
+  // Column visibility with localStorage persistence
+  const { columnVisibility, setColumnVisibility } = useColumnVisibility("userLeadsTable");
+
+  // Convert sortField and sortOrder to TanStack Table format
+  const sorting = useMemo(() => {
+    return [{ id: sortField, desc: sortOrder === "desc" }];
+  }, [sortField, sortOrder]);
+
+  // Handle sort change
+  const handleSort = useCallback((field: SortField) => {
+    onSort(field);
+  }, [onSort]);
+
+  // Handle page change
+  const handlePageChange = useCallback((newPageIndex: number) => {
+    onPageChange(newPageIndex);
+  }, [onPageChange]);
+
+  // Handle page size change
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    onPageSizeChange(newSize.toString());
+  }, [onPageSizeChange]);
+
+  // Get column definitions
+  const { columns } = useUserLeadsTableColumns({
+    sortField,
+    handleSort,
+  });
+
+  // Configure TanStack Table (we need this to get the table instance for the controls)
+  const { table } = useTableConfiguration({
+    data: paginatedLeads,
+    columns,
+    pageSize,
+    pageIndex,
+    sorting,
+    rowSelection: {}, // User leads table doesn't have row selection
+    columnOrder,
+    columnVisibility,
+    setSorting: (newSorting) => {
+      // Convert TanStack sorting to our format
+      if (newSorting.length > 0) {
+        const sort = newSorting[0];
+        onSort(sort.id as SortField);
+      }
+    },
+    setPageIndex: handlePageChange,
+    setPageSize: handlePageSizeChange,
+    setColumnOrder,
+    setColumnVisibility,
+  });
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -52,17 +108,16 @@ export const UserLeadsTableContainer: React.FC<
         pageIndex={pageIndex}
         totalEntries={totalEntries}
         onPageSizeChange={onPageSizeChange}
-        columnOrder={columnOrder}
+        table={table}
       />
 
       <UserLeadTable
         loading={loading}
-        paginatedLeads={paginatedLeads}
         onLeadClick={onLeadClick}
         selectedLead={selectedLead}
-        sortField={sortField}
-        sortOrder={sortOrder}
-        onSort={onSort}
+        table={table}
+        columnOrder={columnOrder}
+        setColumnOrder={setColumnOrder}
       />
 
       {totalEntries > 0 && (

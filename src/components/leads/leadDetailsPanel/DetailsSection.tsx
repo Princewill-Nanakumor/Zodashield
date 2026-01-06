@@ -4,7 +4,6 @@ import {
   User,
   Clock,
   Tag,
-  Hash,
   ChevronUp,
   ChevronDown,
   Edit2,
@@ -161,17 +160,6 @@ export const DetailsSection: FC<DetailsSectionProps> = ({
         }`}
       >
         <div className="px-4 pb-4 space-y-3">
-          {lead.leadId && (
-            <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
-              <Hash className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Lead ID
-                </p>
-                <p className="font-medium">{lead.leadId}</p>
-              </div>
-            </div>
-          )}
           <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
             <User className="w-5 h-5 text-gray-400 dark:text-gray-500" />
             <div>

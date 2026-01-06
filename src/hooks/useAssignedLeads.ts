@@ -12,6 +12,7 @@ interface AssignedToUser {
 
 interface LeadFromAPI {
   _id: string;
+  leadId?: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -142,6 +143,7 @@ const fetchAssignedLeads = async (): Promise<Lead[]> => {
     (lead: LeadFromAPI): Lead => ({
       _id: lead._id,
       id: lead._id,
+      leadId: lead.leadId,
       firstName: lead.firstName,
       lastName: lead.lastName,
       name: `${lead.firstName} ${lead.lastName}`,
