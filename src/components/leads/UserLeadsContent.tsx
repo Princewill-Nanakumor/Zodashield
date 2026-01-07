@@ -19,7 +19,6 @@ import { SubscriptionGuard } from "@/components/user-leads/SubscriptionGuard";
 import { UserLeadsTableContainer } from "@/components/user-leads/UserLeadsTableContainer";
 import { useSubscriptionData } from "@/hooks/useSubscriptionData";
 import { useLeadsURLManagement } from "@/hooks/useLeadsURLManagement";
-import { usePagination } from "@/hooks/paginationUtils";
 import { useSearchContext } from "@/context/SearchContext";
 import { useToggleContext } from "@/context/ToggleContext";
 import { useAssignedLeads } from "@/hooks/useAssignedLeads";
@@ -344,22 +343,36 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
   handleLeadUpdated,
   handleNavigation,
 }) => {
-  // Use the updated pagination hook with URL sync
-  const {
-    pageSize,
-    pageIndex,
-    paginatedLeads,
-    totalPages,
-    handlePageSizeChange,
-    handlePageChange,
-  } = usePagination(sortedLeads);
+  // Local pagination state (TanStack will paginate full sortedLeads)
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageIndex, setPageIndex] = useState<number>(0);
+
+  const handlePageSizeChange = useCallback((value: string) => {
+    const newSize = parseInt(value, 10);
+    if (!Number.isNaN(newSize) && newSize > 0) {
+      setPageSize(newSize);
+      setPageIndex(0);
+    }
+  }, []);
+
+  const handlePageChange = useCallback((newPageIndex: number) => {
+    setPageIndex(newPageIndex);
+  }, []);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredLeads.length / pageSize) || 1
+  );
 
   // Calculate counts with proper typing
   const counts: CountsData = isDataReady
     ? {
         total: totalLeads,
         filtered: filteredLeads.length,
-        currentPage: paginatedLeads.length,
+        currentPage: Math.min(
+          pageSize,
+          Math.max(filteredLeads.length - pageIndex * pageSize, 0)
+        ),
         totalPages,
         countries: availableCountries.length,
         statuses: availableStatuses.length,
@@ -444,7 +457,7 @@ const UserLeadsMainContent: React.FC<UserLeadsMainContentProps> = ({
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-2">
             <UserLeadsTableContainer
               loading={loading}
-              paginatedLeads={paginatedLeads}
+              leads={sortedLeads}
               pageSize={pageSize}
               pageIndex={pageIndex}
               totalEntries={counts.filtered}

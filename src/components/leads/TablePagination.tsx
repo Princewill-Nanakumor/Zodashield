@@ -24,33 +24,53 @@ export function TablePagination({
       </div>
       <div className="flex items-center space-x-2">
         <Button
+          type="button"
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(0)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(0);
+          }}
           disabled={pageIndex === 0}
         >
           <ChevronsLeft className="h-4 w-4" />
         </Button>
         <Button
+          type="button"
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(pageIndex - 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(pageIndex - 1);
+          }}
           disabled={pageIndex === 0}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button
+          type="button"
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(pageIndex + 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(pageIndex + 1);
+          }}
           disabled={pageIndex >= pageCount - 1}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
         <Button
+          type="button"
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(pageCount - 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPageChange(pageCount - 1);
+          }}
           disabled={pageIndex >= pageCount - 1}
         >
           <ChevronsRight className="h-4 w-4" />

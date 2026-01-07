@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLeadsStore } from "@/stores/leadsStore";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useToast } from "@/components/ui/use-toast";
+import { assignedLeadsKeys } from "@/hooks/useAssignedLeads";
 import {
   getAssignedUserId,
   filterLeadsByUser,
@@ -231,6 +232,11 @@ export const useLeadsPage = (
         description: `Successfully assigned ${variables.leadIds.length} lead(s)`,
         variant: "success",
       });
+
+      // Also refresh assigned-leads views (user leads page, badges, etc.)
+      queryClient.invalidateQueries({
+        queryKey: assignedLeadsKeys.all,
+      });
     },
     onSettled: () => {
       // Background refresh after delay - FIXED: Use consistent query key
@@ -302,6 +308,11 @@ export const useLeadsPage = (
         title: "Success!",
         description: `Successfully unassigned ${variables.leadIds.length} lead(s)`,
         variant: "success",
+      });
+
+      // Also refresh assigned-leads views (user leads page, badges, etc.)
+      queryClient.invalidateQueries({
+        queryKey: assignedLeadsKeys.all,
       });
     },
     onSettled: () => {

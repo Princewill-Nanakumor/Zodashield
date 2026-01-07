@@ -136,16 +136,14 @@ export default function LeadsTable({
     isInitializedRef.current = true;
   }, [searchParams]);
 
-  // Preserve page position when leads change
+  // Preserve page position when leads change (but don't fight user interaction)
   useEffect(() => {
     const currentPage = searchParams.get("page");
     if (currentPage && !isNaN(Number(currentPage))) {
       const targetPage = Number(currentPage) - 1;
-      if (pageIndex !== targetPage) {
-        setPageIndex(targetPage);
-      }
+      setPageIndex(targetPage);
     }
-  }, [leads.length, searchParams, pageIndex]);
+  }, [leads.length, searchParams]);
 
   // Update URL when page changes
   const handlePageChange = useCallback((page: number) => {

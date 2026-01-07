@@ -15,7 +15,7 @@ type SortOrder = "asc" | "desc";
 
 interface UserLeadsTableContainerProps {
   loading: boolean;
-  paginatedLeads: Lead[];
+  leads: Lead[];
   pageSize: number;
   pageIndex: number;
   totalEntries: number;
@@ -33,7 +33,7 @@ export const UserLeadsTableContainer: React.FC<
   UserLeadsTableContainerProps
 > = ({
   loading,
-  paginatedLeads,
+  leads,
   pageSize,
   pageIndex,
   totalEntries,
@@ -80,7 +80,7 @@ export const UserLeadsTableContainer: React.FC<
 
   // Configure TanStack Table (we need this to get the table instance for the controls)
   const { table } = useTableConfiguration({
-    data: paginatedLeads,
+    data: leads,
     columns,
     pageSize,
     pageIndex,
